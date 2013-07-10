@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
@@ -11,7 +12,7 @@ using System.Threading.Tasks;
 namespace OpaqueMail
 {
     /// <summary>
-    /// Represents an e-mail message that can be send using the SmtpClient class.
+    /// Represents an e-mail message that can be sent using the OpaqueMail.SmtpClient class.
     /// Includes OpaqueMail extensions to facilitate sending of secure S/MIME messages.
     /// </summary>
     public class MailMessage : System.Net.Mail.MailMessage
@@ -41,83 +42,93 @@ namespace OpaqueMail
         /// <param name="subject">A System.String that contains the subject text.</param>
         /// <param name="body">A System.String that contains the message body.</param>
         public MailMessage(string from, string to, string subject, string body) : base(from, to, subject, body) { }
+        /// <summary>
+        /// Cast a ReadOnlyMailMessage as a regular MailMessage.
+        /// </summary>
+        /// <param name="message">ReadOnlyMailMessage to import properties from.</param>
+        public MailMessage FromReadOnlyMailMessage(ReadOnlyMailMessage message)
+        {
+            return message as MailMessage;
+        }
         #endregion Constructors
 
         #region Public Members
         /// <summary>
-        /// Require recipient public keys to be validated.
+        /// Size of the entire message.
+        /// When sending e-mail, this is a rough estimate only.
         /// </summary>
-        public bool SMIMERequireCertificateVerification = true;
-        /// <summary>
-        /// Require recipient public keys to be have an Enhanced Key Usage value of "Secure Email" (1.3.6.1.5.5.7.3.4).
-        /// </summary>
-        public bool SMIMERequireEnhancedKeyUsageofSecureEmail = true;
-        /// <summary>
-        /// Require recipient public keys to be have a Key Usage value of "Key Encipherment".
-        /// </summary>
-        public bool SMIMERequireKeyUsageOfDataEncipherment = true;
-        /// <summary>
-        /// Exclude public keys with invalid "Valid from" and "Valid to" dates.
-        /// Only used when SMIMERequireCertificateVerification is false.
-        /// </summary>
-        public bool SMIMERequireValidCertificateDates = true;
+        public long Size
+        {
+            get
+            {
+                // If a size has been set when loading the message, return that size.
+                if (loadedSize > -1)
+                    return loadedSize;
+                else
+                {
+                    // If this message wasn't loaded via ReadOnlyMailMessage, calculate a rough estimate of its size.
+                    long size = Body.Length;
 
-        /// <summary>
-        /// Sign the e-mail.  When true, signing is the first S/MIME operation.
-        /// </summary>
-        public bool SMIMESign = false;
-        /// <summary>
-        /// Encrypt the e-mail's envelope.  When SMIMESign is true, encryption is the second S/MIME operation.
-        /// </summary>
-        public bool SMIMEEncryptEnvelope = false;
-        /// <summary>
-        /// Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.
-        /// </summary>
-        public bool SMIMETripleWrap = false;
+                    foreach (AlternateView alternateView in AlternateViews)
+                    {
+                        using (Stream dataStream = alternateView.ContentStream)
+                        {
+                            size += dataStream.Length;
+                        }
+                    }
 
-        /// <summary>
-        /// Stamp the e-mail with a signed timestamp.
-        /// Only applies if SMIMESign is true.
-        /// </summary>
-        public bool SMIMESignTime = true;
-        /// <summary>
-        /// Encrypt headers such as Subject, To, and From in addition to the message.
-        /// Only applies if SMIMEEncryptEnvelope is true.
-        /// </summary>
-        public bool SMIMEEncryptHeaders = true;
+                    foreach (Attachment attachment in Attachments)
+                    {
+                        using (Stream dataStream = attachment.ContentStream)
+                        {
+                            size += dataStream.Length;
+                        }
+                    }
 
-        /// <summary>
-        /// Text delimiting S/MIME message parts.
-        /// </summary>
-        public string SMIMEBoundaryName = "OpaqueMail-boundary";
-        /// <summary>
-        /// Text delimiting S/MIME message parts related to signatures.
-        /// </summary>
-        public string SMIMESignedCmsBoundaryName = "OpaqueMail-signed-Cmsboundary";
-        /// <summary>
-        /// Text delimiting MIME message parts in triple-wrapped messages.
-        /// </summary>
-        public string SMIMETripleSignedCmsBoundaryName = "OpaqueMail-triple-signed-Cmsboundary";
-
+                    return Body.Length;
+                }
+            }
+            set
+            {
+                loadedSize = value;
+            }
+        }
+        /// <summary>Encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
+        public bool SmimeEncryptedEnvelope = false;
+        /// <summary>Determine how the S/MIME envelope will be encrypted.</summary>
+        public SmimeEncryptionOptionFlags SmimeEncryptionOptionFlags = SmimeEncryptionOptionFlags.RequireCertificateVerification;
+        /// <summary>Sign the e-mail.  When true, signing is the first S/MIME operation.</summary>
+        public bool SmimeSigned = false;
         /// <summary>
         /// Certificate used when signing messages.
         /// Requires private key.
         /// </summary>
-        public X509Certificate2 SMIMESignerCertificate;
+        public X509Certificate2 SmimeSigningCertificate;
+        /// <summary>Determine how the S/MIME message will be signed.</summary>
+        public SmimeSigningOptionFlags SmimeSigningOptionFlags = SmimeSigningOptionFlags.SignTime;
+        /// <summary>Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
+        public bool SmimeTripleWrapped = false;
         #endregion Public Members
 
+        #region Private Members
+        /// <summary>Size of the loaded message, as calculated in ReadOnlyMailMessage's constructor.</summary>
+        private long loadedSize = -1;
+        #endregion Private Members
+
+        #region Public Methods
         /// <summary>
         /// Generate a multipart/mixed message containing the e-mail's body, alternate views, and attachments.
         /// </summary>
         /// <param name="buffer">Buffer used during various S/MIME operations.</param>
-        public byte[] MIMEEncode(ref byte[] buffer)
+        /// <param name="SmimeBoundaryName">Text delimiting S/MIME message parts.</param>
+        public byte[] MIMEEncode(byte[] buffer, string SmimeBoundaryName)
         {
             StringBuilder MIMEBuilder = new StringBuilder();
 
             // Write out body of the message.
-            MIMEBuilder.Append("Content-Type: multipart/mixed; boundary=\"" + SMIMEBoundaryName + "\"\r\n\r\n");
+            MIMEBuilder.Append("Content-Type: multipart/mixed; boundary=\"" + SmimeBoundaryName + "\"\r\n\r\n");
             MIMEBuilder.Append("This is a multi-part message in MIME format.\r\n\r\n");
-            MIMEBuilder.Append("--" + SMIMEBoundaryName + "\r\n");
+            MIMEBuilder.Append("--" + SmimeBoundaryName + "\r\n");
             if (this.IsBodyHtml)
                 MIMEBuilder.Append("Content-Type: text/html; charset=\"UTF-8\"\r\n");
             else
@@ -134,14 +145,16 @@ namespace OpaqueMail
                 // Determine the alternate view encoding, defaulting to UTF-8.
                 Encoding encoding = alternateView.ContentType.CharSet != null ? Encoding.GetEncoding(alternateView.ContentType.CharSet) : new UTF8Encoding();
 
-                MIMEBuilder.Append("--" + SMIMEBoundaryName + "\r\n");
+                MIMEBuilder.Append("--" + SmimeBoundaryName + "\r\n");
                 MIMEBuilder.Append("Content-Type: " + alternateView.ContentType + "; charset=\"" + encoding.WebName + "\"\r\n\r\n");
 
-                Stream dataStream = alternateView.ContentStream;
-                byte[] binaryData = new byte[dataStream.Length];
-                dataStream.Read(binaryData, 0, binaryData.Length);
+                using (Stream dataStream = alternateView.ContentStream)
+                {
+                    byte[] binaryData = new byte[dataStream.Length];
+                    dataStream.Read(binaryData, 0, binaryData.Length);
 
-                MIMEBuilder.Append(encoding.GetString(binaryData));
+                    MIMEBuilder.Append(encoding.GetString(binaryData));
+                }
             }
             // Since we've processed the alternate views, they shouldn't be rendered again.
             this.AlternateViews.Clear();
@@ -149,24 +162,26 @@ namespace OpaqueMail
             // MIME encode attachments.
             foreach (Attachment attachment in this.Attachments)
             {
-                MIMEBuilder.Append("--" + SMIMEBoundaryName + "\r\n");
+                MIMEBuilder.Append("--" + SmimeBoundaryName + "\r\n");
                 MIMEBuilder.Append("Content-Type: application/octet-stream; file=" + attachment.Name + "\r\n");
                 MIMEBuilder.Append("Content-Transfer-Encoding: base64\r\n");
                 MIMEBuilder.Append("Content-Disposition: attachment; filename=" + attachment.Name + "\r\n\r\n");
 
-                Stream dataStream = attachment.ContentStream;
-                byte[] binaryData = new byte[dataStream.Length];
-                dataStream.Read(binaryData, 0, binaryData.Length);
+                using (Stream dataStream = attachment.ContentStream)
+                {
+                    byte[] binaryData = new byte[dataStream.Length];
+                    dataStream.Read(binaryData, 0, binaryData.Length);
 
-                // Base-64 encode the attachment.
-                MIMEBuilder.Append(Functions.ToBase64String(ref binaryData, 0, binaryData.Length));
+                    // Base-64 encode the attachment.
+                    MIMEBuilder.Append(Convert.ToBase64String(binaryData, 0, binaryData.Length, Base64FormattingOptions.InsertLineBreaks));
+                }
   
                 MIMEBuilder.Append("\r\n");
             }
             // Since we've processed the attachments, they shouldn't be rendered again.
             this.Attachments.Clear();
 
-            MIMEBuilder.Append("--" + SMIMEBoundaryName + "--");
+            MIMEBuilder.Append("--" + SmimeBoundaryName + "--");
 
             // Determine the body encoding, defaulting to UTF-8.
             Encoding bodyEncoding = BodyEncoding != null ? BodyEncoding : new UTF8Encoding();
@@ -180,5 +195,6 @@ namespace OpaqueMail
 
             return MIMEMessageBytes;
         }
+        #endregion Public Methods
     }
 }
