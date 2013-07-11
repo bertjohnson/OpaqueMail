@@ -470,6 +470,7 @@
             this.ImapCopySmtpButton.TabIndex = 7;
             this.ImapCopySmtpButton.Text = "Copy from SMTP Settings";
             this.ImapCopySmtpButton.UseVisualStyleBackColor = true;
+            this.ImapCopySmtpButton.Click += new System.EventHandler(this.ImapCopySmtpButton_Click);
             // 
             // ImapSslLabel
             // 
@@ -635,9 +636,6 @@
             this.ImapSearchText.Size = new System.Drawing.Size(111, 20);
             this.ImapSearchText.TabIndex = 5;
             this.ImapSearchText.Text = "Search...";
-            this.ImapSearchText.GotFocus += ImapSearchText_GotFocus;
-            this.ImapSearchText.KeyDown += ImapSearchText_KeyDown;
-            this.ImapSearchText.LostFocus += ImapSearchText_LostFocus;
             // 
             // ImapGetQuotaButton
             // 

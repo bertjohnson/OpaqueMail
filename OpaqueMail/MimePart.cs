@@ -96,7 +96,7 @@ namespace OpaqueMail
                 string boundaryName = Functions.ReturnBetween(contentType, "boundary=\"", "\"");
                 if (boundaryName.Length < 1)
                 {
-                    cursor = contentType.IndexOf("boundary=");
+                    cursor = contentType.IndexOf("boundary=", StringComparison.InvariantCultureIgnoreCase);
                     if (cursor > -1)
                         boundaryName = contentType.Substring(cursor + 9);
                     cursor = boundaryName.IndexOf(";");
@@ -211,7 +211,7 @@ namespace OpaqueMail
                                                 mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, Convert.FromBase64String(mimeBody)));
                                                 break;
                                             case "quoted-printable":
-                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, Functions.StringFromQuotedPrintable(mimeBody)));
+                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, Functions.FromQuotedPrintable(mimeBody)));
                                                 break;
                                             case "binary":
                                             case "7bit":
@@ -284,10 +284,10 @@ namespace OpaqueMail
                 switch (contentTransferEncoding)
                 {
                     case "base64":
-                        body = Functions.StringFromBase64(body);
+                        body = Functions.FromBase64(body);
                         break;
                     case "quoted-printable":
-                        body = Functions.StringFromQuotedPrintable(body);
+                        body = Functions.FromQuotedPrintable(body);
                         break;
                     case "binary":
                     case "7bit":
@@ -320,7 +320,7 @@ namespace OpaqueMail
         /// <param name="contentType">Content Type of the MIME part.</param>
         private static string GetCharSet(string contentType)
         {
-            int charsetPos = contentType.IndexOf("charset=");
+            int charsetPos = contentType.IndexOf("charset=", StringComparison.InvariantCultureIgnoreCase);
             if (charsetPos > -1)
             {
                 int charsetSemicolonPos = contentType.IndexOf(";", charsetPos + 8);
@@ -487,7 +487,7 @@ namespace OpaqueMail
             // If a content disposition has not been specified, search elsewhere in the content type string for the filename.
             if (string.IsNullOrEmpty(mimeFileName))
             {
-                int nameStartPos = mimeContentType.IndexOf("name=");
+                int nameStartPos = mimeContentType.IndexOf("name=", StringComparison.InvariantCultureIgnoreCase);
                 if (nameStartPos > -1)
                 {
                     int nameEndPos = mimeContentType.IndexOf(";", nameStartPos);

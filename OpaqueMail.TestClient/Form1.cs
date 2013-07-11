@@ -181,7 +181,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             QuotaUsage totalUsage = myImapClient.GetQuota("");
             QuotaUsage inboxUsage = myImapClient.GetQuotaRoot("INBOX");
 
-            messageBuilder.Append("Overall quota information:\r\n\r\nUsed: " + totalUsage.Usage + "\r\nTotal: " + totalUsage.TotalQuota + "\r\n\r\nINBOX quota information:\r\n\r\nUsed: " + inboxUsage.Usage + "\r\nTotal: " + inboxUsage.TotalQuota);
+            messageBuilder.Append("Overall quota information:\r\n\r\nUsed: " + totalUsage.Usage + "\r\nTotal: " + totalUsage.QuotaMaximum + "\r\n\r\nINBOX quota information:\r\n\r\nUsed: " + inboxUsage.Usage + "\r\nTotal: " + inboxUsage.QuotaMaximum);
 
             string[] mailboxes = myImapClient.ListMailboxNames(true);
             messageBuilder.Append("\r\n\r\nFolders (" + mailboxes.Length.ToString() + " Total):\r\n");
@@ -197,9 +197,6 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private void ImapLoadFileButton_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(FileDialog.InitialDirectory))
-                FileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-
             FileDialog.CheckFileExists = true;
             FileDialog.Filter = "Email messages (*.eml)|*.eml|All files|*.*";
             FileDialog.Multiselect = false;
@@ -700,9 +697,6 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 }
             }
 
-            Mailbox[] mailboxes = myImapClient.ListMailboxes(true);
-            mailboxes = myImapClient.ListSubscriptions(true);
-
             // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
             myImapClient.SelectMailbox("INBOX");
             List<ReadOnlyMailMessage> messages = myImapClient.GetMessages(25, true);
@@ -1010,5 +1004,11 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 textbox.Text = valueNavigator.Value;
         }
         #endregion Private Methods
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            myImapClient.SendCommand("NAMESPACE\r\n");
+            string response = myImapClient.ReadData();
+        }
     }
 }

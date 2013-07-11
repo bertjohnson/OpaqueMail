@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -198,6 +199,15 @@ namespace OpaqueMail.Imap
         /// </summary>
         public bool Authenticate()
         {
+            return Authenticate(AuthenticationMode.Login);
+        }
+
+        /// <summary>
+        /// Perform an authentication handshake with the IMAP server with the specified method.
+        /// </summary>
+        /// <param name="authMode">The authentication method to use.</param>
+        public bool Authenticate(AuthenticationMode authMode)
+        {
             string response = ReadData("*");
             if (!LastCommandResult)
                 return false;
@@ -207,8 +217,39 @@ namespace OpaqueMail.Imap
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            SendCommand(commandTag, "LOGIN " + Credentials.UserName + " " + Credentials.Password + "\r\n");
-            response = ReadData(commandTag);
+            switch (authMode)
+            {
+                case AuthenticationMode.CramMD5:
+                    SendCommand(commandTag, "AUTHENTICATE CRAM-MD5\r\n");
+                    response = ReadData(commandTag);
+
+                    // If handshake started successfully, respond to the challenge.
+                    if (LastCommandResult)
+                    {
+                        using (HMACMD5 hmacMd5 = new HMACMD5(System.Text.Encoding.UTF8.GetBytes(Credentials.Password)))
+                        {
+                            byte[] hmacMd5Hash = hmacMd5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(response));
+                            string key = Encoding.UTF8.GetString(hmacMd5Hash).ToLower().Replace("-", "");
+                            string challengeResponse = Convert.ToBase64String(Encoding.UTF8.GetBytes(Credentials.UserName + " " + key));
+
+                            Functions.SendStreamString(ImapStream, InternalBuffer, challengeResponse + "\r\n");
+                            response = ReadData(commandTag);
+                        }
+                    }
+                    else
+                        return false;
+
+                    break;
+                case AuthenticationMode.Login:
+                    SendCommand(commandTag, "LOGIN " + Credentials.UserName + " " + Credentials.Password + "\r\n");
+                    response = ReadData(commandTag);
+                    break;
+                case AuthenticationMode.Plain:
+                    SendCommand(commandTag, "AUTHENTICATE PLAIN " + Convert.ToBase64String(Encoding.UTF8.GetBytes("\0" + Credentials.UserName + "\0" + Credentials.Password)) + "\r\n");
+                    response = ReadData(commandTag);
+                    break;
+            }
+
             if (!LastCommandResult)
                 return false;
 
@@ -439,10 +480,35 @@ namespace OpaqueMail.Imap
             if (mailboxName.Contains("*") || mailboxName.Contains("%"))
                 return false;
 
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
+
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             SendCommand(commandTag, "CREATE " + mailboxName + "\r\n");
+            string response = ReadData(commandTag);
+
+            return LastCommandResult;
+        }
+
+        /// <summary>
+        /// Delete a mailbox from the server.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to delete.</param>
+        public bool DeleteMailbox(string mailboxName)
+        {
+            // Protect against commands being called out of order.
+            if (!IsAuthenticated)
+                return false;
+
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
+
+            // Generate a unique command tag for tracking this command and its response.
+            string commandTag = UniqueCommandTag();
+
+            SendCommand(commandTag, "DELETE " + mailboxName + "\r\n");
             string response = ReadData(commandTag);
 
             return LastCommandResult;
@@ -466,25 +532,6 @@ namespace OpaqueMail.Imap
         public bool DeleteMessageUid(string mailboxName, int uid)
         {
             return AddFlagsToMessageHelper(mailboxName, uid, new string[] { "\\Deleted" }, true);
-        }
-
-        /// <summary>
-        /// Delete a mailbox from the server.
-        /// </summary>
-        /// <param name="mailboxName">The name of the mailbox to delete.</param>
-        public bool DeleteMailbox(string mailboxName)
-        {
-            // Protect against commands being called out of order.
-            if (!IsAuthenticated)
-                return false;
-
-            // Generate a unique command tag for tracking this command and its response.
-            string commandTag = UniqueCommandTag();
-
-            SendCommand(commandTag, "DELETE " + mailboxName + "\r\n");
-            string response = ReadData(commandTag);
-
-            return LastCommandResult;
         }
 
         /// <summary>
@@ -529,6 +576,9 @@ namespace OpaqueMail.Imap
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
                 return null;
+
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
@@ -704,17 +754,20 @@ namespace OpaqueMail.Imap
         /// <summary>
         /// Return the number of messages in a specific mailbox.
         /// </summary>
-        /// <param name="mailbox">The mailbox to examine.</param>
-        public int GetMessageCount(string mailbox)
+        /// <param name="mailboxName">The mailbox to examine.</param>
+        public int GetMessageCount(string mailboxName)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
                 return -1;
 
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
+
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            SendCommand(commandTag, "STATUS " + mailbox + " (messages)\r\n");
+            SendCommand(commandTag, "STATUS " + mailboxName + " (messages)\r\n");
             string response = ReadData(commandTag);
             response = Functions.ReturnBetween(response, "(MESSAGES ", ")");
             
@@ -822,13 +875,13 @@ namespace OpaqueMail.Imap
         }
 
         /// <summary>
-        /// Get the current quota and usage for the specified root.
+        /// Get the current quota and usage for the specified mailbox.
         /// </summary>
-        /// <param name="quotaRoot">The quota root to work with.</param>
-        public QuotaUsage GetQuota(string quotaRoot)
+        /// <param name="mailboxName">The mailbox to work with.</param>
+        public QuotaUsage GetQuota(string mailboxName)
         {
             QuotaUsage quota = new QuotaUsage();
-            quota.TotalQuota = -1;
+            quota.QuotaMaximum = -1;
             quota.Usage = -1;
 
             // Ensure that the server supports Quota extensions.
@@ -838,10 +891,13 @@ namespace OpaqueMail.Imap
                 if (!IsAuthenticated)
                     return quota;
 
+                // Encode ampersands and Unicode characters.
+                mailboxName = Functions.ToModifiedUTF7(mailboxName);
+
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                SendCommand(commandTag, "GETQUOTA \"" + quotaRoot + "\"\r\n");
+                SendCommand(commandTag, "GETQUOTA \"" + mailboxName + "\"\r\n");
                 string response = ReadData(commandTag);
 
                 if (LastCommandResult)
@@ -849,7 +905,7 @@ namespace OpaqueMail.Imap
                     // Attempt to parse the response.
                     string[] responseParts = response.Substring(0, response.Length - 1).Split(' ');
                     int.TryParse(responseParts[responseParts.Length - 2], out quota.Usage);
-                    int.TryParse(responseParts[responseParts.Length - 1], out quota.TotalQuota);
+                    int.TryParse(responseParts[responseParts.Length - 1], out quota.QuotaMaximum);
                 }
 
                 return quota;
@@ -865,7 +921,7 @@ namespace OpaqueMail.Imap
         public QuotaUsage GetQuotaRoot(string mailboxName)
         {
             QuotaUsage quota = new QuotaUsage();
-            quota.TotalQuota = -1;
+            quota.QuotaMaximum = -1;
             quota.Usage = -1;
 
             // Ensure that the server supports Quota extensions.
@@ -886,7 +942,7 @@ namespace OpaqueMail.Imap
                     // Attempt to parse the response.
                     string[] responseParts = response.Substring(0, response.Length - 1).Split(' ');
                     int.TryParse(responseParts[responseParts.Length - 2], out quota.Usage);
-                    int.TryParse(responseParts[responseParts.Length - 1], out quota.TotalQuota);
+                    int.TryParse(responseParts[responseParts.Length - 1], out quota.QuotaMaximum);
                 }
 
                 return quota;
@@ -1080,7 +1136,7 @@ namespace OpaqueMail.Imap
             {
                 string[] responseLineParts = responseLine.Split(space, 5);
                 if (responseLineParts.Length > 4)
-                    mailboxNames.Add(responseLineParts[4].Replace("\"", ""));
+                    mailboxNames.Add(Functions.FromModifiedUTF7(responseLineParts[4].Replace("\"", "")));
             }
 
             return mailboxNames.ToArray();
@@ -1110,6 +1166,9 @@ namespace OpaqueMail.Imap
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
+
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
 
             if (includeFullHierarchy)
                 SendCommand(commandTag, "LSUB \"" + mailboxName + "\" *\r\n");
@@ -1160,6 +1219,9 @@ namespace OpaqueMail.Imap
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
+
             if (includeFullHierarchy)
                 SendCommand(commandTag, "LSUB \"" + mailboxName + "\" *\r\n");
             else
@@ -1178,7 +1240,7 @@ namespace OpaqueMail.Imap
             {
                 string[] responseLineParts = responseLine.Split(space, 5);
                 if (responseLineParts.Length > 4)
-                    mailboxNames.Add(responseLineParts[4].Replace("\"", ""));
+                    mailboxNames.Add(Functions.FromModifiedUTF7(responseLineParts[4].Replace("\"", "")));
             }
 
             return mailboxNames.ToArray();
@@ -1342,6 +1404,10 @@ namespace OpaqueMail.Imap
             if (!IsAuthenticated)
                 return false;
 
+            // Encode ampersands and Unicode characters.
+            currentMailboxName = Functions.ToModifiedUTF7(currentMailboxName);
+            newMailboxName = Functions.ToModifiedUTF7(newMailboxName);
+
             // Disallow wildcard characters in mailbox names;
             if (newMailboxName.Contains("*") || newMailboxName.Contains("%"))
                 return false;
@@ -1412,6 +1478,9 @@ namespace OpaqueMail.Imap
             if (!IsAuthenticated)
                 return null;
 
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
+
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
@@ -1466,6 +1535,9 @@ namespace OpaqueMail.Imap
                 if (!IsAuthenticated)
                     return false;
 
+                // Encode ampersands and Unicode characters.
+                mailboxName = Functions.ToModifiedUTF7(mailboxName);
+
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
@@ -1510,6 +1582,9 @@ namespace OpaqueMail.Imap
             if (!IsAuthenticated)
                 return false;
 
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
+
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
@@ -1528,6 +1603,9 @@ namespace OpaqueMail.Imap
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
                 return false;
+
+            // Encode ampersands and Unicode characters.
+            mailboxName = Functions.ToModifiedUTF7(mailboxName);
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
@@ -1832,6 +1910,10 @@ namespace OpaqueMail.Imap
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
                 return false;
+
+            // Encode ampersands and Unicode characters.
+            sourceMailboxName = Functions.ToModifiedUTF7(sourceMailboxName);
+            destMailboxName = Functions.ToModifiedUTF7(destMailboxName);
 
             // Ensure we're working with the right mailbox.
             if (sourceMailboxName != CurrentMailboxName)

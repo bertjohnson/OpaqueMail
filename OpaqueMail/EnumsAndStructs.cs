@@ -6,17 +6,11 @@ using System.Threading.Tasks;
 
 namespace OpaqueMail
 {
-    /// <summary>
-    /// Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.
-    /// </summary>
-    public enum ReadOnlyMailMessageProcessingFlags
+    public enum AuthenticationMode
     {
-        None = 0,
-        IncludeRawHeaders = 1,
-        IncludeRawBody = 2,
-        IncludeWinMailData = 256,
-        IncludeSmimeSignedData = 512,
-        IncludeSmimeEncryptedEnvelopeData = 1024
+        Login,
+        CramMD5,
+        Plain
     }
 
     /// <summary>
@@ -129,16 +123,20 @@ namespace OpaqueMail
     public struct QuotaUsage
     {
         public int Usage;
-        public int TotalQuota;
+        public int QuotaMaximum;
     }
 
     /// <summary>
-    /// Bit flags to determine how an S/MIME message is signed.
+    /// Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.
     /// </summary>
-    public enum SmimeSigningOptionFlags
+    public enum ReadOnlyMailMessageProcessingFlags
     {
         None = 0,
-        SignTime = 1
+        IncludeRawHeaders = 1,
+        IncludeRawBody = 2,
+        IncludeWinMailData = 256,
+        IncludeSmimeSignedData = 512,
+        IncludeSmimeEncryptedEnvelopeData = 1024
     }
 
     /// <summary>
@@ -154,5 +152,14 @@ namespace OpaqueMail
         // OpaqueMail optional setting for protecting the subject.
         // Note: This is not part of the current RFC specifcation and should only be used when sending to other OpaqueMail agents.
         EncryptSubject = 256
+    }
+
+    /// <summary>
+    /// Bit flags to determine how an S/MIME message is signed.
+    /// </summary>
+    public enum SmimeSigningOptionFlags
+    {
+        None = 0,
+        SignTime = 1
     }
 }

@@ -89,73 +89,60 @@ namespace OpaqueMail
         /// <param name="header">E-mail header to be decoded.</param>
         public static string DecodeMailHeader(string header)
         {
-            // Normalize the header to be parsed.
-            string canonicalHeader = header.ToUpper();
-
             // Build a new string using the following buffer.
             StringBuilder headerBuilder = new StringBuilder();
-            
-            // Loop through and decode base-64 encoded strings.
-            int encodingStartPos = 0, encodingEndPos = 0, lastPos = 0;
-            while (encodingStartPos > -1)
-            {
-                lastPos = encodingStartPos;
-                encodingStartPos = canonicalHeader.IndexOf("=?UTF-8?B?", encodingStartPos);
-                if (encodingStartPos > -1)
-                {
-                    headerBuilder.Append(header.Substring(lastPos, encodingStartPos - lastPos));
-                    encodingEndPos = canonicalHeader.IndexOf("?=", encodingStartPos + 10);
 
-                    if (encodingEndPos > -0)
+            int cursor = 0, lastCursor = 0;
+            while (cursor > -1)
+            {
+                lastCursor = cursor;
+                cursor = header.IndexOf("=?", cursor);
+                if (cursor > -1)
+                {
+                    int middleCursor = header.IndexOf("?", cursor + 2);
+                    if (middleCursor > -1 && middleCursor < header.Length - 2)
                     {
-                        // Base-64 decode the encoded section.
-                        headerBuilder.Append(Functions.StringFromBase64(header.Substring(encodingStartPos + 10, encodingEndPos - encodingStartPos - 10)));
-                        encodingStartPos = encodingEndPos + 2;
+                        int endCursor = header.IndexOf("?=", middleCursor + 2);
+                        if (endCursor > -1)
+                        {
+                            headerBuilder.Append(header.Substring(lastCursor, cursor - lastCursor));
+
+                            // Try to create a decoder for the encoding.
+                            string encodingName = header.Substring(cursor + 2, middleCursor - cursor - 2);
+                            Encoding encoding = Encoding.GetEncoding(encodingName);
+
+                            byte[] encodedBytes = null;
+                            switch (header.Substring(middleCursor + 1, 2))
+                            {
+                                case "B?":
+                                    encodedBytes = Convert.FromBase64String(header.Substring(middleCursor + 3, endCursor - middleCursor - 3));
+                                    break;
+                                case "Q?":
+                                    encodedBytes = Encoding.UTF8.GetBytes(Functions.FromQuotedPrintable(header.Substring(middleCursor + 3, endCursor - middleCursor - 3)));
+                                    break;
+                                default:
+                                    encodedBytes = Encoding.UTF8.GetBytes(header.Substring(middleCursor, endCursor - middleCursor - 2));
+                                    break;
+                            }
+
+                            // Append the decoded string.
+                            headerBuilder.Append(encoding.GetString(encodedBytes));
+
+                            cursor = endCursor + 2;
+                        }
+                        else
+                            cursor = -1;
                     }
                     else
-                    {
-                        headerBuilder.Append(header.Substring(encodingStartPos));
-                        encodingStartPos = -1;
-                    }
+                        cursor = -1;
                 }
-                else
-                    headerBuilder.Append(header.Substring(lastPos));
             }
 
-            // Reset the header to be our base-64 decoded version.
-            header = headerBuilder.ToString();
-            canonicalHeader = header.ToUpper();
-            headerBuilder.Clear();
-
-            // Loop through and decode quoted-printable encoded strings.
-            encodingStartPos = 0; encodingEndPos = 0; lastPos = 0;
-            while (encodingStartPos > -1)
-            {
-                lastPos = encodingStartPos;
-                encodingStartPos = canonicalHeader.IndexOf("=?UTF-8?Q?", encodingStartPos);
-                if (encodingStartPos > -1)
-                {
-                    headerBuilder.Append(header.Substring(lastPos, encodingStartPos - lastPos));
-                    encodingEndPos = canonicalHeader.IndexOf("?=", encodingStartPos + 10);
-
-                    if (encodingEndPos > -0)
-                    {
-                        // Quoted-printable decode the encoded section.
-                        headerBuilder.Append(Functions.StringFromQuotedPrintable(header.Substring(encodingStartPos + 10, encodingEndPos - encodingStartPos - 10)));
-                        encodingStartPos = encodingEndPos + 2;
-                    }
-                    else
-                    {
-                        headerBuilder.Append(header.Substring(encodingStartPos));
-                        encodingStartPos = -1;
-                    }
-                }
-                else
-                    headerBuilder.Append(header.Substring(lastPos));
-            }
+            // Append any remaining characters.
+            headerBuilder.Append(header.Substring(lastCursor));
 
             return headerBuilder.ToString();
-        }
+        }            
 
         /// <summary>
         /// Convert CID: object references to Base-64 encoded versions.
@@ -254,13 +241,22 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Returns a base-64 string representing the original input.
+        /// </summary>
+        /// <param name="input">The string to convert.</param>
+        public static string FromBase64(string input)
+        {
+            return Encoding.UTF8.GetString(System.Convert.FromBase64String(input));
+        }
+
+        /// <summary>
         /// Parse a text representation of e-mail addresses into a collection of MailAddress objects.
         /// </summary>
         /// <param name="addresses">String representation of e-mail addresses to parse.</param>
         public static MailAddressCollection FromMailAddressString(string addresses)
         {
             // Escape embedded encoding.
-            string addressesEscaped = DecodeMailHeader(addresses);
+            addresses = DecodeMailHeader(addresses);
 
             // Create a new collection of MailAddresses to be returned.
             MailAddressCollection addressCollection = new MailAddressCollection();
@@ -375,6 +371,132 @@ namespace OpaqueMail
                 addressCollection.Add(addresses);
 
             return addressCollection;
+        }
+
+        /// <summary>
+        /// Decode modified UTF-7, as used for IMAP mailbox names.
+        /// </summary>
+        /// <param name="input">String to decode</param>
+        public static string FromModifiedUTF7(string input)
+        {
+            StringBuilder outputBuilder = new StringBuilder();
+
+            int ampCursor = 0, lastAmpCursor = 0;
+            while (ampCursor > -1)
+            {
+                lastAmpCursor = ampCursor;
+                ampCursor = input.IndexOf("&", ampCursor);
+                if (ampCursor > -1)
+                {
+                    outputBuilder.Append(input.Substring(lastAmpCursor, ampCursor - lastAmpCursor));
+                    int minusCursor = input.IndexOf("-", ampCursor + 1);
+                    if (minusCursor > -1)
+                    {
+                        // Check if this is an encoded ampersand.
+                        if (minusCursor == ampCursor + 1)
+                            outputBuilder.Append("&");
+                        else
+                        {
+                            // Unpack the encoded substring.
+                            string base64String = "+" + input.Substring(ampCursor + 1, minusCursor - ampCursor - 1).Replace(',', '/');
+                            outputBuilder.Append(Encoding.UTF7.GetString(Encoding.UTF8.GetBytes(base64String)));
+                        }
+                        ampCursor = minusCursor + 1;
+                    }
+                    else
+                        ampCursor = -1;
+                }
+            }
+
+            // Add the remaining portion after the last escape sequenece.
+            outputBuilder.Append(input.Substring(lastAmpCursor));
+
+            return outputBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Returns a quoted-printable string representing the original input.
+        /// </summary>
+        /// <param name="input">The string to convert.</param>
+        public static string FromQuotedPrintable(string input)
+        {
+            // Remove carriage returns because they'll be added back in for line breaks (=0A).
+            input = input.Replace("=0D", "");
+
+            // Build a new string using the following buffer.
+            StringBuilder outputBuilder = new StringBuilder();
+
+            // Buffer for holding UTF-8 encoded characters.
+            byte[] utf8Buffer = new byte[8];
+
+            // Loop through and process quoted-printable strings, denoted by equals signs.
+            int equalsPos = 0, lastPos = 0;
+            while (equalsPos > -1)
+            {
+                lastPos = equalsPos;
+                equalsPos = input.IndexOf('=', equalsPos);
+                if (equalsPos > -1 && equalsPos < input.Length - 2)
+                {
+                    outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
+
+                    string afterEquals = input.Substring(equalsPos + 1, 2);
+
+                    switch (afterEquals)
+                    {
+                        case "\r\n":
+                            break;
+                        case "09":
+                            outputBuilder.Append("\t");
+                            break;
+                        case "0A":
+                            outputBuilder.Append("\r\n");
+                            break;
+                        case "20":
+                            outputBuilder.Append(" ");
+                            break;
+                        default:
+                            int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
+
+                            // Handle values above 7F as UTF-8 encoded character sequences.
+                            bool processed = false;
+                            if (highByte > 127 && equalsPos < input.Length - 2)
+                            {
+                                utf8Buffer[0] = (byte)highByte;
+                                int utf8ByteCount = 1;
+
+                                string encodedString = afterEquals;
+                                equalsPos += 3;
+
+                                while (input.Substring(equalsPos, 1) == "=")
+                                {
+                                    // Step over a line break if that breaks up our encoded string.
+                                    if (input.Substring(equalsPos + 1, 2) != "\r\n")
+                                        utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
+
+                                    equalsPos += 3;
+                                }
+
+                                outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
+
+                                processed = true;
+                                equalsPos -= 3;
+                            }
+
+                            // Continue if we didn't run into a UTF-8 encoded character sequence.
+                            if (!processed)
+                                outputBuilder.Append((char)highByte);
+                            break;
+                    }
+
+                    equalsPos += 3;
+                }
+                else
+                {
+                    outputBuilder.Append(input.Substring(lastPos));
+                    equalsPos = -1;
+                }
+            }
+            return outputBuilder.ToString();
         }
 
         /// <summary>
@@ -511,100 +633,6 @@ namespace OpaqueMail
         }
 
         /// <summary>
-        /// Returns a base-64 string representing the original input.
-        /// </summary>
-        /// <param name="input">The string to convert.</param>
-        public static string StringFromBase64(string input)
-        {
-            return Encoding.UTF8.GetString(System.Convert.FromBase64String(input));
-        }
-
-        /// <summary>
-        /// Returns a quoted-printable string representing the original input.
-        /// </summary>
-        /// <param name="input">The string to convert.</param>
-        public static string StringFromQuotedPrintable(string input)
-        {
-            // Remove carriage returns because they'll be added back in for line breaks (=0A).
-            input = input.Replace("=0D", "");
-            
-            // Build a new string using the following buffer.
-            StringBuilder outputBuilder = new StringBuilder();
-
-            // Buffer for holding UTF-8 encoded characters.
-            byte[] utf8Buffer = new byte[8];
-
-            // Loop through and process quoted-printable strings, denoted by equals signs.
-            int equalsPos = 0, lastPos = 0;
-            while (equalsPos > -1)
-            {
-                lastPos = equalsPos;
-                equalsPos = input.IndexOf('=', equalsPos);
-                if (equalsPos > -1 && equalsPos < input.Length - 2)
-                {
-                    outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
-
-                    string afterEquals = input.Substring(equalsPos + 1, 2);
-
-                    switch (afterEquals)
-                    {
-                        case "\r\n":
-                            break;
-                        case "09":
-                            outputBuilder.Append("\t");
-                            break;
-                        case "0A":
-                            outputBuilder.Append("\r\n");
-                            break;
-                        case "20":
-                            outputBuilder.Append(" ");
-                            break;
-                        default:
-                            int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
-
-                            // Handle values above 7F as UTF-8 encoded character sequences.
-                            bool processed = false;
-                            if (highByte > 127 && equalsPos < input.Length - 2)
-                            {
-                                utf8Buffer[0] = (byte)highByte;
-                                int utf8ByteCount = 1;
-
-                                string encodedString = afterEquals;
-                                equalsPos += 3;
-
-                                while (input.Substring(equalsPos, 1) == "=")
-                                {
-                                    // Step over a line break if that breaks up our encoded string.
-                                    if (input.Substring(equalsPos + 1, 2) != "\r\n")
-                                        utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
-
-                                    equalsPos += 3;
-                                }
-
-                                outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
-
-                                processed = true;
-                                equalsPos -= 3;
-                            }
-
-                            // Continue if we didn't run into a UTF-8 encoded character sequence.
-                            if (!processed)
-                                outputBuilder.Append((char)highByte);
-                            break;
-                    }
-
-                    equalsPos += 3;
-                }
-                else
-                {
-                    outputBuilder.Append(input.Substring(lastPos));
-                    equalsPos = -1;
-                }
-            }
-            return outputBuilder.ToString();
-        }
-
-        /// <summary>
         /// Encodes a message as a 7-bit string, spanned over lines of 100 base-64 characters each.
         /// </summary>
         /// <param name="message">The message to be 7-bit encoded.</param>
@@ -656,6 +684,45 @@ namespace OpaqueMail
                 addressString.Remove(addressString.Length - 2, 2);
 
             return addressString.ToString();
+        }
+
+        /// <summary>
+        /// Encode modified UTF-7, as used for IMAP mailbox names.
+        /// </summary>
+        /// <param name="input">String to encode</param>
+        public static string ToModifiedUTF7(string input)
+        {
+            StringBuilder outputBuilder = new StringBuilder();
+            StringBuilder encodedOutputBuilder = new StringBuilder();
+
+            // Loop through each character, adding the encoded character to our output.
+            foreach (char inputChar in input)
+            {
+                // Check if the character is printable ASCII.
+                if (inputChar >= '\x20' && inputChar <= '\x7e')
+                {
+                    if (encodedOutputBuilder.Length > 0)
+                    {
+                        // Add the encoded string to our output and clear the buffer.
+                        outputBuilder.Append(Encoding.UTF8.GetString(Encoding.UTF7.GetBytes(encodedOutputBuilder.ToString())).Replace('/', ',').Replace('+', '&'));
+                        encodedOutputBuilder.Clear();
+                    }
+
+                    // Encode ampersands.
+                    if (inputChar == '&')
+                        outputBuilder.Append("&-");
+                    else
+                        outputBuilder.Append(inputChar);
+                }
+                else
+                    encodedOutputBuilder.Append(inputChar);
+            }
+
+            // Add the final encoded string to our output.
+            if (encodedOutputBuilder.Length > 0)
+                outputBuilder.Append(Encoding.UTF8.GetString(Encoding.UTF7.GetBytes(encodedOutputBuilder.ToString())).Replace('/', ',').Replace('+', '&'));
+
+            return outputBuilder.ToString();
         }
 
         /// <summary>

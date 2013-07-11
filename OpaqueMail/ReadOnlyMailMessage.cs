@@ -115,6 +115,7 @@ namespace OpaqueMail
             string ccText = "";
             string bccText = "";
             string replyToText = "";
+            string subjectText = "";
 
             // Temporary header variables to be processed later.
             List<string> receivedChain = new List<string>();
@@ -224,10 +225,10 @@ namespace OpaqueMail
                             }
                             break;
                         case "subject":
-                            Subject = Functions.DecodeMailHeader(headerValue);
+                            subjectText = headerValue;
                             break;
                         case "to":
-                            toText = Functions.DecodeMailHeader(headerValue);
+                            toText = headerValue;
                             break;
                         case "x-priority":
                             switch (headerValue.ToUpper())
@@ -444,7 +445,7 @@ namespace OpaqueMail
                             replyToText += header;
                             break;
                         case "subject":
-                            Subject += header;
+                            subjectText += header;
                             break;
                         case "to":
                             toText += header;
@@ -589,7 +590,7 @@ namespace OpaqueMail
                         int linebreakPosition = Body.IndexOf("\r\n");
                         if (linebreakPosition > -1)
                         {
-                            Subject = Body.Substring(9, linebreakPosition - 9);
+                            subjectText = Body.Substring(9, linebreakPosition - 9);
                             Body = Body.Substring(linebreakPosition + 2);
                         }
                     }
@@ -645,6 +646,9 @@ namespace OpaqueMail
                 foreach (MailAddress replyToAddress in replyToAddresses)
                     ReplyToList.Add(replyToAddress);
             }
+
+            // Decode international strings and remove escaped linebreaks.
+            Subject = Functions.DecodeMailHeader(subjectText).Replace("\r", "").Replace("\n", "");
         }
 
         /// <summary>

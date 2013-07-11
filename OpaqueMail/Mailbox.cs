@@ -46,7 +46,8 @@ namespace OpaqueMail
         /// <param name="imapResponse">Raw IMAP output of an EXAMINE or SELECT command.</param>
         public Mailbox(string name, string imapResponse)
         {
-            Name = name;
+            // Escape modifed UTF-7 encoding for ampersands or Unicode characters.
+            Name = Functions.FromModifiedUTF7(name);
 
             string[] responseLines = imapResponse.Replace("\r", "").Split('\n');
             foreach (string responseLine in responseLines)
@@ -125,7 +126,9 @@ namespace OpaqueMail
                 if (remainingParts.Length == 2)
                 {
                     mailbox.HierarchyDelimiter = remainingParts[0].Replace("\"", "");
-                    mailbox.Name = remainingParts[1].Replace("\"", "");
+
+                    // Escape modifed UTF-7 encoding for ampersands or Unicode characters.
+                    mailbox.Name = Functions.FromModifiedUTF7(remainingParts[1].Replace("\"", ""));
 
                     return mailbox;
                 }
