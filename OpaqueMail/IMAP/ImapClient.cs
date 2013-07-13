@@ -9,7 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail.Imap
+namespace OpaqueMail
 {
     /// <summary>
     /// Allows applications to retrieve and manage e-mail by using the Internet Message Access Protocol (IMAP).
@@ -282,8 +282,11 @@ namespace OpaqueMail.Imap
         /// <param name="message">The raw message to append.</param>
         public bool AppendMessage(string mailboxName, string message)
         {
-            return AppendMessage(mailboxName, message, new string[] { }, null);
+            Task<bool> task = AppendMessageAsync(mailboxName, message);
+            task.Wait();
+            return task.Result;
         }
+
 
         /// <summary>
         /// Appends a message to the specified mailbox.
@@ -294,60 +297,11 @@ namespace OpaqueMail.Imap
         /// <param name="date">Optional date for the message.</param>
         public bool AppendMessage(string mailboxName, string message, string[] flags, DateTime? date)
         {
-            // Protect against commands being called out of order.
-            if (!IsAuthenticated)
-                return false;
-
-            // Ensure the message has an ending carriage return and line feed.
-            if (!message.EndsWith("\r\n"))
-                message += "\r\n";
-
-            // Create the initial APPEND command.
-            StringBuilder commandBuilder = new StringBuilder();
-            commandBuilder.Append("APPEND " + mailboxName + " ");
-
-            // If flags are specified, add them as parameters.
-            if (flags != null)
-            {
-                if (flags.Length > 0)
-                {
-                    commandBuilder.Append("(");
-                    bool firstFlag = true;
-                    foreach (string flag in flags)
-                    {
-                        if (!firstFlag)
-                            commandBuilder.Append(" ");
-                        commandBuilder.Append(flag);
-                        firstFlag = false;
-                    }
-                    commandBuilder.Append(") ");
-                }
-            }
-
-            // If a date is specified, add it as a parameter.
-            if (date != null)
-                commandBuilder.Append("\"" + ((DateTime)date).ToString("dd-MM-yyyy hh:mm:ss") + " " + ((DateTime)date).ToString("zzzz").Replace(":", "") + "\" ");
-
-            // Generate a unique command tag for tracking this command and its response.
-            string commandTag = UniqueCommandTag();
-
-            // Complete the initial command send it.
-            commandBuilder.Append("{" + message.Length + "}\r\n");
-            SendCommand(commandTag, commandBuilder.ToString());
-
-            // Confirm the server is ready to accept our raw data.
-            string response = Functions.ReadStreamString(ImapStream, InternalBuffer);
-            if (response.StartsWith("+"))
-            {
-                Functions.SendStreamString(ImapStream, InternalBuffer, message + "\r\n");
-                response = ReadData(commandTag);
-
-                return LastCommandResult;
-            }
-
-            return false;
+            Task<bool> task = AppendMessageAsync(mailboxName, message, flags, date);
+            task.Wait();
+            return task.Result;
         }
-
+        
         /// <summary>
         /// Request a checkpoint of the currently selected mailbox.
         /// </summary>
@@ -440,7 +394,7 @@ namespace OpaqueMail.Imap
             string commandTag = UniqueCommandTag();
 
             SendCommand(commandTag, "COPY " + index.ToString() + " " + destMailboxName + "\r\n");
-            ReadData(commandTag);
+            string result = ReadData(commandTag);
 
             return LastCommandResult;
         }
@@ -618,7 +572,7 @@ namespace OpaqueMail.Imap
         /// Retrieve a list of the IMAP's servers extended capabilities.
         /// </summary>
         /// <param name="imapVersion">String representing the server's IMAP version.</param>
-        public string[] GetCapabilities(out string imapVersion)
+        public string[] GetCapabilities(string imapVersion)
         {
             // If we've logged in or out since last checking capabilities, ignore the cache.
             if (LastCapabilitiesCheckAuthenticationState == IsAuthenticated)
@@ -659,13 +613,16 @@ namespace OpaqueMail.Imap
                 return new string[] { };
         }
 
+
         /// <summary>
         /// Load an instance of a message based on its index.
         /// </summary>
         /// <param name="index">The index of the message to load.</param>
         public ReadOnlyMailMessage GetMessage(int index)
         {
-            return GetMessageHelper(CurrentMailboxName, index, false, false, false);
+            Task<ReadOnlyMailMessage> task = GetMessageAsync(index);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -675,7 +632,9 @@ namespace OpaqueMail.Imap
         /// <param name="uid">The index of the message to load.</param>
         public ReadOnlyMailMessage GetMessage(string mailboxName, int index)
         {
-            return GetMessageHelper(mailboxName, index, false, false, false);
+            Task<ReadOnlyMailMessage> task = GetMessageAsync(mailboxName, index);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -686,7 +645,9 @@ namespace OpaqueMail.Imap
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         public ReadOnlyMailMessage GetMessage(string mailboxName, int index, bool headersOnly)
         {
-            return GetMessageHelper(mailboxName, index, headersOnly, false, false);
+            Task<ReadOnlyMailMessage> task = GetMessageAsync(mailboxName, index, headersOnly);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -698,7 +659,9 @@ namespace OpaqueMail.Imap
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
         public ReadOnlyMailMessage GetMessage(string mailboxName, int index, bool headersOnly, bool setSeenFlag)
         {
-            return GetMessageHelper(mailboxName, index, headersOnly, setSeenFlag, false);
+            Task<ReadOnlyMailMessage> task = GetMessageAsync(mailboxName, index, headersOnly, setSeenFlag);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -707,7 +670,9 @@ namespace OpaqueMail.Imap
         /// <param name="uid">The UID of the message to load.</param>
         public ReadOnlyMailMessage GetMessageUid(int uid)
         {
-            return GetMessageHelper(CurrentMailboxName, uid, false, false, true);
+            Task<ReadOnlyMailMessage> task = GetMessageUidAsync(uid);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -717,7 +682,9 @@ namespace OpaqueMail.Imap
         /// <param name="uid">The UID of the message to load.</param>
         public ReadOnlyMailMessage GetMessageUid(string mailboxName, int uid)
         {
-            return GetMessageHelper(mailboxName, uid, false, false, true);
+            Task<ReadOnlyMailMessage> task = GetMessageUidAsync(mailboxName, uid);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -728,7 +695,9 @@ namespace OpaqueMail.Imap
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         public ReadOnlyMailMessage GetMessageUid(string mailboxName, int uid, bool headersOnly)
         {
-            return GetMessageHelper(mailboxName, uid, headersOnly, false, true);
+            Task<ReadOnlyMailMessage> task = GetMessageUidAsync(mailboxName, uid, headersOnly);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -740,7 +709,9 @@ namespace OpaqueMail.Imap
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
         public ReadOnlyMailMessage GetMessageUid(string mailboxName, int uid, bool headersOnly, bool setSeenFlag)
         {
-            return GetMessageHelper(mailboxName, uid, headersOnly, setSeenFlag, true);
+            Task<ReadOnlyMailMessage> task = GetMessageUidAsync(mailboxName, uid, headersOnly, setSeenFlag);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -783,7 +754,9 @@ namespace OpaqueMail.Imap
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         public List<ReadOnlyMailMessage> GetMessages()
         {
-            return GetMessages(CurrentMailboxName, 25, 1, false, false, false);
+            Task<List<ReadOnlyMailMessage>> task = GetMessagesAsync();
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -792,7 +765,9 @@ namespace OpaqueMail.Imap
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         public List<ReadOnlyMailMessage> GetMessages(string mailboxName)
         {
-            return GetMessages(mailboxName, 25, 1, false, false, false);
+            Task<List<ReadOnlyMailMessage>> task = GetMessagesAsync(mailboxName);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -801,7 +776,9 @@ namespace OpaqueMail.Imap
         /// <param name="count">The maximum number of messages to return.</param>
         public List<ReadOnlyMailMessage> GetMessages(int count)
         {
-            return GetMessages(CurrentMailboxName, count, 1, false, false, false);
+            Task<List<ReadOnlyMailMessage>> task = GetMessagesAsync(count);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -811,7 +788,9 @@ namespace OpaqueMail.Imap
         /// <param name="count">The maximum number of messages to return.</param>
         public List<ReadOnlyMailMessage> GetMessages(string mailboxName, int count)
         {
-            return GetMessages(mailboxName, count, 1, false, false, false);
+            Task<List<ReadOnlyMailMessage>> task = GetMessagesAsync(mailboxName, count);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -821,7 +800,9 @@ namespace OpaqueMail.Imap
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
         public List<ReadOnlyMailMessage> GetMessages(int count, bool headersOnly)
         {
-            return GetMessages(CurrentMailboxName, count, 1, false, headersOnly, false);
+            Task<List<ReadOnlyMailMessage>> task = GetMessagesAsync(count, headersOnly);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -830,9 +811,11 @@ namespace OpaqueMail.Imap
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public List<ReadOnlyMailMessage> GetMessages(string mailbox, int count, bool headersOnly)
+        public List<ReadOnlyMailMessage> GetMessages(string mailboxName, int count, bool headersOnly)
         {
-            return GetMessages(mailbox, count, 1, false, headersOnly, false);
+            Task<List<ReadOnlyMailMessage>> task = GetMessagesAsync(mailboxName, count, headersOnly);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -844,41 +827,18 @@ namespace OpaqueMail.Imap
         /// <param name="reverseOrder">Whether to return messages in descending order.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
         /// <param name="setSeenFlag">Whether to update the message's flag as having been seen.</param>
-        public List<ReadOnlyMailMessage> GetMessages(string mailboxName, int count, int startIndex, bool reverseOnly, bool headersOnly, bool setSeenFlag)
+        public List<ReadOnlyMailMessage> GetMessages(string mailboxName, int count, int startIndex, bool reverseOrder, bool headersOnly, bool setSeenFlag)
         {
-            // Protect against commands being called out of order.
-            if (!IsAuthenticated || string.IsNullOrEmpty(mailboxName))
-                return null;
-
-            if (mailboxName != CurrentMailboxName)
-                SelectMailbox(mailboxName);
-
-            List<ReadOnlyMailMessage> messages = new List<ReadOnlyMailMessage>();
-            int numMessages = GetMessageCount();
-
-            int messagesReturned = 0;
-            for (int i = numMessages; i >= 1; i--)
-            {
-                ReadOnlyMailMessage message = GetMessageHelper(mailboxName, i, headersOnly, setSeenFlag, false);
-
-                if (message != null)
-                {
-                    messages.Add(message);
-                    messagesReturned++;
-                }
-
-                if (messagesReturned >= count)
-                    break;
-            }
-
-            return messages;
+            Task<List<ReadOnlyMailMessage>> task = GetMessagesAsync(mailboxName, count, startIndex, reverseOrder, headersOnly, setSeenFlag);
+            task.Wait();
+            return task.Result;
         }
-
+        
         /// <summary>
         /// Get the current quota and usage for the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">The mailbox to work with.</param>
-        public QuotaUsage GetQuota(string mailboxName)
+        public async Task<QuotaUsage> GetQuota(string mailboxName)
         {
             QuotaUsage quota = new QuotaUsage();
             quota.QuotaMaximum = -1;
@@ -897,8 +857,8 @@ namespace OpaqueMail.Imap
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                SendCommand(commandTag, "GETQUOTA \"" + mailboxName + "\"\r\n");
-                string response = ReadData(commandTag);
+                await SendCommandAsync(commandTag, "GETQUOTA \"" + mailboxName + "\"\r\n");
+                string response = await ReadDataAsync(commandTag);
 
                 if (LastCommandResult)
                 {
@@ -918,7 +878,7 @@ namespace OpaqueMail.Imap
         /// Get the current quota and usage at the root level.
         /// </summary>
         /// <param name="mailboxName">The mailbox to work with.</param>
-        public QuotaUsage GetQuotaRoot(string mailboxName)
+        public async Task<QuotaUsage> GetQuotaRoot(string mailboxName)
         {
             QuotaUsage quota = new QuotaUsage();
             quota.QuotaMaximum = -1;
@@ -934,8 +894,8 @@ namespace OpaqueMail.Imap
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                SendCommand(commandTag, "GETQUOTAROOT \"" + mailboxName + "\"\r\n");
-                string response = ReadData(commandTag);
+                await SendCommandAsync(commandTag, "GETQUOTAROOT \"" + mailboxName + "\"\r\n");
+                string response = await ReadDataAsync(commandTag);
 
                 if (LastCommandResult)
                 {
@@ -955,7 +915,7 @@ namespace OpaqueMail.Imap
         /// Send a list of identifying characteristics to the server.
         /// </summary>
         /// <param name="identification">Values to be sent.</param>
-        public void Identify(ImapIdentification identification)
+        public async Task Identify(ImapIdentification identification)
         {
             StringBuilder identificationBuilder = new StringBuilder();
 
@@ -988,15 +948,15 @@ namespace OpaqueMail.Imap
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                SendCommand(commandTag, "ID (" + identificationString.Substring(0, identificationString.Length - 1) + ")\r\n");
-                string response = ReadData(commandTag);
+                await SendCommandAsync(commandTag, "ID (" + identificationString.Substring(0, identificationString.Length - 1) + ")\r\n");
+                string response = await ReadDataAsync(commandTag);
             }
         }
 
         /// <summary>
         /// Notify the server that the session is going IDLE, while continuing to receive notifications from the server.
         /// </summary>
-        public bool IdleStart()
+        public async Task<bool> IdleStart()
         {
             // Ensure that the server supports IDLE.
             if (ServerSupportsIdle)
@@ -1004,8 +964,8 @@ namespace OpaqueMail.Imap
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                SendCommand(commandTag, "IDLE\r\n");
-                string response = ReadData(commandTag);
+                await SendCommandAsync(commandTag, "IDLE\r\n");
+                string response = await ReadDataAsync(commandTag);
 
                 SessionIsIdle = LastCommandResult;
                 return LastCommandResult;
@@ -1017,7 +977,7 @@ namespace OpaqueMail.Imap
         /// <summary>
         /// Notify the server that the session is no longer IDLE.
         /// </summary>
-        public bool IdleStop()
+        public async Task<bool> IdleStop()
         {
             // Ensure that we've already entered the IDLE state.
             if (SessionIsIdle)
@@ -1025,8 +985,8 @@ namespace OpaqueMail.Imap
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                SendCommand(commandTag, "DONE\r\n");
-                string response = ReadData(commandTag);
+                await SendCommandAsync(commandTag, "DONE\r\n");
+                string response = await ReadDataAsync(commandTag);
 
                 SessionIsIdle = false;
             }
@@ -1038,9 +998,9 @@ namespace OpaqueMail.Imap
         /// Return an array of all root mailboxes, and optionally, all children.
         /// </summary>
         /// <param name="includeFullHierarchy">Whether to use wildcards and return all descendants</param>
-        public Mailbox[] ListMailboxes(bool includeFullHierarchy)
+        public async Task<Mailbox[]> ListMailboxes(bool includeFullHierarchy)
         {
-            return ListMailboxes("", includeFullHierarchy);
+            return await ListMailboxes("", includeFullHierarchy);
         }
 
         /// <summary>
@@ -1048,7 +1008,7 @@ namespace OpaqueMail.Imap
         /// </summary>
         /// <param name="mailboxName">The mailbox to search below.</param>
         /// <param name="includeFullHierarchy">Whether to use wildcards and return all descendants</param>
-        public Mailbox[] ListMailboxes(string mailboxName, bool includeFullHierarchy)
+        public async Task<Mailbox[]> ListMailboxes(string mailboxName, bool includeFullHierarchy)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -1065,16 +1025,16 @@ namespace OpaqueMail.Imap
             string commandTag = UniqueCommandTag();
 
             if (includeFullHierarchy)
-                SendCommand(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" *\r\n");
+                await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" *\r\n");
             else
             {
                 if (string.IsNullOrEmpty(mailboxName))
-                    SendCommand(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %\r\n");
+                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %\r\n");
                 else
-                    SendCommand(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %/%\r\n");
+                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %/%\r\n");
             }
 
-            string response = ReadData(commandTag);
+            string response = await ReadDataAsync(commandTag);
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
             char[] space = " ".ToCharArray();
@@ -1092,9 +1052,9 @@ namespace OpaqueMail.Imap
         /// Return an array of all root mailbox names, and optionally, all children.
         /// </summary>
         /// <param name="includeFullHierarchy">Whether to use wildcards and return all descendants</param>
-        public string[] ListMailboxNames(bool includeFullHierarchy)
+        public async Task<string[]> ListMailboxNames(bool includeFullHierarchy)
         {
-            return ListMailboxNames("", includeFullHierarchy);
+            return await ListMailboxNames("", includeFullHierarchy);
         }
 
         /// <summary>
@@ -1102,7 +1062,7 @@ namespace OpaqueMail.Imap
         /// </summary>
         /// <param name="mailboxName">The mailbox to search below.</param>
         /// <param name="includeFullHierarchy">Whether to use wildcards and return all descendants</param>
-        public string[] ListMailboxNames(string mailboxName, bool includeFullHierarchy)
+        public async Task<string[]> ListMailboxNames(string mailboxName, bool includeFullHierarchy)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -1119,16 +1079,16 @@ namespace OpaqueMail.Imap
             string commandTag = UniqueCommandTag();
 
             if (includeFullHierarchy)
-                SendCommand(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" *\r\n");
+                await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" *\r\n");
             else
             {
                 if (string.IsNullOrEmpty(mailboxName))
-                    SendCommand(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %\r\n");
+                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %\r\n");
                 else
-                    SendCommand(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %/%\r\n");
+                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %/%\r\n");
             }
 
-            string response = ReadData(commandTag);
+            string response = await ReadDataAsync(commandTag);
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
             char[] space = " ".ToCharArray();
@@ -1146,9 +1106,9 @@ namespace OpaqueMail.Imap
         /// Return an array of subscriptions, and optionally, all children.
         /// </summary>
         /// <param name="includeFullHierarchy">Whether to use wildcards and return all descendants</param>
-        public Mailbox[] ListSubscriptions(bool includeFullHierarchy)
+        public async Task<Mailbox[]> ListSubscriptions(bool includeFullHierarchy)
         {
-            return ListSubscriptions("", includeFullHierarchy);
+            return await ListSubscriptions("", includeFullHierarchy);
         }
 
         /// <summary>
@@ -1156,7 +1116,7 @@ namespace OpaqueMail.Imap
         /// </summary>
         /// <param name="mailboxName">The mailbox to search below.</param>
         /// <param name="includeFullHierarchy">Whether to use wildcards and return all descendants</param>
-        public Mailbox[] ListSubscriptions(string mailboxName, bool includeFullHierarchy)
+        public async Task<Mailbox[]> ListSubscriptions(string mailboxName, bool includeFullHierarchy)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -1171,16 +1131,16 @@ namespace OpaqueMail.Imap
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
 
             if (includeFullHierarchy)
-                SendCommand(commandTag, "LSUB \"" + mailboxName + "\" *\r\n");
+                await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" *\r\n");
             else
             {
                 if (string.IsNullOrEmpty(mailboxName))
-                    SendCommand(commandTag, "LSUB \"" + mailboxName + "\" %\r\n");
+                    await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %\r\n");
                 else
-                    SendCommand(commandTag, "LSUB \"" + mailboxName + "\" %/%\r\n");
+                    await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %/%\r\n");
             }
 
-            string response = ReadData(commandTag);
+            string response = await ReadDataAsync(commandTag);
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
             char[] space = " ".ToCharArray();
@@ -1198,9 +1158,9 @@ namespace OpaqueMail.Imap
         /// Return an array of subscription names, and optionally, all children.
         /// </summary>
         /// <param name="includeFullHierarchy">Whether to use wildcards and return all descendants</param>
-        public string[] ListSubscriptionNames(bool includeFullHierarchy)
+        public async Task<string[]> ListSubscriptionNames(bool includeFullHierarchy)
         {
-            return ListSubscriptionNames("", includeFullHierarchy);
+            return await ListSubscriptionNames("", includeFullHierarchy);
         }
 
         /// <summary>
@@ -1208,7 +1168,7 @@ namespace OpaqueMail.Imap
         /// </summary>
         /// <param name="mailboxName">The mailbox to search below.</param>
         /// <param name="includeFullHierarchy">Whether to use wildcards and return all descendants</param>
-        public string[] ListSubscriptionNames(string mailboxName, bool includeFullHierarchy)
+        public async Task<string[]> ListSubscriptionNames(string mailboxName, bool includeFullHierarchy)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -1223,16 +1183,16 @@ namespace OpaqueMail.Imap
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
 
             if (includeFullHierarchy)
-                SendCommand(commandTag, "LSUB \"" + mailboxName + "\" *\r\n");
+                await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" *\r\n");
             else
             {
                 if (string.IsNullOrEmpty(mailboxName))
-                    SendCommand(commandTag, "LSUB \"" + mailboxName + "\" %\r\n");
+                    await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %\r\n");
                 else
-                    SendCommand(commandTag, "LSUB \"" + mailboxName + "\" %/%\r\n");
+                    await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %/%\r\n");
             }
 
-            string response = ReadData(commandTag);
+            string response = await ReadDataAsync(commandTag);
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
             char[] space = " ".ToCharArray();
@@ -1306,7 +1266,7 @@ namespace OpaqueMail.Imap
         {
             return ReadData(SessionCommandTag);
         }
-        
+
         /// <summary>
         /// Read the last response from the IMAP server tied to a specific command tag.
         /// </summary>
@@ -1319,8 +1279,7 @@ namespace OpaqueMail.Imap
             bool receivingMessage = true, firstResponse = true;
             while (receivingMessage)
             {
-                int bytesRead = ImapStream.Read(InternalBuffer, 0, Constants.BUFFERSIZE);
-                response += Encoding.UTF8.GetString(InternalBuffer, 0, bytesRead);
+                response += Functions.ReadStreamString(ImapStream, InternalBuffer);
 
                 // Deal with bad commands and responses with errors.
                 if (firstResponse)
@@ -1427,45 +1386,9 @@ namespace OpaqueMail.Imap
         /// <param name="searchQuery">Well-formatted IMAP search criteria.</param>
         public List<ReadOnlyMailMessage> Search(string searchQuery)
         {
-            // Protect against commands being called out of order.
-            if (!IsAuthenticated)
-                return null;
-
-            // Strip the command if it was passed since we'll be adding it.
-            if (searchQuery.StartsWith("SEARCH "))
-                searchQuery = searchQuery.Substring(7);
-            else if (searchQuery.StartsWith("UID SEARCH "))
-                searchQuery = searchQuery.Substring(11);
-
-            // Generate a unique command tag for tracking this command and its response.
-            string commandTag = UniqueCommandTag();
-
-            SendCommand(commandTag, "UID SEARCH " + searchQuery + "\r\n");
-            string response = ReadData(commandTag);
-
-            if (LastCommandResult)
-            {
-                List<ReadOnlyMailMessage> messages = new List<ReadOnlyMailMessage>();
-
-                if (response.StartsWith("* SEARCH "))
-                {
-                    string[] messageIDs = response.Substring(9).Split(' ');
-                    foreach (string messageID in messageIDs)
-                    {
-                        int numericMessageID = -1;
-                        if (int.TryParse(messageID, out numericMessageID))
-                        {
-                            ReadOnlyMailMessage message = GetMessageUid(int.Parse(messageID));
-                            if (message != null)
-                                messages.Add(message);
-                        }
-                    }
-                }
-
-                return messages;
-            }
-
-            return new List<ReadOnlyMailMessage>();
+            Task<List<ReadOnlyMailMessage>> task = SearchAsync(searchQuery);
+            task.Wait();
+            return task.Result;
         }
 
         /// <summary>
@@ -1634,7 +1557,7 @@ namespace OpaqueMail.Imap
         /// <param name="id">Identifier of the message to update, either index or UID.</param>
         /// <param name="flags">List of flags to add.</param>
         /// <param name="isUid">Whether the ID was passed as a UID.</param>
-        private bool AddFlagsToMessageHelper(string mailbox, int id, string[] flags, bool isUid)
+        private bool AddFlagsToMessageHelper(string mailboxName, int id, string[] flags, bool isUid)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -1668,14 +1591,14 @@ namespace OpaqueMail.Imap
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
         /// <param name="isUid">Whether the identifer is an UID.</param>
-        private ReadOnlyMailMessage GetMessageHelper(string mailbox, int id, bool headersOnly, bool setSeenFlag, bool isUid)
+        private async Task<ReadOnlyMailMessage> GetMessageHelper(string mailboxName, int id, bool headersOnly, bool setSeenFlag, bool isUid)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
                 return null;
 
-            if (mailbox != CurrentMailboxName)
-                SelectMailbox(mailbox);
+            if (mailboxName != CurrentMailboxName)
+                SelectMailbox(mailboxName);
 
             string uidPrefix = isUid ? "UID " : "";
 
@@ -1684,16 +1607,16 @@ namespace OpaqueMail.Imap
 
             // Format the command depending on whether we want headers only and whether we want to mark messages as seen.
             if (headersOnly)
-                SendCommand(commandTag, uidPrefix + "FETCH " + id + " (BODY[HEADER] UID)\r\n");
+                await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[HEADER] UID)\r\n");
             else
             {
                 if (setSeenFlag)
-                    SendCommand(commandTag, uidPrefix + "FETCH " + id + " (BODY[] UID FLAGS)\r\n");
+                    await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[] UID FLAGS)\r\n");
                 else
-                    SendCommand(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[] UID FLAGS)\r\n");
+                    await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[] UID FLAGS)\r\n");
             }
 
-            string response = ReadData(commandTag);
+            string response = await ReadDataAsync(commandTag);
 
             // Ensure the message was actually found.
             if (response.IndexOf("\r\n") > -1)
@@ -1709,7 +1632,7 @@ namespace OpaqueMail.Imap
 
                 ReadOnlyMailMessage message = new ReadOnlyMailMessage(response, ProcessingFlags);
                 message.ImapUid = uid;
-                message.Mailbox = mailbox;
+                message.Mailbox = mailboxName;
                 message.ParseFlagsString(flagsString);
                 return message;
             }
@@ -1951,7 +1874,7 @@ namespace OpaqueMail.Imap
         /// <param name="id">Identifier of the message to update, either index or UID.</param>
         /// <param name="flags">List of flags to update.</param>
         /// <param name="isUid">Whether the ID was passed as a UID.</param>
-        private bool StoreFlagsHelper(string mailbox, int id, string[] flags, bool isUid)
+        private bool StoreFlagsHelper(string mailboxName, int id, string[] flags, bool isUid)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -1984,7 +1907,7 @@ namespace OpaqueMail.Imap
         /// <param name="id">Identifier of the message to update, either index or UID.</param>
         /// <param name="flags">List of flags to remove.</param>
         /// <param name="isUid">Whether the ID was passed as a UID.</param>
-        private bool RemoveFlagsFromMessageHelper(string mailbox, int id, string[] flags, bool isUid)
+        private bool RemoveFlagsFromMessageHelper(string mailboxName, int id, string[] flags, bool isUid)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)

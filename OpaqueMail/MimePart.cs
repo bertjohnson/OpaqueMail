@@ -96,7 +96,7 @@ namespace OpaqueMail
                 string boundaryName = Functions.ReturnBetween(contentType, "boundary=\"", "\"");
                 if (boundaryName.Length < 1)
                 {
-                    cursor = contentType.IndexOf("boundary=", StringComparison.InvariantCultureIgnoreCase);
+                    cursor = contentType.IndexOf("boundary=", StringComparison.OrdinalIgnoreCase);
                     if (cursor > -1)
                         boundaryName = contentType.Substring(cursor + 9);
                     cursor = boundaryName.IndexOf(";");
@@ -112,12 +112,12 @@ namespace OpaqueMail
                 while (cursor > -1)
                 {
                     // Move cursor to the next boundary.
-                    cursor = body.IndexOf("--" + boundaryName, cursor, StringComparison.InvariantCultureIgnoreCase);
+                    cursor = body.IndexOf("--" + boundaryName, cursor, StringComparison.OrdinalIgnoreCase);
 
                     if (cursor > -1)
                     {
                         // Calculate the end boundary of the current MIME part.
-                        int boundaryEnd = body.IndexOf("--" + boundaryName, cursor + boundaryName.Length, StringComparison.InvariantCultureIgnoreCase);
+                        int boundaryEnd = body.IndexOf("--" + boundaryName, cursor + boundaryName.Length, StringComparison.OrdinalIgnoreCase);
                         if (boundaryEnd > -1)
                         {
                             string mimeContents = body.Substring(cursor + boundaryName.Length + 4, boundaryEnd - cursor - boundaryName.Length - 4);
@@ -320,7 +320,7 @@ namespace OpaqueMail
         /// <param name="contentType">Content Type of the MIME part.</param>
         private static string GetCharSet(string contentType)
         {
-            int charsetPos = contentType.IndexOf("charset=", StringComparison.InvariantCultureIgnoreCase);
+            int charsetPos = contentType.IndexOf("charset=", StringComparison.OrdinalIgnoreCase);
             if (charsetPos > -1)
             {
                 int charsetSemicolonPos = contentType.IndexOf(";", charsetPos + 8);
@@ -487,7 +487,7 @@ namespace OpaqueMail
             // If a content disposition has not been specified, search elsewhere in the content type string for the filename.
             if (string.IsNullOrEmpty(mimeFileName))
             {
-                int nameStartPos = mimeContentType.IndexOf("name=", StringComparison.InvariantCultureIgnoreCase);
+                int nameStartPos = mimeContentType.IndexOf("name=", StringComparison.OrdinalIgnoreCase);
                 if (nameStartPos > -1)
                 {
                     int nameEndPos = mimeContentType.IndexOf(";", nameStartPos);

@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace OpaqueMail
 {
@@ -63,13 +64,13 @@ namespace OpaqueMail
         /// Performs requested S/MIME signing and encryption.
         /// </summary>
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
-        public void Send(MailMessage message)
+        public async Task Send(MailMessage message)
         {
             // If not performing any S/MIME encryption or signing, use the default System.Net.Mail.SmtpClient Send() method.
             if (!message.SmimeSigned && !message.SmimeEncryptedEnvelope && !message.SmimeTripleWrapped)
                 base.Send(message);
             else
-                SmimeSend(message);
+                await SmimeSend(message);
         }
 
         /// <summary>
@@ -258,7 +259,7 @@ namespace OpaqueMail
         /// Helper function for sending the specified message to an SMTP server for delivery with S/MIME encoding.
         /// </summary>
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
-        private void SmimeSend(MailMessage message)
+        private async Task SmimeSend(MailMessage message)
         {
             // Require one or more recipients.
             if (message.To.Count + message.CC.Count + message.Bcc.Count < 1)
@@ -281,7 +282,7 @@ namespace OpaqueMail
             }
 
             // Generate a multipart/mixed message containing the e-mail's body, alternate views, and attachments.
-            byte[] MIMEMessageBytes = message.MIMEEncode(buffer, SmimeBoundaryName);
+            byte[] MIMEMessageBytes = await message.MIMEEncode(buffer, SmimeBoundaryName);
 
             // Helper variables for tracking the outermost content type and encoding.
             string alternateViewContentType = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeSignedCmsBoundaryName + "\"";
@@ -366,7 +367,7 @@ namespace OpaqueMail
                 messageBuilder.Append("Content-Description: \"S/MIME Cryptographic envelopedCms\"\r\n");
                 messageBuilder.Append("Content-Disposition: attachment; filename=\"smime.p7m\"\r\n\r\n");
 
-                messageBuilder.Append(Convert.ToBase64String(contentBytes, 0, contentBytes.Length, Base64FormattingOptions.InsertLineBreaks));
+                messageBuilder.Append(Functions.ToBase64String(contentBytes, 0, contentBytes.Length));
             }
             else
                 messageBuilder.Append(Encoding.UTF8.GetString(contentBytes));
@@ -376,7 +377,7 @@ namespace OpaqueMail
             messageBuilder.Append("Content-Transfer-Encoding: base64\r\n");
             messageBuilder.Append("Content-Description: \"S/MIME Cryptographic signedCms\"\r\n");
             messageBuilder.Append("Content-Disposition: attachment; filename=\"smime.p7s\"\r\n\r\n");
-            messageBuilder.Append(Convert.ToBase64String(encodedBytes, 0, encodedBytes.Length, Base64FormattingOptions.InsertLineBreaks));
+            messageBuilder.Append(Functions.ToBase64String(encodedBytes, 0, encodedBytes.Length));
             messageBuilder.Append("\r\n--" + (alreadyEncrypted ? SmimeTripleSignedCmsBoundaryName : SmimeSignedCmsBoundaryName) + "--\r\n");
 
             return Encoding.UTF8.GetBytes(messageBuilder.ToString());

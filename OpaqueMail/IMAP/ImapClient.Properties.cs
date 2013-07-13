@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail.Imap
+namespace OpaqueMail
 {
-    public partial class ImapClient
+    public partial class ImapClient : IDisposable
     {
         #region Public Properties
         /// <summary>A list of authentication mechanisms supported by the server.</summary>

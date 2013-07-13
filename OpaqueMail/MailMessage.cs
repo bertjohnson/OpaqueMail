@@ -121,7 +121,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="buffer">Buffer used during various S/MIME operations.</param>
         /// <param name="SmimeBoundaryName">Text delimiting S/MIME message parts.</param>
-        public byte[] MIMEEncode(byte[] buffer, string SmimeBoundaryName)
+        public async Task<byte[]> MIMEEncode(byte[] buffer, string SmimeBoundaryName)
         {
             StringBuilder MIMEBuilder = new StringBuilder();
 
@@ -151,7 +151,7 @@ namespace OpaqueMail
                 using (Stream dataStream = alternateView.ContentStream)
                 {
                     byte[] binaryData = new byte[dataStream.Length];
-                    dataStream.Read(binaryData, 0, binaryData.Length);
+                    await dataStream.ReadAsync(binaryData, 0, binaryData.Length);
 
                     MIMEBuilder.Append(encoding.GetString(binaryData));
                 }
@@ -170,10 +170,10 @@ namespace OpaqueMail
                 using (Stream dataStream = attachment.ContentStream)
                 {
                     byte[] binaryData = new byte[dataStream.Length];
-                    dataStream.Read(binaryData, 0, binaryData.Length);
+                    await dataStream.ReadAsync(binaryData, 0, binaryData.Length);
 
                     // Base-64 encode the attachment.
-                    MIMEBuilder.Append(Convert.ToBase64String(binaryData, 0, binaryData.Length, Base64FormattingOptions.InsertLineBreaks));
+                    MIMEBuilder.Append(Functions.ToBase64String(binaryData, 0, binaryData.Length));
                 }
   
                 MIMEBuilder.Append("\r\n");

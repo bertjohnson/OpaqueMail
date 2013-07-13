@@ -196,7 +196,7 @@ namespace OpaqueMail
                                 matchingAttachmentFound = true;
                                 byte[] contentStreamBytes = ((MemoryStream)attachment.ContentStream).ToArray();
 
-                                htmlBuilder.Append(Convert.ToBase64String(contentStreamBytes, 0, contentStreamBytes.Length, Base64FormattingOptions.InsertLineBreaks));
+                                htmlBuilder.Append(Functions.ToBase64String(contentStreamBytes, 0, contentStreamBytes.Length));
                             }
                         }
 
@@ -217,7 +217,7 @@ namespace OpaqueMail
                                     matchingAttachmentFound = true;
                                     byte[] contentStreamBytes = ((MemoryStream)attachment.ContentStream).ToArray();
 
-                                    htmlBuilder.Append(Convert.ToBase64String(contentStreamBytes, 0, contentStreamBytes.Length, Base64FormattingOptions.InsertLineBreaks));
+                                    htmlBuilder.Append(Functions.ToBase64String(contentStreamBytes, 0, contentStreamBytes.Length));
                                 }
                             }
 
@@ -427,7 +427,7 @@ namespace OpaqueMail
             StringBuilder outputBuilder = new StringBuilder();
 
             // Buffer for holding UTF-8 encoded characters.
-            byte[] utf8Buffer = new byte[8];
+            byte[] utf8Buffer = new byte[1024];
 
             // Loop through and process quoted-printable strings, denoted by equals signs.
             int equalsPos = 0, lastPos = 0;
@@ -532,6 +532,9 @@ namespace OpaqueMail
                 case "png":
                     contentType = "image/png";
                     break;
+                case "rtf":
+                    contentType = "text/richtext";
+                    break;
                 case "tif":
                 case "tiff":
                     contentType = "image/tiff";
@@ -545,6 +548,9 @@ namespace OpaqueMail
                     break;
                 case "xml":
                     contentType = "application/xml";
+                    break;
+                case "zip":
+                    contentType = "application/zip";
                     break;
             }
 
@@ -602,6 +608,29 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Returns string representation of message sent over stream.
+        /// </summary>
+        /// <param name="stream">Stream to receive message from.</param>
+        /// <param name="buffer">A byte array to streamline bit shuffling.</param>
+        public async static Task<string> ReadStreamStringAsync(Stream stream, byte[] buffer)
+        {
+            int bytesRead = await stream.ReadAsync(buffer, 0, Constants.BUFFERSIZE);
+            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+        }
+
+        /// <summary>
+        /// Returns string representation of message sent over stream, up the maximum number of bytes specified.
+        /// </summary>
+        /// <param name="stream">Stream to receive message from.</param>
+        /// <param name="buffer">A byte array to streamline bit shuffling.</param>
+        /// <param name="maximumBytes">Maximum number of bytes to receive.</param>
+        public async static Task<string> ReadStreamStringAsync(Stream stream, byte[] buffer, int maximumBytes)
+        {
+            int bytesRead = await stream.ReadAsync(buffer, 0, maximumBytes);
+            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+        }
+
+        /// <summary>
         /// Returns the string between the first two instances of specified start and end strings.
         /// </summary>
         /// <param name="haystack">Container string to search within.</param>
@@ -609,10 +638,10 @@ namespace OpaqueMail
         /// <param name="end">Second string boundary.</param>
         public static string ReturnBetween(string haystack, string start, string end)
         {
-            int pos = haystack.IndexOf(start, StringComparison.InvariantCultureIgnoreCase);
+            int pos = haystack.IndexOf(start, StringComparison.OrdinalIgnoreCase);
             if (pos > -1)
             {
-                int pos2 = haystack.IndexOf(end, pos + start.Length, StringComparison.InvariantCultureIgnoreCase);
+                int pos2 = haystack.IndexOf(end, pos + start.Length, StringComparison.OrdinalIgnoreCase);
                 if (pos2 > -1)
                     return haystack.Substring(pos + start.Length, pos2 - pos - start.Length);
             }
@@ -628,7 +657,20 @@ namespace OpaqueMail
         public static void SendStreamString(Stream stream, byte[] buffer, string message)
         {
             Buffer.BlockCopy(Encoding.UTF8.GetBytes(message), 0, buffer, 0, message.Length);
-            stream.Write(buffer, 0, message.Length);
+            stream.WriteAsync(buffer, 0, message.Length);
+            stream.Flush();
+        }
+        
+        /// <summary>
+        /// Sends a string message over stream.
+        /// </summary>
+        /// <param name="stream">Stream to send message to.</param>
+        /// <param name="buffer">A byte array to streamline bit shuffling.</param>
+        /// <param name="message">Text to transmit.</param>
+        public async static Task SendStreamStringAsync(Stream stream, byte[] buffer, string message)
+        {
+            Buffer.BlockCopy(Encoding.UTF8.GetBytes(message), 0, buffer, 0, message.Length);
+            await stream.WriteAsync(buffer, 0, message.Length);
             stream.Flush();
         }
 
@@ -663,6 +705,27 @@ namespace OpaqueMail
             }
 
             return sevenBitBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Converts a subset of an array of 8-bit unsigned integers to its equivalent string representation with base-64 digits.
+        /// </summary>
+        /// <param name="inArray">An array of 8-bit unsigned integers.</param>
+        public static string ToBase64String(byte[] inArray)
+        {
+            return Convert.ToBase64String(inArray, Base64FormattingOptions.InsertLineBreaks);
+        }
+
+        /// <summary>
+        /// Converts a subset of an array of 8-bit unsigned integers to its equivalent string representation with base-64 digits.
+        /// Parameters specify the subset as an offset in the input array, and the number of elements in the array to convert.
+        /// </summary>
+        /// <param name="inArray">An array of 8-bit unsigned integers.</param>
+        /// <param name="offset">An offset in inArray.</param>
+        /// <param name="length">The number of elements of inArray to convert.</param>
+        public static string ToBase64String(byte[] inArray, int offset, int length)
+        {
+            return Convert.ToBase64String(inArray, offset, length, Base64FormattingOptions.InsertLineBreaks);
         }
 
         /// <summary>

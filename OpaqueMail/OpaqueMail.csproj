@@ -44,6 +44,7 @@
     <Compile Include="Constants.cs" />
     <Compile Include="EnumsAndStructs.cs" />
     <Compile Include="Functions.cs" />
+    <Compile Include="IMAP\ImapClient.Async.cs" />
     <Compile Include="IMAP\ImapClient.cs" />
     <Compile Include="IMAP\ImapClient.Properties.cs" />
     <Compile Include="Mailbox.cs" />

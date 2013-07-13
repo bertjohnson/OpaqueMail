@@ -363,7 +363,7 @@ namespace OpaqueMail
 
                 // Prepopulate a buffer with RTF tags to speed up decryption.
                 string rtfPreBufferString = "{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\n\r\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx";
-                byte[] rtfPreBuffer = Encoding.ASCII.GetBytes(rtfPreBufferString);
+                byte[] rtfPreBuffer = Encoding.UTF8.GetBytes(rtfPreBufferString);
 
                 // Populate the initial output buffer the RTF tags from above.
                 int outputCursor = rtfPreBuffer.Length;
