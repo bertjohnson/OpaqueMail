@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Mail;
+using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -89,60 +90,68 @@ namespace OpaqueMail
         /// <param name="header">E-mail header to be decoded.</param>
         public static string DecodeMailHeader(string header)
         {
-            // Build a new string using the following buffer.
-            StringBuilder headerBuilder = new StringBuilder();
-
-            int cursor = 0, lastCursor = 0;
-            while (cursor > -1)
+            try
             {
-                lastCursor = cursor;
-                cursor = header.IndexOf("=?", cursor);
-                if (cursor > -1)
+                // Build a new string using the following buffer.
+                StringBuilder headerBuilder = new StringBuilder();
+
+                int cursor = 0, lastCursor = 0;
+                while (cursor > -1)
                 {
-                    int middleCursor = header.IndexOf("?", cursor + 2);
-                    if (middleCursor > -1 && middleCursor < header.Length - 2)
+                    lastCursor = cursor;
+                    cursor = header.IndexOf("=?", cursor);
+                    if (cursor > -1)
                     {
-                        int endCursor = header.IndexOf("?=", middleCursor + 2);
-                        if (endCursor > -1)
+                        int middleCursor = header.IndexOf("?", cursor + 2);
+                        if (middleCursor > -1 && middleCursor < header.Length - 2)
                         {
-                            headerBuilder.Append(header.Substring(lastCursor, cursor - lastCursor));
-
-                            // Try to create a decoder for the encoding.
-                            string encodingName = header.Substring(cursor + 2, middleCursor - cursor - 2);
-                            Encoding encoding = Encoding.GetEncoding(encodingName);
-
-                            byte[] encodedBytes = null;
-                            switch (header.Substring(middleCursor + 1, 2))
+                            int endCursor = header.LastIndexOf("?=");
+                            if (endCursor > -1 && lastCursor > middleCursor + 2)
                             {
-                                case "B?":
-                                    encodedBytes = Convert.FromBase64String(header.Substring(middleCursor + 3, endCursor - middleCursor - 3));
-                                    break;
-                                case "Q?":
-                                    encodedBytes = Encoding.UTF8.GetBytes(Functions.FromQuotedPrintable(header.Substring(middleCursor + 3, endCursor - middleCursor - 3)));
-                                    break;
-                                default:
-                                    encodedBytes = Encoding.UTF8.GetBytes(header.Substring(middleCursor, endCursor - middleCursor - 2));
-                                    break;
+                                headerBuilder.Append(header.Substring(lastCursor, cursor - lastCursor));
+
+                                // Try to create a decoder for the encoding.
+                                string encodingName = header.Substring(cursor + 2, middleCursor - cursor - 2);
+                                Encoding encoding = Encoding.GetEncoding(encodingName);
+
+                                byte[] encodedBytes = null;
+                                switch (header.Substring(middleCursor + 1, 2))
+                                {
+                                    case "B?":
+                                        encodedBytes = Convert.FromBase64String(header.Substring(middleCursor + 3, endCursor - middleCursor - 3));
+                                        break;
+                                    case "Q?":
+                                        encodedBytes = Encoding.UTF8.GetBytes(Functions.FromQuotedPrintable(header.Substring(middleCursor + 3, endCursor - middleCursor - 3)));
+                                        break;
+                                    default:
+                                        encodedBytes = Encoding.UTF8.GetBytes(header.Substring(middleCursor, endCursor - middleCursor - 2));
+                                        break;
+                                }
+
+                                // Append the decoded string.
+                                headerBuilder.Append(encoding.GetString(encodedBytes));
+
+                                cursor = endCursor + 2;
                             }
-
-                            // Append the decoded string.
-                            headerBuilder.Append(encoding.GetString(encodedBytes));
-
-                            cursor = endCursor + 2;
+                            else
+                                cursor = -1;
                         }
                         else
                             cursor = -1;
                     }
-                    else
-                        cursor = -1;
                 }
+
+                // Append any remaining characters.
+                headerBuilder.Append(header.Substring(lastCursor));
+
+                return headerBuilder.ToString();
             }
-
-            // Append any remaining characters.
-            headerBuilder.Append(header.Substring(lastCursor));
-
-            return headerBuilder.ToString();
-        }            
+            catch (Exception)
+            {
+                // If the header is malformed, return it as passed in.
+                return header;
+            }
+        }
 
         /// <summary>
         /// Convert CID: object references to Base-64 encoded versions.
@@ -304,6 +313,29 @@ namespace OpaqueMail
                     {
                         displayName = addresses.Substring(aposCursor + 1, endAposCursor - aposCursor - 1);
                         cursor = endAposCursor + 1;
+                    }
+                    else
+                    {
+                        // The address contains an apostophe, but it's not enclosed in apostrophes.
+                        angleCursor = addresses.IndexOf("<", cursor);
+                        if (angleCursor == -1)
+                            angleCursor = addresses.Length + 1;
+                        bracketCursor = addresses.IndexOf("[", cursor);
+                        if (bracketCursor == -1)
+                            bracketCursor = addresses.Length + 1;
+
+                        if (angleCursor < bracketCursor)
+                        {
+                            displayName = addresses.Substring(lastCursor, angleCursor - lastCursor).Trim();
+                            cursor = angleCursor;
+                        }
+                        else if (bracketCursor > -1)
+                        {
+                            displayName = addresses.Substring(lastCursor, bracketCursor - lastCursor).Trim();
+                            cursor = angleCursor;
+                        }
+                        else
+                            cursor = addresses.Length;
                     }
                 }
                 else if (angleCursor < quoteCursor && angleCursor < aposCursor && angleCursor < bracketCursor && angleCursor < commaCursor && angleCursor < semicolonCursor)
@@ -558,6 +590,17 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Return the machine's fully-qualified domain name.
+        /// </summary>
+        public static string FQDN()
+        {
+            string domainName = IPGlobalProperties.GetIPGlobalProperties().DomainName;
+            string hostName = Dns.GetHostName();
+
+            return hostName.Contains(domainName) ? hostName : hostName + "." + domainName;
+        }
+
+        /// <summary>
         /// Check if the specified e-mail address validates. 
         /// </summary>
         /// <param name="address">Address to validate.</param>
@@ -631,6 +674,99 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Remove <script/> blocks from HTML.
+        /// </summary>
+        /// <param name="html"></param>
+        /// <returns></returns>
+        public static string RemoveScriptTags(string html)
+        {
+            // Treat all whitespace equivalently and ignore case.
+            string canonicalHtml = html.ToLower();
+
+            // Build a new string using the following buffer.
+            StringBuilder htmlBuilder = new StringBuilder();
+
+            int pos = 0, lastPos = 0;
+            while (pos > -1)
+            {
+                lastPos = pos;
+
+                // Find the next link, whether using the HTTP or HTTPS protocol.
+                pos = canonicalHtml.IndexOf("<script", pos);
+
+                if (pos > -1)
+                {
+                    // If another <script> tag is found, add everything since the last one.
+                    htmlBuilder.Append(html.Substring(lastPos, pos - lastPos));
+
+                    // Find where the <script> tag is closed, properly handling attributes.
+                    bool tagClosed = false;
+                    while (!tagClosed)
+                    {
+                        int quotePos = canonicalHtml.IndexOf("\"", pos);
+                        if (quotePos < 0)
+                            quotePos = canonicalHtml.Length + 1;
+                        int aposPos = canonicalHtml.IndexOf("'", pos);
+                        if (aposPos < 0)
+                            aposPos = canonicalHtml.Length + 1;
+                        int anglePos = canonicalHtml.IndexOf(">", pos);
+                        if (anglePos < 0)
+                            anglePos = canonicalHtml.Length + 1;
+
+                        if (quotePos < aposPos && quotePos < anglePos)
+                        {
+                            int endQuotePos = canonicalHtml.IndexOf("\"", quotePos + 1);
+                            if (endQuotePos > -1)
+                                pos = endQuotePos + 1;
+                            else
+                                pos = -1;
+                        }
+                        else if (aposPos < quotePos && aposPos < anglePos)
+                        {
+                            int endAposPos = canonicalHtml.IndexOf("'", aposPos + 1);
+                            if (endAposPos > -1)
+                                pos = endAposPos + 1;
+                            else
+                                pos = -1;
+                        }
+                        else if (anglePos > -1)
+                        {
+                            if (canonicalHtml[anglePos - 1] == '/')
+                            {
+                                tagClosed = true;
+                                pos = anglePos + 1;
+                            }
+                            else
+                            {
+                                int endScriptPos = canonicalHtml.IndexOf("</script", anglePos);
+                                if (endScriptPos > -1)
+                                {
+                                    int closeEndScriptPos = canonicalHtml.IndexOf(">", endScriptPos + 7);
+                                    if (closeEndScriptPos > -1)
+                                    {
+                                        tagClosed = true;
+                                        pos = closeEndScriptPos + 1;
+                                    }
+                                    else
+                                        pos = -1;
+                                }
+                                else
+                                    pos = -1;
+                            }
+                        }
+                        else
+                            pos = -1;
+                    }
+                }
+                else
+                    htmlBuilder.Append(html.Substring(lastPos));
+            }
+
+            // Remove spaces padded to the beginning and end.
+            return htmlBuilder.ToString();
+        }
+
+        /// <summary>
         /// Returns the string between the first two instances of specified start and end strings.
         /// </summary>
         /// <param name="haystack">Container string to search within.</param>
@@ -657,7 +793,7 @@ namespace OpaqueMail
         public static void SendStreamString(Stream stream, byte[] buffer, string message)
         {
             Buffer.BlockCopy(Encoding.UTF8.GetBytes(message), 0, buffer, 0, message.Length);
-            stream.WriteAsync(buffer, 0, message.Length);
+            stream.Write(buffer, 0, message.Length);
             stream.Flush();
         }
         

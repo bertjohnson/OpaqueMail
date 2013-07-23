@@ -18,6 +18,8 @@ namespace OpaqueMail
     public class ReadOnlyMailMessage : OpaqueMail.MailMessage
     {
         #region Public Members
+        /// <summary>Collection of all recipients of this message, based on To, CC, and Bcc paramaters.</summary>
+        public List<string> AllRecipients = new List<string>();
         /// <summary>Character set encoding of the message.</summary>
         public string CharSet = "";
         /// <summary>Language of message content.</summary>
@@ -141,6 +143,9 @@ namespace OpaqueMail
                     string headerValue = headerParts[1];
 
                     // Set header variables for common headers.
+                    if (!string.IsNullOrEmpty(headerType) && !string.IsNullOrEmpty(headerValue))
+                        Headers[headerType] = headerValue;
+
                     switch (headerType)
                     {
                         case "cc":
@@ -417,6 +422,9 @@ namespace OpaqueMail
                 // Handle continuations for headers spanning multiple lines.
                 if (!headerProcessed)
                 {
+                    if (!string.IsNullOrEmpty(lastHeaderType))
+                        Headers[lastHeaderType] += header;
+
                     switch (lastHeaderType)
                     {
                         case "bcc":
@@ -553,12 +561,10 @@ namespace OpaqueMail
                             else
                             {
                                 // If the MIME part isn't of type text/*, treat is as an attachment.
-                                using (MemoryStream attachmentStream = new MemoryStream(mimePart.BodyBytes))
-                                {
-                                    Attachment attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
-                                    attachment.ContentId = mimePart.ContentID;
-                                    Attachments.Add(attachment);
-                                }
+                                MemoryStream attachmentStream = new MemoryStream(mimePart.BodyBytes);
+                                Attachment attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
+                                attachment.ContentId = mimePart.ContentID;
+                                Attachments.Add(attachment);
                             }
                         }
                         else
@@ -574,12 +580,10 @@ namespace OpaqueMail
                             else
                             {
                                 // If the MIME part isn't of type text/*, treat is as an attachment.
-                                using (MemoryStream attachmentStream = new MemoryStream(mimePart.BodyBytes))
-                                {
-                                    Attachment attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
-                                    attachment.ContentId = mimePart.ContentID;
-                                    Attachments.Add(attachment);
-                                }
+                                MemoryStream attachmentStream = new MemoryStream(mimePart.BodyBytes);
+                                Attachment attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
+                                attachment.ContentId = mimePart.ContentID;
+                                Attachments.Add(attachment);
                             }
                         }
                     }
@@ -621,6 +625,13 @@ namespace OpaqueMail
                 MailAddressCollection toAddresses = Functions.FromMailAddressString(toText);
                 foreach (MailAddress toAddress in toAddresses)
                     To.Add(toAddress);
+
+                // Add the address to the AllRecipients collection.
+                foreach (MailAddress toAddress in toAddresses)
+                {
+                    if (!AllRecipients.Contains(toAddress.Address))
+                        AllRecipients.Add(toAddress.Address);
+                }
             }
 
             if (ccText.Length > 0)
@@ -629,6 +640,13 @@ namespace OpaqueMail
                 MailAddressCollection ccAddresses = Functions.FromMailAddressString(ccText);
                 foreach (MailAddress ccAddress in ccAddresses)
                     CC.Add(ccAddress);
+
+                // Add the address to the AllRecipients collection.
+                foreach (MailAddress ccAddress in ccAddresses)
+                {
+                    if (!AllRecipients.Contains(ccAddress.Address))
+                        AllRecipients.Add(ccAddress.Address);
+                }
             }
 
             if (bccText.Length > 0)
@@ -637,6 +655,13 @@ namespace OpaqueMail
                 MailAddressCollection bccAddresses = Functions.FromMailAddressString(bccText);
                 foreach (MailAddress bccAddress in bccAddresses)
                     Bcc.Add(bccAddress);
+
+                // Add the address to the AllRecipients collection.
+                foreach (MailAddress bccAddress in bccAddresses)
+                {
+                    if (!AllRecipients.Contains(bccAddress.Address))
+                        AllRecipients.Add(bccAddress.Address);
+                }
             }
 
             if (replyToText.Length > 0)
@@ -664,6 +689,90 @@ namespace OpaqueMail
 
         #region Public Methods
         /// <summary>
+        /// Cast a ReadOnlyMailMessage to a MaiLMessage.
+        /// </summary>
+        /// <param name="message">ReadOnlyMailMessage object to cast.</param>
+        /// <returns></returns>
+        public MailMessage AsMailMessage()
+        {
+            MailMessage castMessage = new MailMessage();
+
+            // Process alternate views.
+            foreach (AlternateView alternateView in AlternateViews)
+                castMessage.AlternateViews.Add(alternateView);
+
+            // Process attachments.
+            foreach (Attachment attachment in Attachments)
+                castMessage.Attachments.Add(attachment);
+
+            // Process BCC.
+            foreach (MailAddress address in Bcc)
+                castMessage.Bcc.Add(address);
+
+            castMessage.Body = Body;
+            if (BodyEncoding != Encoding.ASCII)
+                castMessage.BodyEncoding = BodyEncoding;
+            if (BodyTransferEncoding != System.Net.Mime.TransferEncoding.Unknown)
+                castMessage.BodyTransferEncoding = BodyTransferEncoding;
+
+            // Process CC.
+            foreach (MailAddress address in CC)
+                castMessage.CC.Add(address);
+
+            castMessage.DeliveryNotificationOptions = DeliveryNotificationOptions;
+            castMessage.From = From;
+
+            // Process headers.
+            foreach (string headerKey in Headers.Keys)
+            {
+                switch (headerKey.ToUpper())
+                {
+                    // Ignore headers we're explicitly adding.
+                    case "BCC":
+                    case "CC":
+                    case "DATE":
+                    case "FROM":
+                    case "PRIORITY":
+                    case "REPLY-TO":
+                    case "REPLYTO":
+                    case "SUBJECT":
+                    case "TO":
+                        break;
+                    default:
+                        castMessage.Headers.Add(headerKey, Headers[headerKey]);
+                        break;
+                }
+            }
+
+            if (HeadersEncoding != null)
+                castMessage.HeadersEncoding = HeadersEncoding;
+            castMessage.IsBodyHtml = IsBodyHtml;
+            castMessage.Priority = Priority;
+
+            // Process ReplyToList.
+            foreach (MailAddress address in ReplyToList)
+                castMessage.ReplyToList.Add(address);
+
+            castMessage.Sender = Sender;
+            castMessage.SmimeEncryptedEnvelope = SmimeEncryptedEnvelope;
+            castMessage.SmimeEncryptionOptionFlags = SmimeEncryptionOptionFlags;
+            castMessage.SmimeSettingsMode = SmimeSettingsMode;
+            castMessage.SmimeSigned = SmimeSigned;
+            castMessage.SmimeSigningCertificate = SmimeSigningCertificate;
+            castMessage.SmimeSigningOptionFlags = SmimeSigningOptionFlags;
+            castMessage.SmimeTripleWrapped = SmimeTripleWrapped;
+            castMessage.Subject = Subject;
+            if (SubjectEncoding != null)
+                castMessage.SubjectEncoding = SubjectEncoding;
+
+            // Process To.
+            foreach (MailAddress address in To)
+                castMessage.To.Add(address);
+
+            return castMessage;
+        }
+
+        /// <summary>
         /// Initializes a populated instance of the OpaqueMail.MailMessage class representing the message in the specified file.
         /// </summary>
         /// <param name="path">The file to open for reading.</param>
@@ -686,7 +795,7 @@ namespace OpaqueMail
             string[] flags = flagsString.Split(' ');
             foreach (string flag in flags)
             {
-                if (!RawFlags.Contains(flag))
+                if (!string.IsNullOrEmpty(flag) && !RawFlags.Contains(flag))
                     RawFlags.Add(flag);
 
                 flagCounter++;

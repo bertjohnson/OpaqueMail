@@ -3,13 +3,13 @@ OpaqueMail
 
 .NET e-mail library with full support for IMAP, POP3, and SMTP.  Provides S/MIME message signing, encryption, and decryption to foster better e-mail security and privacy.
 
-Supports MIME, Unicode, TNEF, and automatically embeds images into Text/HTML messages.
+Supports MIME, Unicode, and TNEF encoding.  Automatically embeds images into Text/HTML messages and strips Script tags.
 
 Includes a fully-featured test client that allows browsing and searching of IMAP and POP3 messages as well as sending of SMTP messages with encryption.
 
 Inherits from System.Net.Mail.MailMessage and System.Net.Mail.SmtpClient for simplified upgrades of existing code.
 
-Follows IETF standards, implementing all IMAP4rev1, POP3, SMTP, and S/MIME 3.2 standards plus common extensions. 
+Follows IETF standards, implementing all IMAP4rev1, POP3, SMTP, and S/MIME 3.2 commands plus common extensions. 
 
 Licensed according to the MIT License (http://mit-license.org/).
 

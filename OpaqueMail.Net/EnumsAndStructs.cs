@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace OpaqueMail
 {
+    /// <summary>
+    /// Supported authentication methods.
+    /// </summary>
     public enum AuthenticationMode
     {
         Login,
@@ -152,6 +155,15 @@ namespace OpaqueMail
         // OpaqueMail optional setting for protecting the subject.
         // Note: This is not part of the current RFC specifcation and should only be used when sending to other OpaqueMail agents.
         EncryptSubject = 256
+    }
+
+    /// <summary>
+    /// Whether S/MIME settings for encryption and signing are explicitly required or only preferred.
+    /// </summary>
+    public enum SmimeSettingsMode
+    {
+        PreferSettingsOnly = 0,
+        RequireExactSettings = 1
     }
 
     /// <summary>

@@ -37,19 +37,21 @@ namespace OpaqueMail
         #endregion Constructors
 
         #region Public Members
-
-        /// <summary>Text delimiting S/MIME message parts.</summary>
-        public string SmimeBoundaryName = "OpaqueMail-boundary";
-        /// <summary>Text delimiting S/MIME message parts related to signatures.</summary>
-        public string SmimeSignedCmsBoundaryName = "OpaqueMail-signature-boundary";
-        /// <summary>Text delimiting MIME message parts in triple wrapped messages.</summary>
-        public string SmimeTripleSignedCmsBoundaryName = "OpaqueMail-triple-signature-boundary";
         /// <summary>
         /// Collection of certificates to be used when searching for recipient public keys.
         /// If not specified, SmtpClient will use the current Windows user's certificate store.
         /// </summary>
         public X509Certificate2Collection SmimeValidCertificates = null;
         #endregion Public Members
+
+        #region Protected Members
+        /// <summary>Text delimiting S/MIME message parts.</summary>
+        protected string SmimeBoundaryName = "OpaqueMail-boundary";
+        /// <summary>Text delimiting S/MIME message parts related to signatures.</summary>
+        protected string SmimeSignedCmsBoundaryName = "OpaqueMail-signature-boundary";
+        /// <summary>Text delimiting MIME message parts in triple wrapped messages.</summary>
+        protected string SmimeTripleSignedCmsBoundaryName = "OpaqueMail-triple-signature-boundary";
+        #endregion Protected Members
 
         #region Private Members
         /// <summary>Buffer used during various S/MIME operations.</summary>
@@ -64,7 +66,24 @@ namespace OpaqueMail
         /// Performs requested S/MIME signing and encryption.
         /// </summary>
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
-        public async Task Send(MailMessage message)
+        public void Send(MailMessage message)
+        {
+            // If not performing any S/MIME encryption or signing, use the default System.Net.Mail.SmtpClient Send() method.
+            if (!message.SmimeSigned && !message.SmimeEncryptedEnvelope && !message.SmimeTripleWrapped)
+                base.Send(message);
+            else
+            {
+                Task task = SmimeSend(message);
+                task.Wait();
+            }
+        }
+
+        /// <summary>
+        /// Sends the specified message to an SMTP server for delivery.
+        /// Performs requested S/MIME signing and encryption.
+        /// </summary>
+        /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
+        public async Task SendAsync(MailMessage message)
         {
             // If not performing any S/MIME encryption or signing, use the default System.Net.Mail.SmtpClient Send() method.
             if (!message.SmimeSigned && !message.SmimeEncryptedEnvelope && !message.SmimeTripleWrapped)
@@ -131,9 +150,16 @@ namespace OpaqueMail
                 // Read from the Windows certificate store if valid certificates aren't specified.
                 if (SmimeValidCertificates == null)
                 {
+                    // Load from the current user.
                     X509Store store = new X509Store(StoreLocation.CurrentUser);
                     store.Open(OpenFlags.OpenExistingOnly | OpenFlags.ReadOnly);
                     SmimeValidCertificates = store.Certificates;
+                    store.Close();
+
+                    // Add any tied to the local machine.
+                    store = new X509Store(StoreLocation.LocalMachine);
+                    store.Open(OpenFlags.OpenExistingOnly | OpenFlags.ReadOnly);
+                    SmimeValidCertificates.AddRange(store.Certificates);
                     store.Close();
                 }
 
@@ -141,11 +167,22 @@ namespace OpaqueMail
                 /// TODO: Allow for users to choose when there are multiple certificate options and/or define default criteria.
                 foreach (X509Certificate2 cert in SmimeValidCertificates)
                 {
-                    // Only look at certificates with e-mail subject names.
+                    // Look at certificates with e-mail subject names.
                     string canonicalCertSubject = "";
                     if (cert.Subject.StartsWith("E="))
                     {
                         canonicalCertSubject = cert.Subject.Substring(2).ToUpper();
+                        int certSubjectComma = canonicalCertSubject.IndexOf(",");
+                        if (certSubjectComma > -1)
+                            canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
+
+                        // Only proceed if the key is for a recipient of this e-mail.
+                        if (!addressesNeedingPublicKeys.ContainsKey(canonicalCertSubject))
+                            continue;
+                    }
+                    else if (cert.Subject.StartsWith("SN="))
+                    {
+                        canonicalCertSubject = cert.Subject.Substring(3).ToUpper();
                         int certSubjectComma = canonicalCertSubject.IndexOf(",");
                         if (certSubjectComma > -1)
                             canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
@@ -233,16 +270,22 @@ namespace OpaqueMail
             HashSet<string> addressesWithPublicKeys;
             ResolvePublicKeys(message, out addressesWithPublicKeys, out addressesNeedingPublicKeys);
 
-            // Throw an error if we're unable to encrypt the message for one or more recipients.
+            // Throw an error if we're unable to encrypt the message for one or more recipients and encryption is explicitly required.
             if (addressesNeedingPublicKeys.Count > 0)
             {
-                StringBuilder exceptionMessage = new StringBuilder();
-                exceptionMessage.Append("Trying to send encrypted message to one or more recipients without a trusted public key.\r\nRecipients without public keys: ");
-                foreach (string addressNeedingPublicKey in addressesNeedingPublicKeys.Keys)
-                    exceptionMessage.Append(addressNeedingPublicKey + ", ");
-                exceptionMessage.Remove(exceptionMessage.Length - 2, 2);
+                // If the implementation requires S/MIME encryption (the default), throw an error if there's no certificate.
+                if ((message.SmimeSettingsMode & SmimeSettingsMode.RequireExactSettings) > 0)
+                {
+                    StringBuilder exceptionMessage = new StringBuilder();
+                    exceptionMessage.Append("Trying to send encrypted message to one or more recipients without a trusted public key.\r\nRecipients without public keys: ");
+                    foreach (string addressNeedingPublicKey in addressesNeedingPublicKeys.Keys)
+                        exceptionMessage.Append(addressNeedingPublicKey + ", ");
+                    exceptionMessage.Remove(exceptionMessage.Length - 2, 2);
 
-                throw new SmtpException(exceptionMessage.ToString());
+                    throw new SmtpException(exceptionMessage.ToString());
+                }
+                else
+                    return buffer;
             }
 
             // Encrypt the symmetric session key using each recipient's public key.
@@ -274,7 +317,7 @@ namespace OpaqueMail
 
             // OpaqueMail optional setting for protecting the subject.
             // Note: This is not part of the current RFC specifcation and should only be used when sending to other OpaqueMail agents.
-            if (message.SmimeEncryptedEnvelope && (message.SmimeEncryptionOptionFlags & (SmimeEncryptionOptionFlags.EncryptSubject)) > 0)
+            if ((message.SmimeEncryptedEnvelope || message.SmimeTripleWrapped) && (message.SmimeEncryptionOptionFlags & (SmimeEncryptionOptionFlags.EncryptSubject)) > 0)
             {
                 message.Headers["X-Subject-Encryption"] = "true";
                 message.Body = "Subject: " + message.Subject + "\r\n" + message.Body;
@@ -331,6 +374,15 @@ namespace OpaqueMail
         /// <param name="alreadyEncrypted">Whether a portion of the message has previously been signed, as when triple wrapping.</param>
         private byte[] SmimeSign(byte[] buffer, byte[] contentBytes, MailMessage message, bool alreadyEncrypted)
         {
+            if (message.SmimeSigningCertificate == null)
+            {
+                // If the implementation requires S/MIME signing (the default), throw an error if there's no certificate.
+                if ((message.SmimeSettingsMode & SmimeSettingsMode.RequireExactSettings) > 0)
+                    throw new SmtpException("Trying to send a signed message, but no signing certificate has been assigned.");
+                else
+                    return buffer;
+            }
+
             // Prepare the signing parameters.
             ContentInfo contentInfo = new ContentInfo(contentBytes);
             SignedCms signedCms = new SignedCms(contentInfo, false);

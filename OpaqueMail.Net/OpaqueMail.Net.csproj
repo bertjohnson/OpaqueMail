@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>OpaqueMail</RootNamespace>
-    <AssemblyName>OpaqueMail</AssemblyName>
+    <AssemblyName>OpaqueMail.Net</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -40,13 +40,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Certificates.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="EnumsAndStructs.cs" />
     <Compile Include="Functions.cs" />
-    <Compile Include="IMAP\ImapClient.Async.cs" />
     <Compile Include="IMAP\ImapClient.cs" />
     <Compile Include="IMAP\ImapClient.Properties.cs" />
+    <Compile Include="IMAP\ImapClient.Synchronous.cs" />
     <Compile Include="Mailbox.cs" />
     <Compile Include="MailMessage.cs" />
     <Compile Include="MimePart.cs" />

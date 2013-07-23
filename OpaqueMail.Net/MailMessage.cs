@@ -97,6 +97,8 @@ namespace OpaqueMail
         public bool SmimeEncryptedEnvelope = false;
         /// <summary>Determine how the S/MIME envelope will be encrypted.</summary>
         public SmimeEncryptionOptionFlags SmimeEncryptionOptionFlags = SmimeEncryptionOptionFlags.RequireCertificateVerification;
+        /// <summary>Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</summary>
+        public SmimeSettingsMode SmimeSettingsMode = SmimeSettingsMode.RequireExactSettings;
         /// <summary>Sign the e-mail.  When true, signing is the first S/MIME operation.</summary>
         public bool SmimeSigned = false;
         /// <summary>

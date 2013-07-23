@@ -9,7 +9,7 @@ namespace OpaqueMail
     /// <summary>
     /// Define constants used by other OpaqueMail classes.
     /// </summary>
-    class Constants
+    public class Constants
     {
         /// <summary>
         /// Default buffer size for bit shuffling.
