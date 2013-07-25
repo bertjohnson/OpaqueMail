@@ -74,7 +74,7 @@ namespace OpaqueMail.Net.Proxy
                     oids.Add("1.3.6.1.5.5.7.3.1");    // Server Authentication.
 
                     // Generate the certificate with a duration of 10 years, 4096-bits, and a key usage of server authentication.
-                    serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, true, 4096, 10, oids);
+                    serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, true, 4096, 10, oids);
                 }
             }
 
@@ -186,7 +186,7 @@ namespace OpaqueMail.Net.Proxy
                                     // Look up the S/MIME signing certificate for the current sender.  If it doesn't exist, create one.
                                     message.SmimeSigningCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, message.From.Address);
                                     if (message.SmimeSigningCertificate == null)
-                                        message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate(message.From.Address, true, 4096, 10);
+                                        message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate(message.From.Address, message.From.Address, true, 4096, 10);
 
                                     // Send the message.
                                     MailMessage mailMessage = message.AsMailMessage();

@@ -527,8 +527,13 @@ namespace OpaqueMail
                     {
                         MimePart mimePart = mimeParts[j];
 
-                        // If this MIME part isn't signed, the overall message isn't signed.
-                        if (!mimePart.SmimeSigned)
+                        // Extract any signing certificates.  If this MIME part isn't signed, the overall message isn't signed.
+                        if (mimePart.SmimeSigned)
+                        {
+                            if (mimePart.SmimeSigningCertificates.Count > 0 && SmimeSigningCertificate == null)
+                                SmimeSigningCertificate = mimePart.SmimeSigningCertificates[0];
+                        }
+                        else
                             allMimePartsSigned = false;
 
                         // If this MIME part isn't marked as being in an encrypted envelope, the overall message isn't encrypted.

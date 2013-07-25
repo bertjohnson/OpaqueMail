@@ -706,7 +706,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
             await myImapClient.SelectMailboxAsync("INBOX");
-            List<ReadOnlyMailMessage> messages = await myImapClient.GetMessagesAsync("INBOX", 25, 1, true, false, false);
+            List<ReadOnlyMailMessage> messages = await myImapClient.GetMessagesAsync("INBOX", 25, 1, true, true, false);
             ImapMessageIDs = new Tuple<string, int>[messages.Count];
 
             // Repopulate the message list with the subjects of messages retrieved.
@@ -753,7 +753,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             }
 
             // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
-            List<ReadOnlyMailMessage> messages = await myPop3Client.GetMessagesAsync(25, 1, true, true);
+            List<ReadOnlyMailMessage> messages = await myPop3Client.GetMessagesAsync(25, 1, false, true);
             Pop3MessageIDs = new List<int>();
 
             // Repopulate the message list with the subjects of messages retrieved.

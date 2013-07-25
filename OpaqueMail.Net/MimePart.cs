@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography.Pkcs;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -31,10 +32,12 @@ namespace OpaqueMail
         public string ContentType = "";
         /// <summary>Filename of the MIME part.</summary>
         public string Name = "";
-        /// <summary>Whether the MIME part is S/MIME signed.</summary>
-        public bool SmimeSigned = false;
         /// <summary>Whether the MIME part is part of an S/MIME encrypted envelope.</summary>
         public bool SmimeEncryptedEnvelope = false;
+        /// <summary>Whether the MIME part is S/MIME signed.</summary>
+        public bool SmimeSigned = false;
+        /// <summary>Certificates used when signing messages.</summary>
+        public X509Certificate2Collection SmimeSigningCertificates = null;
         /// <summary>Whether the MIME part was S/MIME signed, had its envelope encrypted, and was then signed again.</summary>
         public bool SmimeTripleWrapped = false;
         #endregion Public Members
@@ -235,12 +238,15 @@ namespace OpaqueMail
                 // If a PKCS signature was found and there's one other MIME part, verify the signature.
                 if (signatureBlock > -1 && mimeBlocks.Count == 2)
                 {
-                    // Verify the signature.
-                    if (VerifySignature(mimeBlocks[signatureBlock], mimeBlocks[1 - signatureBlock]))
+                    // Verify the signature and track the signing certificates.
+                    X509Certificate2Collection signingCertificates;
+                    if (VerifySignature(mimeBlocks[signatureBlock], mimeBlocks[1 - signatureBlock], out signingCertificates))
                     {
                         // Stamp each MIME part found so far as signed, and if relevant, triple wrapped.
                         foreach (MimePart mimePart in mimeParts)
                         {
+                            mimePart.SmimeSigningCertificates = signingCertificates;
+
                             if (mimePart.SmimeSigned && mimePart.SmimeEncryptedEnvelope)
                                 mimePart.SmimeTripleWrapped = true;
 
@@ -376,7 +382,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="signatureBlock">The S/MIME signature block.</param>
         /// <param name="body">The message's raw body.</param>
-        public static bool VerifySignature(string signatureBlock, string body)
+        public static bool VerifySignature(string signatureBlock, string body, out X509Certificate2Collection signingCertificates)
         {
             // Strip trailing whitespace.
             if (signatureBlock.EndsWith("\r\n\r\n"))
@@ -391,12 +397,14 @@ namespace OpaqueMail
                 // Attempt to decode the signature block and verify the passed in signature.
                 signedCms.Decode(Convert.FromBase64String(signatureBlock));
                 signedCms.CheckSignature(true);
-
+                signingCertificates = signedCms.Certificates;
+                
                 return true;
             }
             catch (Exception)
             {
                 // If an exception occured, the signature could not be verified.
+                signingCertificates = null;
                 return false;
             }
         }

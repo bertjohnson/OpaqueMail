@@ -105,11 +105,9 @@ namespace OpaqueMail
                         int middleCursor = header.IndexOf("?", cursor + 2);
                         if (middleCursor > -1 && middleCursor < header.Length - 2)
                         {
-                            int endCursor = header.LastIndexOf("?=");
-                            if (endCursor > -1 && lastCursor > middleCursor + 2)
+                            int endCursor = header.IndexOf("?=", middleCursor + 1);
+                            if (endCursor > -1 && endCursor > middleCursor + 2)
                             {
-                                headerBuilder.Append(header.Substring(lastCursor, cursor - lastCursor));
-
                                 // Try to create a decoder for the encoding.
                                 string encodingName = header.Substring(cursor + 2, middleCursor - cursor - 2);
                                 Encoding encoding = Encoding.GetEncoding(encodingName);
