@@ -1,4 +1,4 @@
-OpaqueMail .NET E-Mail Library
+OpaqueMail .NET E-mail Library
 ==============================
 
 .NET e-mail library with full support for IMAP, POP3, and SMTP.  Provides S/MIME message signing, encryption, and decryption to foster better e-mail security and privacy.
