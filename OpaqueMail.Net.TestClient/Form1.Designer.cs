@@ -419,7 +419,7 @@
             this.Pop3Host.Name = "Pop3Host";
             this.Pop3Host.Size = new System.Drawing.Size(199, 20);
             this.Pop3Host.TabIndex = 1;
-            this.Pop3Host.Text = "pop3.gmail.com";
+            this.Pop3Host.Text = "pop.gmail.com";
             // 
             // Pop3HostLabel
             // 

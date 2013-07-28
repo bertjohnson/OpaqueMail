@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Settings>
+  <SMTP>
+    <RunAsService>True</RunAsService>
+    <ServiceCount>2</ServiceCount>
+    <Service1>
+      <LocalIPAddress>Any</LocalIPAddress>
+      <LocalPort>587</LocalPort>
+      <LocalEnableSSL>True</LocalEnableSSL>
+      <DestinationHostName>smtp.gmail.com</DestinationHostName>
+      <DestinationPort>587</DestinationPort>
+      <DestinationEnableSSL>True</DestinationEnableSSL>
+      <Certificate>
+        <Location>LocalMachine</Location>
+      </Certificate>
+      <SMIMESettingsMode>BestEffort</SMIMESettingsMode>
+      <SMIMEEncrypt>True</SMIMEEncrypt>
+      <SMIMESign>True</SMIMESign>
+      <SMIMETripleWrap>True</SMIMETripleWrap>
+      <LogFile>SMTPProxy.log</LogFile>
+    </Service1>
+  </SMTP>
+</Settings>

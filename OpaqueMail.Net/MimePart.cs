@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mime;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -30,6 +31,8 @@ namespace OpaqueMail
         public string ContentID = "";
         /// <summary>Content Type of the MIME part.</summary>
         public string ContentType = "";
+        /// <summary>Content Transfer Encoding of the MIME part.</summary>
+        public TransferEncoding ContentTransferEncoding = TransferEncoding.Unknown;
         /// <summary>Filename of the MIME part.</summary>
         public string Name = "";
         /// <summary>Whether the MIME part is part of an S/MIME encrypted envelope.</summary>
@@ -50,15 +53,11 @@ namespace OpaqueMail
         /// <param name="contentType">Content Type of the MIME part.</param>
         /// <param name="charset">Character Set used to encode the MIME part.</param>
         /// <param name="contentID">ID of the MIME part.</param>
+        /// <param name="contentTransferEncoding">Content Transfer Encoding string of the MIME part.</param>
         /// <param name="body">String representation of the MIME part's body.</param>
-        public MimePart(string name, string contentType, string charset, string contentID, string body)
-        {
-            BodyBytes = Encoding.UTF8.GetBytes(body);
-            ContentType = contentType.ToLower();
-            ContentID = contentID;
-            CharSet = charset;
-            Name = name;
-        }
+        public MimePart(string name, string contentType, string charset, string contentID, string contentTransferEncoding, string body)
+            : this(name, contentType, charset, contentID, contentTransferEncoding, Encoding.UTF8.GetBytes(body)) { }
+
         /// <summary>
         /// Instantiate a MIME part based on its body's byte array.
         /// </summary>
@@ -66,14 +65,34 @@ namespace OpaqueMail
         /// <param name="contentType">Content Type of the MIME part.</param>
         /// <param name="charset">Character Set used to encode the MIME part.</param>
         /// <param name="contentID">ID of the MIME part.</param>
+        /// <param name="contentTransferEncoding">Content Transfer Encoding string of the MIME part.</param>
         /// <param name="bodyBytes">The MIME part's raw bytes.</param>
-        public MimePart(string name, string contentType, string charset, string contentID, byte[] bodyBytes)
+        public MimePart(string name, string contentType, string charset, string contentID, string contentTransferEncoding, byte[] bodyBytes)
         {
             BodyBytes = bodyBytes;
             ContentType = contentType;
             ContentID = contentID;
             CharSet = charset;
             Name = name;
+
+            switch (contentTransferEncoding.ToLower())
+            {
+                case "base64":
+                    ContentTransferEncoding = TransferEncoding.Base64;
+                    break;
+                case "quoted-printable":
+                    ContentTransferEncoding = TransferEncoding.QuotedPrintable;
+                    break;
+                case "7bit":
+                    ContentTransferEncoding = TransferEncoding.SevenBit;
+                    break;
+                case "8bit":
+                    ContentTransferEncoding = TransferEncoding.EightBit;
+                    break;
+                default:
+                    ContentTransferEncoding = TransferEncoding.Unknown;
+                    break;
+            }
         }
         #endregion Constructors
 
@@ -120,7 +139,7 @@ namespace OpaqueMail
                     if (cursor > -1)
                     {
                         // Calculate the end boundary of the current MIME part.
-                        int boundaryEnd = body.IndexOf("--" + boundaryName, cursor + boundaryName.Length, StringComparison.OrdinalIgnoreCase);
+                        int boundaryEnd = body.IndexOf("\r\n--" + boundaryName, cursor + boundaryName.Length, StringComparison.OrdinalIgnoreCase);
                         if (boundaryEnd > -1)
                         {
                             string mimeContents = body.Substring(cursor + boundaryName.Length + 4, boundaryEnd - cursor - boundaryName.Length - 4);
@@ -135,9 +154,10 @@ namespace OpaqueMail
 
                             if (mimeHeaders.Length > 0)
                             {
+                                mimeBlocks.Add(mimeContents);
+
                                 // Extract the body portion of the current MIME part.
                                 string mimeBody = mimeContents.Substring(mimeDivider + 4);
-                                mimeBlocks.Add(mimeBody);
 
                                 // Divide the MIME part's headers into its components.
                                 string mimeCharSet = "", mimeContentDisposition = "", mimeContentID = "", mimeContentType = "", mimeContentTransferEncoding = "", mimeFileName = "";
@@ -192,7 +212,7 @@ namespace OpaqueMail
                                             if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
                                             {
                                                 if (!string.IsNullOrEmpty(tnef.Body))
-                                                    mimeParts.Add(new MimePart("winmail.dat", tnef.ContentType, "", "", Encoding.UTF8.GetBytes(tnef.Body)));
+                                                    mimeParts.Add(new MimePart("winmail.dat", tnef.ContentType, "", "", mimeContentTransferEncoding, Encoding.UTF8.GetBytes(tnef.Body)));
                                             }
 
                                             foreach (MimePart mimePart in tnef.MimeAttachments)
@@ -211,16 +231,16 @@ namespace OpaqueMail
                                         switch (mimeContentTransferEncoding)
                                         {
                                             case "base64":
-                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, Convert.FromBase64String(mimeBody)));
+                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, Convert.FromBase64String(mimeBody)));
                                                 break;
                                             case "quoted-printable":
-                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, Functions.FromQuotedPrintable(mimeBody)));
+                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, Functions.FromQuotedPrintable(mimeBody)));
                                                 break;
                                             case "binary":
                                             case "7bit":
                                             case "8bit":
                                             default:
-                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeBody));
+                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, mimeBody));
                                                 break;
                                         }
                                     }
@@ -264,7 +284,7 @@ namespace OpaqueMail
                 if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
                 {
                     if (!string.IsNullOrEmpty(tnef.Body))
-                        mimeParts.Add(new MimePart("winmail.dat", tnef.ContentType, "", "", Encoding.UTF8.GetBytes(tnef.Body)));
+                        mimeParts.Add(new MimePart("winmail.dat", tnef.ContentType, "", "", "", Encoding.UTF8.GetBytes(tnef.Body)));
                 }
 
                 foreach (MimePart mimePart in tnef.MimeAttachments)
@@ -274,7 +294,7 @@ namespace OpaqueMail
             {
                 // Unless a flag has been set to include this *.p7m block, exclude it from attachments.
                 if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) > 0)
-                    mimeParts.Add(new MimePart("smime.p7m", contentType, "", "", body));
+                    mimeParts.Add(new MimePart("smime.p7m", contentType, "", "", "", body));
 
                 // Decrypt the MIME part and recurse through embedded MIME parts.
                 List<MimePart> returnedMIMEParts = ReturnDecryptedMimeParts(contentType, contentTransferEncoding, body, processingFlags);
@@ -314,7 +334,7 @@ namespace OpaqueMail
                 ExtractMimeHeaders(mimeHeaders, out mimeContentType, out mimeCharSet, out mimeContentTransferEncoding, out mimeContentDisposition, out mimeFileName, out mimeContentID);
 
                 // Add the message to the MIME parts collection.
-                mimeParts.Add(new MimePart(mimeFileName, string.IsNullOrEmpty(mimeContentType) ? contentType : mimeContentType, mimeCharSet, mimeContentID, body));
+                mimeParts.Add(new MimePart(mimeFileName, string.IsNullOrEmpty(mimeContentType) ? contentType : mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, body));
             }
             
             return mimeParts;
@@ -384,13 +404,12 @@ namespace OpaqueMail
         /// <param name="body">The message's raw body.</param>
         public static bool VerifySignature(string signatureBlock, string body, out X509Certificate2Collection signingCertificates)
         {
-            // Strip trailing whitespace.
-            if (signatureBlock.EndsWith("\r\n\r\n"))
-                signatureBlock = signatureBlock.Substring(0, signatureBlock.Length - 4);
+            // Ignore MIME headers for the signature block;
+            signatureBlock = signatureBlock.Substring(signatureBlock.IndexOf("\r\n\r\n") + 4);
 
             // Hydrate the signature CMS object.
             ContentInfo contentInfo = new ContentInfo(Encoding.UTF8.GetBytes(body));
-            SignedCms signedCms = new SignedCms(contentInfo);
+            SignedCms signedCms = new SignedCms(contentInfo, true);
 
             try
             {

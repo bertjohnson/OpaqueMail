@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("OpaqueMail.Net.Proxy")]
+[assembly: AssemblyTitle("OpaqueMail.Net.ProxySettings")]
 [assembly: AssemblyDescription("SMTP proxy with support for adding S/MIME message signing, encryption, and authentication for outbound messages.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Bert Johnson")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("0041886a-2f82-4a5d-a8e1-ade1788bcd2e")]
+[assembly: Guid("6d67b499-de07-498e-8853-51c0b4d01253")]
 
 // Version information for an assembly consists of the following four values:
 //

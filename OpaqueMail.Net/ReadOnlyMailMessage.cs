@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
+using System.Net.Mime;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -144,7 +145,7 @@ namespace OpaqueMail
 
                     // Set header variables for common headers.
                     if (!string.IsNullOrEmpty(headerType) && !string.IsNullOrEmpty(headerValue))
-                        Headers[headerType] = headerValue;
+                        Headers[headerParts[0]] = headerValue;
 
                     switch (headerType)
                     {
@@ -153,6 +154,24 @@ namespace OpaqueMail
                             break;
                         case "content-transfer-encoding":
                             ContentTransferEncoding = headerValue;
+                            switch (headerValue.ToLower())
+                            {
+                                case "base64":
+                                    BodyTransferEncoding = TransferEncoding.Base64;
+                                    break;
+                                case "quoted-printable":
+                                    BodyTransferEncoding = TransferEncoding.QuotedPrintable;
+                                    break;
+                                case "7bit":
+                                    BodyTransferEncoding = TransferEncoding.SevenBit;
+                                    break;
+                                case "8bit":
+                                    BodyTransferEncoding = TransferEncoding.EightBit;
+                                    break;
+                                default:
+                                    BodyTransferEncoding = TransferEncoding.Unknown;
+                                    break;
+                            }
                             break;
                         case "content-language":
                             ContentLanguage = headerValue;
@@ -562,12 +581,13 @@ namespace OpaqueMail
                                 Body = mimePart.Body;
                                 CharSet = mimePart.CharSet;
                                 ContentType = mimePart.ContentType;
+                                BodyTransferEncoding = mimePart.ContentTransferEncoding;
                             }
                             else
                             {
                                 // If the MIME part isn't of type text/*, treat is as an attachment.
                                 MemoryStream attachmentStream = new MemoryStream(mimePart.BodyBytes);
-                                Attachment attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
+                                Attachment attachment = new Attachment(mimePart.Name, mimePart.ContentType);
                                 attachment.ContentId = mimePart.ContentID;
                                 Attachments.Add(attachment);
                             }
@@ -581,6 +601,7 @@ namespace OpaqueMail
                                 Body = mimePart.Body;
                                 CharSet = mimePart.CharSet;
                                 ContentType = mimePart.ContentType;
+                                BodyTransferEncoding = mimePart.ContentTransferEncoding;
                             }
                             else
                             {
@@ -719,6 +740,8 @@ namespace OpaqueMail
                 castMessage.BodyEncoding = BodyEncoding;
             if (BodyTransferEncoding != System.Net.Mime.TransferEncoding.Unknown)
                 castMessage.BodyTransferEncoding = BodyTransferEncoding;
+            else
+                castMessage.BodyTransferEncoding = System.Net.Mime.TransferEncoding.SevenBit;
 
             // Process CC.
             foreach (MailAddress address in CC)
@@ -729,25 +752,7 @@ namespace OpaqueMail
 
             // Process headers.
             foreach (string headerKey in Headers.Keys)
-            {
-                switch (headerKey.ToUpper())
-                {
-                    // Ignore headers we're explicitly adding.
-                    case "BCC":
-                    case "CC":
-                    case "DATE":
-                    case "FROM":
-                    case "PRIORITY":
-                    case "REPLY-TO":
-                    case "REPLYTO":
-                    case "SUBJECT":
-                    case "TO":
-                        break;
-                    default:
-                        castMessage.Headers.Add(headerKey, Headers[headerKey]);
-                        break;
-                }
-            }
+                castMessage.Headers.Add(headerKey, Headers[headerKey]);
 
             if (HeadersEncoding != null)
                 castMessage.HeadersEncoding = HeadersEncoding;

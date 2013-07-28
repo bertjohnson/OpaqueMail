@@ -162,7 +162,7 @@ namespace OpaqueMail
     /// </summary>
     public enum SmimeSettingsMode
     {
-        PreferSettingsOnly = 0,
+        BestEffort = 0,
         RequireExactSettings = 1
     }
 

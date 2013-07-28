@@ -248,6 +248,25 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Encodes e-mail headers to escape extended characters.
+        /// </summary>
+        /// <param name="header">E-mail header to be encoded.</param>
+        public static string EncodeMailHeader(string header)
+        {
+            bool extendedCharacterFound = false;
+            foreach (char headerCharacter in header.ToCharArray())
+            {
+                if (headerCharacter > 127)
+                    extendedCharacterFound = true;
+            }
+
+            if (extendedCharacterFound)
+                return "=?B?" + ToBase64String(header) + "?=";
+            else
+                return header;
+        }
+
+        /// <summary>
         /// Returns a base-64 string representing the original input.
         /// </summary>
         /// <param name="input">The string to convert.</param>
@@ -683,7 +702,8 @@ namespace OpaqueMail
 
             // Build a new string using the following buffer.
             StringBuilder htmlBuilder = new StringBuilder();
-
+            
+            // First, process <script> blocks.
             int pos = 0, lastPos = 0;
             while (pos > -1)
             {
@@ -727,7 +747,7 @@ namespace OpaqueMail
                             else
                                 pos = -1;
                         }
-                        else if (anglePos > -1)
+                        else if (anglePos <= canonicalHtml.Length)
                         {
                             if (canonicalHtml[anglePos - 1] == '/')
                             {
@@ -760,8 +780,83 @@ namespace OpaqueMail
                     htmlBuilder.Append(html.Substring(lastPos));
             }
 
-            // Remove spaces padded to the beginning and end.
-            return htmlBuilder.ToString();
+            // Finally, remove any onclick, onmouseover, etc. event handlers.
+            html = htmlBuilder.ToString();
+            canonicalHtml = html.ToLower();
+
+            string[] eventHandlers = new string[] { "onabort", "onblur", "onclick", "ondblclick",
+                "onerror", "onfocus", "onfocusin", "onfocusout", "onkeydown", "onkeypress", "onkeyup",
+                "onload", "onmousedown", "onmouseenter", "onmouseleave", "onmousemove", "onmouseover",
+                "onmouseout", "onmouseup", "onresize", "onscroll", "onselect", "onunload", "onwheel" };
+            foreach (string eventHandler in eventHandlers)
+            {
+                // Only proceed if the event handler name is found.
+                if (canonicalHtml.IndexOf(eventHandler) > -1)
+                {
+                    htmlBuilder.Clear();
+
+                    pos = lastPos = 0;
+                    while (pos > -1)
+                    {
+                        lastPos = pos;
+                        pos = canonicalHtml.IndexOf(eventHandler, pos);
+
+                        if (pos > -1)
+                        {
+                            // Check if we're currently within a tag.
+                            int lastOpenAngle = canonicalHtml.LastIndexOf("<", pos);
+                            int lastCloseAngle = canonicalHtml.LastIndexOf(">", pos);
+                            if (lastOpenAngle > lastCloseAngle)
+                            {
+                                // We're currently in a tag.
+                                htmlBuilder.Append(html.Substring(lastPos, pos - lastPos));
+
+                                int equalsPos = canonicalHtml.IndexOf("=", pos);
+                                int nextCloseAnglePos = canonicalHtml.IndexOf(">", pos);
+
+                                // Only continue processing if there's an equals sign after the event handler name and before the tag closes.
+                                if (equalsPos > -1 && nextCloseAnglePos > equalsPos)
+                                {
+                                    int quotePos = canonicalHtml.IndexOf("\"", equalsPos);
+                                    if (quotePos < 0)
+                                        quotePos = canonicalHtml.Length + 1;
+                                    int aposPos = canonicalHtml.IndexOf("'", equalsPos);
+                                    if (aposPos < 0)
+                                        aposPos = canonicalHtml.Length + 1;
+
+                                    if (quotePos < aposPos && quotePos < nextCloseAnglePos)
+                                    {
+                                        int endQuotePos = canonicalHtml.IndexOf("\"", quotePos + 1);
+                                        if (endQuotePos > -1 && endQuotePos < nextCloseAnglePos)
+                                            pos = endQuotePos + 1;
+                                        else
+                                            pos = nextCloseAnglePos;
+                                    }
+                                    else if (aposPos <= canonicalHtml.Length)
+                                    {
+                                        int endAposPos = canonicalHtml.IndexOf("'", aposPos + 1);
+                                        if (endAposPos > -1)
+                                            pos = endAposPos + 1;
+                                        else
+                                            pos = nextCloseAnglePos;
+                                    }
+                                    else
+                                        pos = nextCloseAnglePos;
+                                }
+                                else
+                                    pos = nextCloseAnglePos;
+                            }
+                        }
+                        else
+                            htmlBuilder.Append(html.Substring(lastPos));
+                    }
+
+                    html = htmlBuilder.ToString();
+                    canonicalHtml = html.ToLower();
+                }
+            }
+
+            return html;
         }
 
         /// <summary>
@@ -814,7 +909,7 @@ namespace OpaqueMail
         /// <param name="message">The message to be 7-bit encoded.</param>
         public static string To7BitString(string message)
         {
-            return To7BitString(message, 100);
+            return To7BitString(message, 998);
         }
 
         /// <summary>
@@ -826,23 +921,54 @@ namespace OpaqueMail
         {
             StringBuilder sevenBitBuilder = new StringBuilder();
 
-            // Loop through every lineLength # of characters, adding a new line to our StringBuilder.
-            int position = 0;
-            int chunkSize = lineLength;
-            while (position < message.Length)
+            int position = 0, lastPosition = 0;
+            while (position > 0 && position < (message.Length - lineLength))
             {
-                if (message.Length - (position + chunkSize) < 0)
-                    chunkSize = message.Length - position;
+                lastPosition = position;
+                // Find the next linebreak, and move on if it's within lineLength characters.
+                position = message.IndexOf("\r\n", position);
+                if (position > -1 && (position - lastPosition) <= lineLength)
+                    position = position + 2;
+                else
+                {
+                    // If there's no linebreak within lineLength characters, break on the last space within lineLength characters.
+                    int endPosition = position + lineLength;
+                    if (endPosition > message.Length)
+                        endPosition = message.Length;
 
-                sevenBitBuilder.Append(message.Substring(position, chunkSize) + "\r\n");
-                position += chunkSize;
+                    position = message.LastIndexOf(" ", endPosition);
+                    if (position > -1 && position > lastPosition)
+                    {
+                        sevenBitBuilder.Append(message.Substring(lastPosition, position - lastPosition));
+                        sevenBitBuilder.Append("\r\n");
+
+                        position = position + 1;
+                    }
+                    else
+                    {
+                        // If there's no whitespace within lineLength characters, force a break.
+                        sevenBitBuilder.Append(message.Substring(lastPosition, endPosition - lastPosition));
+                        position = -1;
+                    }
+                }
             }
+
+            sevenBitBuilder.Append(message.Substring(lastPosition));
 
             return sevenBitBuilder.ToString();
         }
 
         /// <summary>
-        /// Converts a subset of an array of 8-bit unsigned integers to its equivalent string representation with base-64 digits.
+        /// Converts a string to its equivalent string representation with base-64 digits.
+        /// </summary>
+        /// <param name="input">The string to convert.</param>
+        public static string ToBase64String(string input)
+        {
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(input), Base64FormattingOptions.InsertLineBreaks);
+        }
+
+        /// <summary>
+        /// Converts an array of 8-bit unsigned integers to its equivalent string representation with base-64 digits.
         /// </summary>
         /// <param name="inArray">An array of 8-bit unsigned integers.</param>
         public static string ToBase64String(byte[] inArray)
@@ -860,6 +986,18 @@ namespace OpaqueMail
         public static string ToBase64String(byte[] inArray, int offset, int length)
         {
             return Convert.ToBase64String(inArray, offset, length, Base64FormattingOptions.InsertLineBreaks);
+        }
+
+        /// <summary>
+        /// Provides a string representation of one or more e-mail addresses.
+        /// </summary>
+        /// <param name="address">MailAddress to display.</param>
+        public static string ToMailAddressString(MailAddress address)
+        {
+            if (!string.IsNullOrEmpty(address.DisplayName))
+                return address.DisplayName + " <" + address.Address + ">";
+            else
+                return address.Address;
         }
 
         /// <summary>

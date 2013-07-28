@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Mail;
 using System.Net.Mime;
+using System.Net.Security;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
@@ -47,6 +50,8 @@ namespace OpaqueMail
         #region Protected Members
         /// <summary>Text delimiting S/MIME message parts.</summary>
         protected string SmimeBoundaryName = "OpaqueMail-boundary";
+        /// <summary>Text delimiting S/MIME message parts related to encryption.</summary>
+        protected string SmimeEncryptedCmsBoundaryName = "OpaqueMail-encryption-boundary";
         /// <summary>Text delimiting S/MIME message parts related to signatures.</summary>
         protected string SmimeSignedCmsBoundaryName = "OpaqueMail-signature-boundary";
         /// <summary>Text delimiting MIME message parts in triple wrapped messages.</summary>
@@ -73,8 +78,7 @@ namespace OpaqueMail
                 base.Send(message);
             else
             {
-                Task task = SmimeSend(message);
-                task.Wait();
+                Task.Run(() => SmimeSend(message)).Wait();
             }
         }
 
@@ -252,6 +256,129 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Sends the specified message to an SMTP server for delivery without making modifications to the body.
+        /// Necessary because the standard SmtpClient.Send() may slightly alter messages, invalidating signatures.
+        /// </summary>
+        /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
+        private async Task SmimeSendRaw(MailMessage message)
+        {
+            // Connect to the SMTP server.
+            TcpClient SmtpTcpClient = new TcpClient();
+            SmtpTcpClient.Connect(Host, Port);
+            Stream SmtpStream = SmtpTcpClient.GetStream();
+
+            // Read the welcome message.
+            string response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+
+            // Send EHLO and find out server capabilities.
+            await Functions.SendStreamStringAsync(SmtpStream, buffer, "EHLO " + Host + "\r\n");
+            response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            if (!response.StartsWith("2"))
+                throw new SmtpException("Unable to connect to remote server '" + Host + "'.  Sent 'EHLO' and received '" + response + "'.");
+
+            // Stand up a TLS/SSL stream.
+            if (EnableSsl)
+            {
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, "STARTTLS\r\n");
+                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                if (!response.StartsWith("2"))
+                    throw new SmtpException("Unable to start TLS/SSL protection with '" + Host + "'.  Received '" + response + "'.");
+
+                SmtpStream = new SslStream(SmtpStream);
+
+                if (!((SslStream)SmtpStream).IsAuthenticated)
+                    ((SslStream)SmtpStream).AuthenticateAsClient(Host);
+            }
+    
+            // Authenticate using the AUTH LOGIN command.
+            if (Credentials != null)
+            {
+                NetworkCredential cred = (NetworkCredential)Credentials;
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, "AUTH LOGIN\r\n");
+                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                if (!response.StartsWith("3"))
+                    throw new SmtpException("Unable to authenticate with server '" + Host + "'.  Received '" + response + "'.");
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, Functions.ToBase64String(cred.UserName) + "\r\n");
+                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, Functions.ToBase64String(cred.Password) + "\r\n");
+                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                if (!response.StartsWith("2"))
+                    throw new SmtpException("Unable to authenticate with server '" + Host + "'.  Received '" + response + "'.");
+            }
+
+            // Build our raw headers block.
+            StringBuilder rawHeaders = new StringBuilder();
+
+            // Specify who the message is from.
+            rawHeaders.Append("From: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.From)) + "\r\n");
+            await Functions.SendStreamStringAsync(SmtpStream, buffer, "MAIL FROM:<" + message.From.Address + ">\r\n");
+            response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            if (!response.StartsWith("2"))
+                throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'MAIL FROM' and received '" + response + "'.");
+
+            // Identify all recipients of the message.
+            rawHeaders.Append("To: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.To)) + "\r\n");
+            foreach (MailAddress address in message.To)
+            {
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
+                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                if (!response.StartsWith("2"))
+                    throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
+            }
+
+            rawHeaders.Append("CC: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.CC)) + "\r\n");
+            foreach (MailAddress address in message.CC)
+            {
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
+                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                if (!response.StartsWith("2"))
+                    throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'MAIL FROM' and received '" + response + "'.");
+            }
+
+            foreach (MailAddress address in message.Bcc)
+            {
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
+                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                if (!response.StartsWith("2"))
+                    throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'MAIL FROM' and received '" + response + "'.");
+            }
+
+            // Send the raw message.
+            await Functions.SendStreamStringAsync(SmtpStream, buffer, "DATA\r\n");
+            response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            if (!response.StartsWith("3"))
+                throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'DATA' and received '" + response + "'.");
+
+            rawHeaders.Append("Subject: " + Functions.EncodeMailHeader(message.Subject) + "\r\n");
+            foreach (string rawHeader in message.Headers)
+            {
+                switch (rawHeader.ToUpper())
+                {
+                    case "BCC":
+                    case "CC":
+                    case "FROM":
+                    case "SUBJECT":
+                    case "TO":
+                        break;
+                    default:
+                        rawHeaders.Append(rawHeader + ": " + message.Headers[rawHeader] + "\r\n");
+                        break;
+                }
+            }
+
+            await Functions.SendStreamStringAsync(SmtpStream, buffer, rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
+
+            response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            if (!response.StartsWith("2"))
+                throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent message and received '" + response + "'.");
+
+            // Clean up this connection.
+            await Functions.SendStreamStringAsync(SmtpStream, buffer, "QUIT\r\n");
+            SmtpStream.Dispose();
+            SmtpTcpClient.Close();
+        }
+
+        /// <summary>
         /// Create a byte array containing an encrypted S/MIME envelope.
         /// </summary>
         /// <param name="buffer">A byte array to streamline bit shuffling.</param>
@@ -285,7 +412,7 @@ namespace OpaqueMail
                     throw new SmtpException(exceptionMessage.ToString());
                 }
                 else
-                    return buffer;
+                    return contentBytes;
             }
 
             // Encrypt the symmetric session key using each recipient's public key.
@@ -327,42 +454,57 @@ namespace OpaqueMail
             // Generate a multipart/mixed message containing the e-mail's body, alternate views, and attachments.
             byte[] MIMEMessageBytes = await message.MIMEEncode(buffer, SmimeBoundaryName);
 
-            // Helper variables for tracking the outermost content type and encoding.
-            string alternateViewContentType = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeSignedCmsBoundaryName + "\"";
-            TransferEncoding alternativeViewTransferEncoding = TransferEncoding.SevenBit;
-
             // Handle S/MIME signing.
+            bool successfullySigned = false;
             if (message.SmimeSigned || message.SmimeTripleWrapped)
+            {
+                int unsignedSize = MIMEMessageBytes.Length;
                 MIMEMessageBytes = SmimeSign(buffer, MIMEMessageBytes, message, false);
+                successfullySigned = MIMEMessageBytes.Length != unsignedSize;
+
+                if (successfullySigned)
+                {
+                    message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeSignedCmsBoundaryName + "\"";
+                    message.Headers["Content-Transfer-Encoding"] = "7bit";
+
+                    if (!message.SmimeTripleWrapped)
+                        message.Body = Encoding.UTF8.GetString(MIMEMessageBytes);
+                }
+            }
 
             // Handle S/MIME envelope encryption.
+            bool successfullyEncrypted = false;
             if (message.SmimeEncryptedEnvelope || message.SmimeTripleWrapped)
             {
-                alternateViewContentType = "application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"";
-                alternativeViewTransferEncoding = TransferEncoding.Base64;
+                int unencryptedSize = MIMEMessageBytes.Length;
                 MIMEMessageBytes = SmimeEncryptEnvelope(buffer, MIMEMessageBytes, message);
+                successfullyEncrypted = MIMEMessageBytes.Length != unencryptedSize;
+
+                // If the message won't be triple-wrapped, wrap the encrypted message with MIME.
+                if (successfullyEncrypted && !message.SmimeTripleWrapped)
+                {
+                    message.Headers["Content-Type"] = "application/pkcs7-mime; name=smime.p7m; smime-type=enveloped-data";
+                    message.Headers["Content-Transfer-Encoding"] = "base64";
+                    message.Headers["Content-Disposition"] = "attachment; filename=smime.p7m";
+
+                    message.Body = Functions.ToBase64String(MIMEMessageBytes) + "\r\n";
+                }
             }
 
             // Handle S/MIME triple wrapping (i.e. signing, envelope encryption, then signing again).
-            if (message.SmimeTripleWrapped)
+            if (successfullyEncrypted && message.SmimeTripleWrapped)
             {
-                alternateViewContentType = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeTripleSignedCmsBoundaryName + "\"";
-                alternativeViewTransferEncoding = TransferEncoding.SevenBit;
-                MIMEMessageBytes = SmimeSign(buffer, MIMEMessageBytes, message, true);
+                message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeTripleSignedCmsBoundaryName + "\"";
+                message.Headers["Content-Transfer-Encoding"] = "7bit";
+
+                message.Body = Encoding.UTF8.GetString(SmimeSign(buffer, MIMEMessageBytes, message, true));
             }
 
-            // The alternate view will deliver all content, so empty any Body that was passed in.
-            message.Body = "";
-
-            // Send our MIME encoded message using the alternate view.
-            using (MemoryStream avStream = new MemoryStream(MIMEMessageBytes))
-            {
-                AlternateView newAlternateView = new AlternateView(avStream, alternateViewContentType);
-                newAlternateView.TransferEncoding = alternativeViewTransferEncoding;
-                message.AlternateViews.Add(newAlternateView);
-
+            // Only repackage the message if it's either been signed or encrypted.
+            if (successfullySigned || successfullyEncrypted)
+                await SmimeSendRaw(message);
+            else
                 base.Send(message);
-            }
         }
 
         /// <summary>
@@ -380,15 +522,31 @@ namespace OpaqueMail
                 if ((message.SmimeSettingsMode & SmimeSettingsMode.RequireExactSettings) > 0)
                     throw new SmtpException("Trying to send a signed message, but no signing certificate has been assigned.");
                 else
-                    return buffer;
+                    return contentBytes;
             }
 
+            // First, create a buffer for tracking the unsigned portion of this message.
+            StringBuilder unsignedMessageBuilder = new StringBuilder();
+
+            // If triple wrapping, the previous layer was an encrypted envelope and needs to be Base64 encoded.
+            if (alreadyEncrypted)
+            {
+                unsignedMessageBuilder.Append("Content-Type: application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"\r\n");
+                unsignedMessageBuilder.Append("Content-Transfer-Encoding: base64\r\n");
+                unsignedMessageBuilder.Append("Content-Description: \"S/MIME Cryptographic envelopedCms\"\r\n");
+                unsignedMessageBuilder.Append("Content-Disposition: attachment; filename=\"smime.p7m\"\r\n\r\n");
+
+                unsignedMessageBuilder.Append(Functions.ToBase64String(contentBytes));
+            }
+            else
+                unsignedMessageBuilder.Append(Encoding.UTF8.GetString(contentBytes));
+
             // Prepare the signing parameters.
-            ContentInfo contentInfo = new ContentInfo(contentBytes);
-            SignedCms signedCms = new SignedCms(contentInfo, false);
+            ContentInfo contentInfo = new ContentInfo(Encoding.UTF8.GetBytes(unsignedMessageBuilder.ToString()));
+            SignedCms signedCms = new SignedCms(contentInfo, true);
 
             CmsSigner signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, message.SmimeSigningCertificate);
-            signer.IncludeOption = X509IncludeOption.WholeChain;   // TODO: provide options
+            signer.IncludeOption = X509IncludeOption.EndCertOnly;
 
             // Sign the current time.
             if ((message.SmimeSigningOptionFlags & SmimeSigningOptionFlags.SignTime) > 0)
@@ -399,37 +557,25 @@ namespace OpaqueMail
             
             // Encode the signed message.
             signedCms.ComputeSignature(signer);
-            byte[] encodedBytes = signedCms.Encode();
+            byte[] signedBytes = signedCms.Encode();
 
             // Embed the signed and original version of the message using MIME.
             StringBuilder messageBuilder = new StringBuilder();
-            
+
             // If this is a signed message only, the alternate view will have the appropriate Content Type.  Otherwise, embed it.
             if ((message.SmimeEncryptedEnvelope || message.SmimeTripleWrapped) && !alreadyEncrypted)
                 messageBuilder.Append("Content-Type: multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeSignedCmsBoundaryName + "\"\r\n\r\n");
 
+            // Build the MIME message by embedding the unsigned and signed portions.
             messageBuilder.Append("This is a multi-part S/MIME signed message.\r\n\r\n");
             messageBuilder.Append("--" + (alreadyEncrypted ? SmimeTripleSignedCmsBoundaryName : SmimeSignedCmsBoundaryName) + "\r\n");
-
-            // If triple wrapping, the previous layer was an encrypted envelope and needs to be Base64 encoded.
-            if (alreadyEncrypted)
-            {
-                messageBuilder.Append("Content-Type: application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"\r\n");
-                messageBuilder.Append("Content-Transfer-Encoding: base64\r\n");
-                messageBuilder.Append("Content-Description: \"S/MIME Cryptographic envelopedCms\"\r\n");
-                messageBuilder.Append("Content-Disposition: attachment; filename=\"smime.p7m\"\r\n\r\n");
-
-                messageBuilder.Append(Functions.ToBase64String(contentBytes, 0, contentBytes.Length));
-            }
-            else
-                messageBuilder.Append(Encoding.UTF8.GetString(contentBytes));
-
-            messageBuilder.Append("\r\n\r\n--" + (alreadyEncrypted ? SmimeTripleSignedCmsBoundaryName : SmimeSignedCmsBoundaryName) + "\r\n");
-            messageBuilder.Append("Content-Type: application/x-pkcs7-signature; name=\"smime.p7s\"\r\n");
+            messageBuilder.Append(unsignedMessageBuilder.ToString());
+            messageBuilder.Append("\r\n--" + (alreadyEncrypted ? SmimeTripleSignedCmsBoundaryName : SmimeSignedCmsBoundaryName) + "\r\n");
+            messageBuilder.Append("Content-Type: application/x-pkcs7-signature; smime-type=signed-data; name=\"smime.p7s\"\r\n");
             messageBuilder.Append("Content-Transfer-Encoding: base64\r\n");
             messageBuilder.Append("Content-Description: \"S/MIME Cryptographic signedCms\"\r\n");
             messageBuilder.Append("Content-Disposition: attachment; filename=\"smime.p7s\"\r\n\r\n");
-            messageBuilder.Append(Functions.ToBase64String(encodedBytes, 0, encodedBytes.Length));
+            messageBuilder.Append(Functions.ToBase64String(signedBytes, 0, signedBytes.Length));
             messageBuilder.Append("\r\n--" + (alreadyEncrypted ? SmimeTripleSignedCmsBoundaryName : SmimeSignedCmsBoundaryName) + "--\r\n");
 
             return Encoding.UTF8.GetBytes(messageBuilder.ToString());

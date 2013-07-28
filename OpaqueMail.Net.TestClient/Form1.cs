@@ -353,7 +353,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private void LoadSettingsButton_Click(object sender, EventArgs e)
         {
-            DialogResult result = MessageBox.Show("Are you sure?  All settings will be overwritten by the contents of \"OpaqueMail.TestClient.xml\" on your Desktop.", "Confirm Load", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+            DialogResult result = MessageBox.Show("Are you sure?  All settings will be overwritten by the contents of \"OpaqueMail.TestClient.xml\".", "Confirm Load", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
             if (result == DialogResult.OK)
                 LoadSettings();
         }
@@ -500,13 +500,18 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                     return;
                 }
 
+                // Try first looking the certificate up by its serial number, falling back to finding it by its subject name.
                 signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.CurrentUser, SmtpSmimeSerialNumber.Text);
                 if (signingCertificate == null)
                     signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.LocalMachine, SmtpSmimeSerialNumber.Text);
+                if (signingCertificate == null)
+                    signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, SmtpSmimeSerialNumber.Text);
+                if (signingCertificate == null)
+                    signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, SmtpSmimeSerialNumber.Text);
 
                 if (signingCertificate == null)
                 {
-                    MessageBox.Show("Certificate with signature \"" + SmtpSmimeSerialNumber.Text + "\" not found.");
+                    MessageBox.Show("Certificate with serial # \"" + SmtpSmimeSerialNumber.Text + "\" not found.");
                     SmtpSmimeSerialNumber.Focus();
                     return;
                 }
@@ -563,8 +568,6 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 message.SmimeEncryptedEnvelope = SmtpSmimeEncrypt.Checked;
                 message.SmimeTripleWrapped = SmtpSmimeTripleWrap.Checked;
 
-                message.SmimeEncryptionOptionFlags = message.SmimeEncryptionOptionFlags | SmimeEncryptionOptionFlags.EncryptSubject;
-
                 await smtpClient.SendAsync(message);
                 MessageBox.Show("Message successfully sent.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
@@ -577,11 +580,11 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
         #region Private Methods
         /// <summary>
-        /// Return the path to where the Test Client's settings should be saved and loaded.
+        /// Return the path where the Test Client's settings should be saved and loaded.
         /// </summary>
         private string GetSettingsFileName()
         {
-            return Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\OpaqueMail.TestClient.xml";
+            return AppDomain.CurrentDomain.BaseDirectory + "\\OpaqueMail.TestClient.xml";
         }
 
         /// <summary>
@@ -681,6 +684,12 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private async Task RefreshImapMessages()
         {
+            if (string.IsNullOrEmpty(ImapHost.Text) || string.IsNullOrEmpty(ImapPort.Text) || string.IsNullOrEmpty(ImapUsername.Text) || string.IsNullOrEmpty(ImapPassword.Text))
+            {
+                MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             // If we're not currently connected to the IMAP server, connect and authenticate.
             if (myImapClient == null)
             {
@@ -729,6 +738,12 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private async Task RefreshPop3Messages()
         {
+            if (string.IsNullOrEmpty(Pop3Host.Text) || string.IsNullOrEmpty(Pop3Port.Text) || string.IsNullOrEmpty(Pop3Username.Text) || string.IsNullOrEmpty(Pop3Password.Text))
+            {
+                MessageBox.Show("Unable to connect to the POP3 server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            
             // If we're not currently connected to the POP3 server, connect and authenticate.
             if (myPop3Client == null)
             {
@@ -914,7 +929,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private void SaveSettings()
         {
-            DialogResult result = MessageBox.Show("Are you sure?  Settings (including passwords) will be saved as plaintext into \"OpaqueMail.TestClient.xml\" on your Desktop.", "Confirm Save", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+            DialogResult result = MessageBox.Show("Are you sure?  Settings (including passwords) will be saved as plaintext into \"OpaqueMail.TestClient.xml\".", "Confirm Save", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
             if (result == DialogResult.OK)
             {
                 XmlWriterSettings streamWriterSettings = new XmlWriterSettings();
@@ -990,20 +1005,26 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// <summary>
         /// Set a checkbox's value based on its saved XML setting.
         /// </summary>
+        /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
+        /// <param name="checkbox">The checkbox whose value should be set.</param>
+        /// <param name="xpathExpression">The XPath expression to evaluate.</param>
         private void SetCheckBoxValue(XPathNavigator navigator, CheckBox checkbox, string xpathExpression)
         {
             XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
             if (valueNavigator != null)
             {
-                bool sslChecked = true;
-                if (bool.TryParse(valueNavigator.Value, out sslChecked))
-                    checkbox.Checked = sslChecked;
+                bool valueChecked = true;
+                if (bool.TryParse(valueNavigator.Value, out valueChecked))
+                    checkbox.Checked = valueChecked;
             }
         }
 
         /// <summary>
         /// Set a textbox's value based on its saved XML setting.
         /// </summary>
+        /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
+        /// <param name="textbox">The textbox whose value should be set.</param>
+        /// <param name="xpathExpression">The XPath expression to evaluate.</param>
         private void SetTextBoxValue(XPathNavigator navigator, TextBox textbox, string xpathExpression)
         {
             XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);

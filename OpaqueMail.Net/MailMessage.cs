@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net.Mail;
+using System.Net.Mime;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -128,18 +129,22 @@ namespace OpaqueMail
             StringBuilder MIMEBuilder = new StringBuilder();
 
             // Write out body of the message.
-            MIMEBuilder.Append("Content-Type: multipart/mixed; boundary=\"" + SmimeBoundaryName + "\"\r\n\r\n");
-            MIMEBuilder.Append("This is a multi-part message in MIME format.\r\n\r\n");
-            MIMEBuilder.Append("--" + SmimeBoundaryName + "\r\n");
-            if (this.IsBodyHtml)
-                MIMEBuilder.Append("Content-Type: text/html; charset=\"UTF-8\"\r\n");
-            else
-                MIMEBuilder.Append("Content-Type: text/plain; charset=\"UTF-8\"\r\n");
+            MIMEBuilder.Append("Content-Type: multipart/mixed; boundary=\"" + SmimeBoundaryName + "\"\r\n");
             MIMEBuilder.Append("Content-Transfer-Encoding: 7bit\r\n\r\n");
+            MIMEBuilder.Append("This is a multi-part message in MIME format.\r\n\r\n");
 
-            // 7-bit encode the body with lines no longer than 100 characters each.
-            MIMEBuilder.Append(Functions.To7BitString(this.Body));
-            MIMEBuilder.Append("\r\n");
+            if (!string.IsNullOrEmpty(Body))
+            {
+                MIMEBuilder.Append("--" + SmimeBoundaryName + "\r\n");
+                if (this.IsBodyHtml)
+                    MIMEBuilder.Append("Content-Type: text/html; charset=\"UTF-8\"\r\n");
+                else
+                    MIMEBuilder.Append("Content-Type: text/plain; charset=\"UTF-8\"\r\n");
+                MIMEBuilder.Append("Content-Transfer-Encoding: base64\r\n\r\n");
+
+                MIMEBuilder.Append(Functions.ToBase64String(Body));
+                MIMEBuilder.Append("\r\n");
+            }
 
             // MIME encode alternate views.
             foreach (AlternateView alternateView in this.AlternateViews)
@@ -148,15 +153,15 @@ namespace OpaqueMail
                 Encoding encoding = alternateView.ContentType.CharSet != null ? Encoding.GetEncoding(alternateView.ContentType.CharSet) : new UTF8Encoding();
 
                 MIMEBuilder.Append("--" + SmimeBoundaryName + "\r\n");
-                MIMEBuilder.Append("Content-Type: " + alternateView.ContentType + "; charset=\"" + encoding.WebName + "\"\r\n\r\n");
+                MIMEBuilder.Append("Content-Type: " + alternateView.ContentType + "; charset=\"" + encoding.WebName + "\"\r\n");
+                MIMEBuilder.Append("Content-Transfer-Encoding: base64\r\n\r\n");
 
-                using (Stream dataStream = alternateView.ContentStream)
-                {
-                    byte[] binaryData = new byte[dataStream.Length];
-                    await dataStream.ReadAsync(binaryData, 0, binaryData.Length);
+                Stream dataStream = alternateView.ContentStream;
+                byte[] binaryData = new byte[dataStream.Length];
+                await dataStream.ReadAsync(binaryData, 0, binaryData.Length);
 
-                    MIMEBuilder.Append(encoding.GetString(binaryData));
-                }
+                MIMEBuilder.Append(Functions.ToBase64String(encoding.GetString(binaryData)));
+                MIMEBuilder.Append("\r\n");
             }
             // Since we've processed the alternate views, they shouldn't be rendered again.
             this.AlternateViews.Clear();
@@ -169,21 +174,17 @@ namespace OpaqueMail
                 MIMEBuilder.Append("Content-Transfer-Encoding: base64\r\n");
                 MIMEBuilder.Append("Content-Disposition: attachment; filename=" + attachment.Name + "\r\n\r\n");
 
-                using (Stream dataStream = attachment.ContentStream)
-                {
-                    byte[] binaryData = new byte[dataStream.Length];
-                    await dataStream.ReadAsync(binaryData, 0, binaryData.Length);
+                byte[] binaryData = new byte[attachment.ContentStream.Length];
+                await attachment.ContentStream.ReadAsync(binaryData, 0, (int)attachment.ContentStream.Length);
 
-                    // Base-64 encode the attachment.
-                    MIMEBuilder.Append(Functions.ToBase64String(binaryData, 0, binaryData.Length));
-                }
-  
+                // Base-64 encode the attachment.
+                MIMEBuilder.Append(Functions.ToBase64String(binaryData, 0, binaryData.Length));  
                 MIMEBuilder.Append("\r\n");
             }
             // Since we've processed the attachments, they shouldn't be rendered again.
             this.Attachments.Clear();
 
-            MIMEBuilder.Append("--" + SmimeBoundaryName + "--");
+            MIMEBuilder.Append("--" + SmimeBoundaryName + "--\r\n");
 
             // Determine the body encoding, defaulting to UTF-8.
             Encoding bodyEncoding = BodyEncoding != null ? BodyEncoding : new UTF8Encoding();

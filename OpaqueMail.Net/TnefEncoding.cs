@@ -87,7 +87,7 @@ namespace OpaqueMail
                                     // Check if we've already found this attachment's filename, and if so, record it.
                                     if (!string.IsNullOrEmpty(currentAttachmentFileName))
                                     {
-                                        MimeAttachments.Add(new MimePart(currentAttachmentFileName, Functions.GetDefaultContentTypeForExtension(currentAttachmentFileName), "", "", data));
+                                        MimeAttachments.Add(new MimePart(currentAttachmentFileName, Functions.GetDefaultContentTypeForExtension(currentAttachmentFileName), "", "", "", data));
                                         currentAttachmentFileName = "";
                                     }
                                     else
@@ -97,7 +97,7 @@ namespace OpaqueMail
                                     // Check if we've already found this attachment's contents, and if so, record it.
                                     if (currentAttachmentBody != null)
                                     {
-                                        MimeAttachments.Add(new MimePart(ParseNullTerminatedString(Encoding.UTF8.GetString(data)), Functions.GetDefaultContentTypeForExtension(ParseNullTerminatedString(Encoding.UTF8.GetString(data))), "", "", currentAttachmentBody));
+                                        MimeAttachments.Add(new MimePart(ParseNullTerminatedString(Encoding.UTF8.GetString(data)), Functions.GetDefaultContentTypeForExtension(ParseNullTerminatedString(Encoding.UTF8.GetString(data))), "", "", "", currentAttachmentBody));
                                         currentAttachmentBody = null;
                                     }
                                     else
