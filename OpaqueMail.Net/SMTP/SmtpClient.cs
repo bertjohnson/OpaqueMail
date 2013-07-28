@@ -48,10 +48,10 @@ namespace OpaqueMail
         #endregion Public Members
 
         #region Protected Members
+        /// <summary>Text delimiting S/MIME alternative view message parts.</summary>
+        protected string SmimeAlternativeViewBoundaryName = "OpaqueMail-alternative-boundary";
         /// <summary>Text delimiting S/MIME message parts.</summary>
         protected string SmimeBoundaryName = "OpaqueMail-boundary";
-        /// <summary>Text delimiting S/MIME message parts related to encryption.</summary>
-        protected string SmimeEncryptedCmsBoundaryName = "OpaqueMail-encryption-boundary";
         /// <summary>Text delimiting S/MIME message parts related to signatures.</summary>
         protected string SmimeSignedCmsBoundaryName = "OpaqueMail-signature-boundary";
         /// <summary>Text delimiting MIME message parts in triple wrapped messages.</summary>
@@ -78,7 +78,7 @@ namespace OpaqueMail
                 base.Send(message);
             else
             {
-                Task.Run(() => SmimeSend(message)).Wait();
+                Task.Run(() => SmimeSendAsync(message)).Wait();
             }
         }
 
@@ -93,7 +93,7 @@ namespace OpaqueMail
             if (!message.SmimeSigned && !message.SmimeEncryptedEnvelope && !message.SmimeTripleWrapped)
                 base.Send(message);
             else
-                await SmimeSend(message);
+                await SmimeSendAsync(message);
         }
 
         /// <summary>
@@ -260,7 +260,7 @@ namespace OpaqueMail
         /// Necessary because the standard SmtpClient.Send() may slightly alter messages, invalidating signatures.
         /// </summary>
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
-        private async Task SmimeSendRaw(MailMessage message)
+        private async Task SmimeSendRawAsync(MailMessage message)
         {
             // Connect to the SMTP server.
             TcpClient SmtpTcpClient = new TcpClient();
@@ -317,7 +317,8 @@ namespace OpaqueMail
                 throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'MAIL FROM' and received '" + response + "'.");
 
             // Identify all recipients of the message.
-            rawHeaders.Append("To: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.To)) + "\r\n");
+            if (message.To.Count > 0)
+                rawHeaders.Append("To: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.To)) + "\r\n");
             foreach (MailAddress address in message.To)
             {
                 await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
@@ -326,7 +327,8 @@ namespace OpaqueMail
                     throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
             }
 
-            rawHeaders.Append("CC: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.CC)) + "\r\n");
+            if (message.CC.Count > 0)
+                rawHeaders.Append("CC: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.CC)) + "\r\n");
             foreach (MailAddress address in message.CC)
             {
                 await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
@@ -429,7 +431,7 @@ namespace OpaqueMail
         /// Helper function for sending the specified message to an SMTP server for delivery with S/MIME encoding.
         /// </summary>
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
-        private async Task SmimeSend(MailMessage message)
+        private async Task SmimeSendAsync(MailMessage message)
         {
             // Require one or more recipients.
             if (message.To.Count + message.CC.Count + message.Bcc.Count < 1)
@@ -452,7 +454,13 @@ namespace OpaqueMail
             }
 
             // Generate a multipart/mixed message containing the e-mail's body, alternate views, and attachments.
-            byte[] MIMEMessageBytes = await message.MIMEEncode(buffer, SmimeBoundaryName);
+            byte[] MIMEMessageBytes = await message.MIMEEncode(buffer, SmimeBoundaryName, SmimeAlternativeViewBoundaryName);
+            message.Headers["Content-Type"] = "multipart/mixed; boundary=\"" + SmimeBoundaryName + "\"";
+            message.Headers["Content-Transfer-Encoding"] = "7bit";
+
+            // Skip the MIME header.
+            message.Body = Encoding.UTF8.GetString(MIMEMessageBytes);
+            message.Body = message.Body.Substring(message.Body.IndexOf("\r\n\r\n") + 4);
 
             // Handle S/MIME signing.
             bool successfullySigned = false;
@@ -466,9 +474,7 @@ namespace OpaqueMail
                 {
                     message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeSignedCmsBoundaryName + "\"";
                     message.Headers["Content-Transfer-Encoding"] = "7bit";
-
-                    if (!message.SmimeTripleWrapped)
-                        message.Body = Encoding.UTF8.GetString(MIMEMessageBytes);
+                    message.Body = Encoding.UTF8.GetString(MIMEMessageBytes);
                 }
             }
 
@@ -481,7 +487,7 @@ namespace OpaqueMail
                 successfullyEncrypted = MIMEMessageBytes.Length != unencryptedSize;
 
                 // If the message won't be triple-wrapped, wrap the encrypted message with MIME.
-                if (successfullyEncrypted && !message.SmimeTripleWrapped)
+                if (successfullyEncrypted && (!successfullySigned || !message.SmimeTripleWrapped))
                 {
                     message.Headers["Content-Type"] = "application/pkcs7-mime; name=smime.p7m; smime-type=enveloped-data";
                     message.Headers["Content-Transfer-Encoding"] = "base64";
@@ -502,7 +508,7 @@ namespace OpaqueMail
 
             // Only repackage the message if it's either been signed or encrypted.
             if (successfullySigned || successfullyEncrypted)
-                await SmimeSendRaw(message);
+                await SmimeSendRawAsync(message);
             else
                 base.Send(message);
         }
@@ -561,10 +567,6 @@ namespace OpaqueMail
 
             // Embed the signed and original version of the message using MIME.
             StringBuilder messageBuilder = new StringBuilder();
-
-            // If this is a signed message only, the alternate view will have the appropriate Content Type.  Otherwise, embed it.
-            if ((message.SmimeEncryptedEnvelope || message.SmimeTripleWrapped) && !alreadyEncrypted)
-                messageBuilder.Append("Content-Type: multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeSignedCmsBoundaryName + "\"\r\n\r\n");
 
             // Build the MIME message by embedding the unsigned and signed portions.
             messageBuilder.Append("This is a multi-part S/MIME signed message.\r\n\r\n");

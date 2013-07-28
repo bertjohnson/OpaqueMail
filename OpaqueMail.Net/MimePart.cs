@@ -465,7 +465,7 @@ namespace OpaqueMail
                     switch (headerType)
                     {
                         case "content-disposition":
-                            mimeContentDisposition = headerValue.Trim();
+                            mimeContentDisposition += headerValue.Trim();
                             break;
                         case "content-id":
                             // Ignore opening and closing <> characters.

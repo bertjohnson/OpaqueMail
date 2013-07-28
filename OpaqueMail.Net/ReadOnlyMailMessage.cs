@@ -597,6 +597,12 @@ namespace OpaqueMail
                             // If the current body isn't text/html and this is, replace the default body with the current MIME part.
                             if (!ContentType.StartsWith("text/html") && mimePart.ContentType.StartsWith("text/html"))
                             {
+                                // Add the previous default body as an alternate view.
+                                MemoryStream alternateViewStream = new MemoryStream(Encoding.UTF8.GetBytes(Body));
+                                AlternateView alternateView = new AlternateView(alternateViewStream, ContentType);
+                                alternateView.TransferEncoding = BodyTransferEncoding;
+                                AlternateViews.Add(alternateView);
+
                                 IsBodyHtml = true;
                                 Body = mimePart.Body;
                                 CharSet = mimePart.CharSet;
