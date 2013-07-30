@@ -421,8 +421,6 @@ namespace OpaqueMail
                     }
                 }
 
-                File.WriteAllText("C:\\abc.txt", rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
-
                 await Functions.SendStreamStringAsync(SmtpStream, buffer, rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
             }
 
@@ -542,7 +540,7 @@ namespace OpaqueMail
                     if (message.Headers["Content-Disposition"] != null)
                         message.Headers.Remove("Content-Disposition");
 
-                    message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeSignedCmsBoundaryName + "\"";
+                    message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\r\n\tboundary=\"" + SmimeSignedCmsBoundaryName + "\"";
                     message.Headers["Content-Transfer-Encoding"] = "7bit";
                     message.Body = Encoding.UTF8.GetString(MIMEMessageBytes);
                 }
@@ -559,7 +557,7 @@ namespace OpaqueMail
                 // If the message won't be triple-wrapped, wrap the encrypted message with MIME.
                 if (successfullyEncrypted && (!successfullySigned || !message.SmimeTripleWrapped))
                 {
-                    message.Headers["Content-Type"] = "application/pkcs7-mime; name=smime.p7m; smime-type=enveloped-data";
+                    message.Headers["Content-Type"] = "application/pkcs7-mime; name=smime.p7m;\r\n\tsmime-type=enveloped-data";
                     message.Headers["Content-Transfer-Encoding"] = "base64";
 
                     message.Body = Functions.ToBase64String(MIMEMessageBytes) + "\r\n";
@@ -571,7 +569,7 @@ namespace OpaqueMail
             {
                 if (message.SmimeTripleWrapped)
                 {
-                    message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeTripleSignedCmsBoundaryName + "\"";
+                    message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\r\n\tboundary=\"" + SmimeTripleSignedCmsBoundaryName + "\"";
                     message.Headers["Content-Transfer-Encoding"] = "7bit";
 
                     message.Body = Encoding.UTF8.GetString(SmimeSign(buffer, MIMEMessageBytes, message, true));
@@ -616,8 +614,6 @@ namespace OpaqueMail
             }
             else
                 unsignedMessageBuilder.Append(Encoding.UTF8.GetString(contentBytes));
-
-            File.WriteAllText("C:\\unsigned.txt", unsignedMessageBuilder.ToString());
 
             // Prepare the signing parameters.
             ContentInfo contentInfo = new ContentInfo(Encoding.UTF8.GetBytes(unsignedMessageBuilder.ToString()));
