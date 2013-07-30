@@ -20,6 +20,8 @@ OpaqueMail S/MIME E-mail Proxy
 
 SMTP proxy to add S/MIME message signing, encryption, and authentication for outbound messages.
 
+Can also serve as a passthrough IMAP and POP3 proxy to import S/MIME certificates from incoming messages.
+
 Simplifies e-mail protection for Outlook, Thunderbird, and other Windows mail clients.
 
 Can be used to secure and authenticate mail programs that connect to SMTP servers anonymously (e.g. SharePoint).
