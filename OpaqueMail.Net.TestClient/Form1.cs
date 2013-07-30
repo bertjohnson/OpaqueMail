@@ -353,6 +353,8 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private void LoadSettingsButton_Click(object sender, EventArgs e)
         {
+            MailAddressCollection mac = Functions.FromMailAddressString("'Toni Johnson' <toni@tonij.net>");
+
             DialogResult result = MessageBox.Show("Are you sure?  All settings will be overwritten by the contents of \"OpaqueMail.TestClient.xml\".", "Confirm Load", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
             if (result == DialogResult.OK)
                 LoadSettings();

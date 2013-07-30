@@ -22,6 +22,8 @@ namespace OpaqueMail
     {
         #region Private Members
         /// <summary>List of all proxies that have been started.</summary>
+        private List<ImapProxy> imapProxies = null;
+        private List<Pop3Proxy> pop3Proxies = null;
         private List<SmtpProxy> smtpProxies = null;
         #endregion Private Members
 
@@ -41,6 +43,8 @@ namespace OpaqueMail
         /// </summary>
         protected override void OnStart(string[] args)
         {
+            imapProxies = ImapProxy.StartProxiesFromSettingsFile(GetSettingsFileName());
+            pop3Proxies = Pop3Proxy.StartProxiesFromSettingsFile(GetSettingsFileName());
             smtpProxies = SmtpProxy.StartProxiesFromSettingsFile(GetSettingsFileName());
         }
 
@@ -49,6 +53,20 @@ namespace OpaqueMail
         /// </summary>
         protected override void OnStop()
         {
+            if (imapProxies != null)
+            {
+                foreach (ImapProxy imapProxy in imapProxies)
+                    imapProxy.StopProxy();
+
+                imapProxies.Clear();
+            }
+            if (pop3Proxies != null)
+            {
+                foreach (Pop3Proxy pop3Proxy in pop3Proxies)
+                    pop3Proxy.StopProxy();
+
+                pop3Proxies.Clear();
+            }
             if (smtpProxies != null)
             {
                 foreach (SmtpProxy smtpProxy in smtpProxies)
@@ -84,7 +102,7 @@ namespace OpaqueMail
     {
         public ProxyServiceInstaller()
         {
-            Description = "Serves as a local SMTP proxy, optionally adding authentication and S/MIME signing or encryption to all outbound email.";
+            Description = "Serves as a local SMTP, IMAP, and POP3 proxy, optionally adding authentication and S/MIME signing or encryption to all outbound email.";
             DisplayName = "OpaqueMail Proxy";
             ServiceName = "OpaqueMailProxy";
             StartType = ServiceStartMode.Automatic;

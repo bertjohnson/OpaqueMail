@@ -181,7 +181,10 @@ namespace OpaqueMail
             foreach (Attachment attachment in this.Attachments)
             {
                 MIMEBuilder.Append("--" + SmimeBoundaryName + "\r\n");
-                MIMEBuilder.Append("Content-Type: application/octet-stream; file=" + attachment.Name + "\r\n");
+                if (attachment.Name.ToLower() == "smime.p7m")
+                    MIMEBuilder.Append("Content-Type: application/pkcs7-mime; name=smime.p7m; smime-type=enveloped-data\r\n");
+                else
+                    MIMEBuilder.Append("Content-Type: application/octet-stream; file=" + attachment.Name + "\r\n");
                 MIMEBuilder.Append("Content-Transfer-Encoding: base64\r\n");
                 if (!string.IsNullOrEmpty(attachment.ContentId))
                     MIMEBuilder.Append("Content-ID: <" + attachment.ContentId + ">\r\n");

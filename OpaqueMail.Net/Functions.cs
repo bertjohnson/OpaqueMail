@@ -469,83 +469,91 @@ namespace OpaqueMail
         /// <param name="input">The string to convert.</param>
         public static string FromQuotedPrintable(string input)
         {
-            // Remove carriage returns because they'll be added back in for line breaks (=0A).
-            input = input.Replace("=0D", "");
-
-            // Build a new string using the following buffer.
-            StringBuilder outputBuilder = new StringBuilder();
-
-            // Buffer for holding UTF-8 encoded characters.
-            byte[] utf8Buffer = new byte[1024];
-
-            // Loop through and process quoted-printable strings, denoted by equals signs.
-            int equalsPos = 0, lastPos = 0;
-            while (equalsPos > -1)
+            try
             {
-                lastPos = equalsPos;
-                equalsPos = input.IndexOf('=', equalsPos);
-                if (equalsPos > -1 && equalsPos < input.Length - 2)
+                // Remove carriage returns because they'll be added back in for line breaks (=0A).
+                input = input.Replace("=0D", "");
+
+                // Build a new string using the following buffer.
+                StringBuilder outputBuilder = new StringBuilder();
+
+                // Buffer for holding UTF-8 encoded characters.
+                byte[] utf8Buffer = new byte[1024];
+
+                // Loop through and process quoted-printable strings, denoted by equals signs.
+                int equalsPos = 0, lastPos = 0;
+                while (equalsPos > -1)
                 {
-                    outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
-
-                    string afterEquals = input.Substring(equalsPos + 1, 2);
-
-                    switch (afterEquals)
+                    lastPos = equalsPos;
+                    equalsPos = input.IndexOf('=', equalsPos);
+                    if (equalsPos > -1 && equalsPos < input.Length - 2)
                     {
-                        case "\r\n":
-                            break;
-                        case "09":
-                            outputBuilder.Append("\t");
-                            break;
-                        case "0A":
-                            outputBuilder.Append("\r\n");
-                            break;
-                        case "20":
-                            outputBuilder.Append(" ");
-                            break;
-                        default:
-                            int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
+                        outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
 
-                            // Handle values above 7F as UTF-8 encoded character sequences.
-                            bool processed = false;
-                            if (highByte > 127 && equalsPos < input.Length - 2)
-                            {
-                                utf8Buffer[0] = (byte)highByte;
-                                int utf8ByteCount = 1;
+                        string afterEquals = input.Substring(equalsPos + 1, 2);
 
-                                string encodedString = afterEquals;
-                                equalsPos += 3;
+                        switch (afterEquals)
+                        {
+                            case "\r\n":
+                                break;
+                            case "09":
+                                outputBuilder.Append("\t");
+                                break;
+                            case "0A":
+                                outputBuilder.Append("\r\n");
+                                break;
+                            case "20":
+                                outputBuilder.Append(" ");
+                                break;
+                            default:
+                                int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
 
-                                while (input.Substring(equalsPos, 1) == "=")
+                                // Handle values above 7F as UTF-8 encoded character sequences.
+                                bool processed = false;
+                                if (highByte > 127 && equalsPos < input.Length - 2)
                                 {
-                                    // Step over a line break if that breaks up our encoded string.
-                                    if (input.Substring(equalsPos + 1, 2) != "\r\n")
-                                        utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
+                                    utf8Buffer[0] = (byte)highByte;
+                                    int utf8ByteCount = 1;
 
+                                    string encodedString = afterEquals;
                                     equalsPos += 3;
+
+                                    while (input.Substring(equalsPos, 1) == "=")
+                                    {
+                                        // Step over a line break if that breaks up our encoded string.
+                                        if (input.Substring(equalsPos + 1, 2) != "\r\n")
+                                            utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
+
+                                        equalsPos += 3;
+                                    }
+
+                                    outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
+
+                                    processed = true;
+                                    equalsPos -= 3;
                                 }
 
-                                outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
+                                // Continue if we didn't run into a UTF-8 encoded character sequence.
+                                if (!processed)
+                                    outputBuilder.Append((char)highByte);
+                                break;
+                        }
 
-                                processed = true;
-                                equalsPos -= 3;
-                            }
-
-                            // Continue if we didn't run into a UTF-8 encoded character sequence.
-                            if (!processed)
-                                outputBuilder.Append((char)highByte);
-                            break;
+                        equalsPos += 3;
                     }
-
-                    equalsPos += 3;
+                    else
+                    {
+                        outputBuilder.Append(input.Substring(lastPos));
+                        equalsPos = -1;
+                    }
                 }
-                else
-                {
-                    outputBuilder.Append(input.Substring(lastPos));
-                    equalsPos = -1;
-                }
+                return outputBuilder.ToString();
             }
-            return outputBuilder.ToString();
+            catch (Exception)
+            {
+                // If the quoted-printable encoding is invalid, return the message as-is.
+                return input;
+            }
         }
 
         /// <summary>
@@ -651,8 +659,13 @@ namespace OpaqueMail
         /// <param name="buffer">A byte array to streamline bit shuffling.</param>
         public static string ReadStreamString(Stream stream, byte[] buffer)
         {
-            int bytesRead = stream.Read(buffer, 0, Constants.BUFFERSIZE);
-            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            if (stream.CanRead)
+            {
+                int bytesRead = stream.Read(buffer, 0, Constants.BUFFERSIZE);
+                return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            }
+            else
+                return "";
         }
 
         /// <summary>
@@ -663,8 +676,13 @@ namespace OpaqueMail
         /// <param name="maximumBytes">Maximum number of bytes to receive.</param>
         public static string ReadStreamString(Stream stream, byte[] buffer, int maximumBytes)
         {
-            int bytesRead = stream.Read(buffer, 0, maximumBytes);
-            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            if (stream.CanRead)
+            {
+                int bytesRead = stream.Read(buffer, 0, maximumBytes);
+                return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            }
+            else
+                return "";
         }
 
         /// <summary>
@@ -674,8 +692,13 @@ namespace OpaqueMail
         /// <param name="buffer">A byte array to streamline bit shuffling.</param>
         public async static Task<string> ReadStreamStringAsync(Stream stream, byte[] buffer)
         {
-            int bytesRead = await stream.ReadAsync(buffer, 0, Constants.BUFFERSIZE);
-            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            if (stream.CanRead)
+            {
+                int bytesRead = await stream.ReadAsync(buffer, 0, Constants.BUFFERSIZE);
+                return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            }
+            else
+                return "";
         }
 
         /// <summary>
@@ -686,8 +709,13 @@ namespace OpaqueMail
         /// <param name="maximumBytes">Maximum number of bytes to receive.</param>
         public async static Task<string> ReadStreamStringAsync(Stream stream, byte[] buffer, int maximumBytes)
         {
-            int bytesRead = await stream.ReadAsync(buffer, 0, maximumBytes);
-            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            if (stream.CanRead)
+            {
+                int bytesRead = await stream.ReadAsync(buffer, 0, maximumBytes);
+                return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            }
+            else
+                return "";
         }
 
         /// <summary>
@@ -904,6 +932,44 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Attempt to keep the number of characters per subject line to 78 or fewer.
+        /// </summary>
+        /// <param name="header"></param>
+        public static string SpanHeaderLines(string header)
+        {
+            if (header.Length > 78)
+            {
+                StringBuilder headerBuilder = new StringBuilder();
+
+                int pos = 0, lastPos = 0;
+                while (pos > -1 && pos < header.Length - 78)
+                {
+                    if (lastPos + 78 >= header.Length)
+                        pos = header.LastIndexOf(" ");
+                    else
+                        pos = header.LastIndexOf(" ", lastPos + 78);
+
+                    if (pos > -1)
+                    {
+                        if (pos > lastPos)
+                        {
+                            headerBuilder.Append(header.Substring(lastPos, pos - lastPos) + "\r\n\t");
+                            pos++;
+                        }
+                        else
+                            headerBuilder.Append(header.Substring(lastPos));
+                    }
+                    lastPos = pos;
+                }
+                headerBuilder.Append(header.Substring(lastPos));
+
+                return headerBuilder.ToString();
+            }
+            else
+                return header;
+        }
+
+        /// <summary>
         /// Encodes a message as a 7-bit string, spanned over lines of 100 base-64 characters each.
         /// </summary>
         /// <param name="message">The message to be 7-bit encoded.</param>
@@ -994,10 +1060,14 @@ namespace OpaqueMail
         /// <param name="address">MailAddress to display.</param>
         public static string ToMailAddressString(MailAddress address)
         {
-            if (!string.IsNullOrEmpty(address.DisplayName))
-                return address.DisplayName + " <" + address.Address + ">";
-            else
-                return address.Address;
+            if (address != null)
+            {
+                if (!string.IsNullOrEmpty(address.DisplayName))
+                    return address.DisplayName + " <" + address.Address + ">";
+                else
+                    return address.Address;
+            }
+            return "";
         }
 
         /// <summary>

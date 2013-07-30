@@ -20,6 +20,10 @@ namespace OpaqueMail.Net.ProxySettings
     {
         #region Private Members
         /// <summary>List of all proxies that have been started.</summary>
+        private List<ImapProxy> imapProxies = new List<ImapProxy>();
+        /// <summary>List of all proxies that have been started.</summary>
+        private List<Pop3Proxy> pop3Proxies = new List<Pop3Proxy>();
+        /// <summary>List of all proxies that have been started.</summary>
         private List<SmtpProxy> smtpProxies = new List<SmtpProxy>();
         /// <summary>The path where settings should be saved and loaded.</summary>
         private string SettingsFileName = "";
@@ -54,7 +58,7 @@ namespace OpaqueMail.Net.ProxySettings
                     XPathDocument document = new XPathDocument(SettingsFileName);
                     XPathNavigator navigator = document.CreateNavigator();
 
-                    OperationalModeWindowsService.Checked = GetXmlBoolValue(navigator, "/Settings/SMTP/RunAsService");
+                    OperationalModeWindowsService.Checked = GetXmlBoolValue(navigator, "/Settings/RunAsService");
 
                     // If the proxy is supposed to run as a Windows service, ensure it's started.
                     if (OperationalModeWindowsService.Checked)
@@ -70,7 +74,11 @@ namespace OpaqueMail.Net.ProxySettings
 
             // If the proxy isn't supposed to run as a Windows service, start all proxy instances from this application.
             if (!OperationalModeWindowsService.Checked)
+            {
+                imapProxies = ImapProxy.StartProxiesFromSettingsFile(SettingsFileName);
+                pop3Proxies = Pop3Proxy.StartProxiesFromSettingsFile(SettingsFileName);
                 smtpProxies = SmtpProxy.StartProxiesFromSettingsFile(SettingsFileName);
+            }
 
             // Update the service status message.
             RefreshServiceStatus();
@@ -87,7 +95,9 @@ CACert: http://cacert.org/";
             FreeCertificateSourcesLabel.Links.Add(235, 18, "http://cacert.org/");
             FreeCertificateSourcesLabel.LinkClicked += FreeCertificateSourcesLabel_LinkClicked;
 
-            ProxySettingsLabel.Text = "To configure OpaqueMail proxy settings, edit the following XML file:\r\n\r\n" + SettingsFileName + "\r\n\r\nOnce settings are changed, either restart the OpaqueMail Proxy service or this application.";
+            SmtpProxySettingsLabel.Text = "To configure OpaqueMail proxy settings, edit the following XML file:\r\n\r\n" + SettingsFileName + "\r\n\r\nOnce settings are changed, either restart the OpaqueMail Proxy service or this application.";
+            ImapProxySettingsLabel.Text = SmtpProxySettingsLabel.Text;
+            Pop3ProxySettingsLabel.Text = SmtpProxySettingsLabel.Text;
         }
 
         /// <summary>
@@ -171,6 +181,8 @@ CACert: http://cacert.org/";
                 UninstallService();
 
                 // Start all proxy instances.
+                imapProxies = ImapProxy.StartProxiesFromSettingsFile(SettingsFileName);
+                pop3Proxies = Pop3Proxy.StartProxiesFromSettingsFile(SettingsFileName);
                 smtpProxies = SmtpProxy.StartProxiesFromSettingsFile(SettingsFileName);
 
                 UpdateSettingsFile(false);
@@ -186,6 +198,10 @@ CACert: http://cacert.org/";
         {
             if (OperationalModeWindowsService.Checked)
             {
+                foreach (ImapProxy imapProxy in imapProxies)
+                    imapProxy.StopProxy();
+                foreach (Pop3Proxy pop3Proxy in pop3Proxies)
+                    pop3Proxy.StopProxy();
                 foreach (SmtpProxy smtpProxy in smtpProxies)
                     smtpProxy.StopProxy();
 
@@ -225,9 +241,9 @@ CACert: http://cacert.org/";
         }
 
         /// <summary>
-        /// Display configuration settings for local proxy service instances.
+        /// Display configuration settings for local IMAP proxy service instances.
         /// </summary>
-        private void RefreshServiceInstances()
+        private void RefreshImapServiceInstances()
         {
             if (File.Exists(SettingsFileName))
             {
@@ -236,7 +252,75 @@ CACert: http://cacert.org/";
                     XPathDocument document = new XPathDocument(SettingsFileName);
                     XPathNavigator navigator = document.CreateNavigator();
 
-                    ProxyInstanceGrid.Items.Clear();
+                    ImapProxyInstanceGrid.Items.Clear();
+
+                    int imapServiceCount = GetXmlIntValue(navigator, "/Settings/IMAP/ServiceCount");
+                    for (int i = 1; i <= imapServiceCount; i++)
+                    {
+                        string[] properties = new string[6];
+                        properties[0] = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LocalIPAddress");
+                        properties[1] = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LocalPort");
+                        properties[2] = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LocalEnableSSL");
+                        properties[3] = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerHostName");
+                        properties[4] = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerPort");
+                        properties[5] = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerEnableSSL");
+
+                        ImapProxyInstanceGrid.Items.Add(new ListViewItem(properties));
+                    }
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// Display configuration settings for local POP3 proxy service instances.
+        /// </summary>
+        private void RefreshPop3ServiceInstances()
+        {
+            if (File.Exists(SettingsFileName))
+            {
+                try
+                {
+                    XPathDocument document = new XPathDocument(SettingsFileName);
+                    XPathNavigator navigator = document.CreateNavigator();
+
+                    Pop3ProxyInstanceGrid.Items.Clear();
+
+                    int pop3ServiceCount = GetXmlIntValue(navigator, "/Settings/POP3/ServiceCount");
+                    for (int i = 1; i <= pop3ServiceCount; i++)
+                    {
+                        string[] properties = new string[6];
+                        properties[0] = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LocalIPAddress");
+                        properties[1] = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LocalPort");
+                        properties[2] = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LocalEnableSSL");
+                        properties[3] = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerHostName");
+                        properties[4] = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerPort");
+                        properties[5] = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerEnableSSL");
+
+                        Pop3ProxyInstanceGrid.Items.Add(new ListViewItem(properties));
+                    }
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+
+        /// <summary>
+        /// Display configuration settings for local SMTP proxy service instances.
+        /// </summary>
+        private void RefreshSmtpServiceInstances()
+        {
+            if (File.Exists(SettingsFileName))
+            {
+                try
+                {
+                    XPathDocument document = new XPathDocument(SettingsFileName);
+                    XPathNavigator navigator = document.CreateNavigator();
+
+                    SmtpProxyInstanceGrid.Items.Clear();
 
                     int smtpServiceCount = GetXmlIntValue(navigator, "/Settings/SMTP/ServiceCount");
                     for (int i = 1; i <= smtpServiceCount; i++)
@@ -245,11 +329,11 @@ CACert: http://cacert.org/";
                         properties[0] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LocalIPAddress");
                         properties[1] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LocalPort");
                         properties[2] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LocalEnableSSL");
-                        properties[3] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/DestinationHostName");
-                        properties[4] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/DestinationPort");
-                        properties[5] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/DestinationEnableSSL");
+                        properties[3] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerHostName");
+                        properties[4] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPort");
+                        properties[5] = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerEnableSSL");
 
-                        ProxyInstanceGrid.Items.Add(new ListViewItem(properties));
+                        SmtpProxyInstanceGrid.Items.Add(new ListViewItem(properties));
                     }
                 }
                 catch (Exception)
@@ -356,9 +440,15 @@ CACert: http://cacert.org/";
                     RefreshServiceStatus();
                     break;
                 case 1:
-                    RefreshServiceInstances();
+                    RefreshSmtpServiceInstances();
                     break;
                 case 2:
+                    RefreshImapServiceInstances();
+                    break;
+                case 3:
+                    RefreshPop3ServiceInstances();
+                    break;
+                case 4:
                     RefreshCertificates();
                     break;
             }

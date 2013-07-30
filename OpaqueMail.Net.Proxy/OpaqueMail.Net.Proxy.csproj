@@ -39,8 +39,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IMAP\ImapProxy.cs" />
+    <Compile Include="POP3\Pop3Proxy.cs" />
     <Compile Include="SMTP\SmtpProxy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProxyFunctions.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpaqueMail.Net.CertHelper\OpaqueMail.Net.CertHelper.csproj">

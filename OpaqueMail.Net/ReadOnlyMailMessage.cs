@@ -581,13 +581,14 @@ namespace OpaqueMail
                                 Body = mimePart.Body;
                                 CharSet = mimePart.CharSet;
                                 ContentType = mimePart.ContentType;
-                                BodyTransferEncoding = mimePart.ContentTransferEncoding;
+                                if (mimePart.ContentTransferEncoding != TransferEncoding.Unknown)
+                                    BodyTransferEncoding = mimePart.ContentTransferEncoding;
                             }
                             else
                             {
                                 // If the MIME part isn't of type text/*, treat is as an attachment.
                                 MemoryStream attachmentStream = new MemoryStream(mimePart.BodyBytes);
-                                Attachment attachment = new Attachment(mimePart.Name, mimePart.ContentType);
+                                Attachment attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
                                 attachment.ContentId = mimePart.ContentID;
                                 Attachments.Add(attachment);
                             }
@@ -600,14 +601,16 @@ namespace OpaqueMail
                                 // Add the previous default body as an alternate view.
                                 MemoryStream alternateViewStream = new MemoryStream(Encoding.UTF8.GetBytes(Body));
                                 AlternateView alternateView = new AlternateView(alternateViewStream, ContentType);
-                                alternateView.TransferEncoding = BodyTransferEncoding;
+                                if (BodyTransferEncoding != TransferEncoding.Unknown)
+                                    alternateView.TransferEncoding = BodyTransferEncoding;
                                 AlternateViews.Add(alternateView);
 
                                 IsBodyHtml = true;
                                 Body = mimePart.Body;
                                 CharSet = mimePart.CharSet;
                                 ContentType = mimePart.ContentType;
-                                BodyTransferEncoding = mimePart.ContentTransferEncoding;
+                                if (mimePart.ContentTransferEncoding != TransferEncoding.Unknown)
+                                    BodyTransferEncoding = mimePart.ContentTransferEncoding;
                             }
                             else
                             {

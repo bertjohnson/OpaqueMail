@@ -1363,6 +1363,11 @@ namespace OpaqueMail
                             receivingMessage = false;
                             response = response.Substring(commandTag.Length + 3, response.Length - commandTag.Length - 5);
                         }
+                        else if (response.StartsWith("+ "))
+                        {
+                            receivingMessage = false;
+                            response = response.Substring(commandTag.Length + 2, response.Length - commandTag.Length - 4);
+                        }
                     }
                 }
                 firstResponse = false;
@@ -1402,7 +1407,7 @@ namespace OpaqueMail
                         LastErrorMessage = response.Substring(commandTag.Length + 5);
                         return "";
                     }
-                    else if (firstResponse && (response.StartsWith(commandTag + " NO")))
+                    else if (response.StartsWith(commandTag + " NO"))
                     {
                         LastErrorMessage = response.Substring(commandTag.Length + 4);
                         return "";

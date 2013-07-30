@@ -134,15 +134,16 @@ namespace OpaqueMail
                 while (cursor > -1)
                 {
                     // Move cursor to the next boundary.
-                    cursor = body.IndexOf("--" + boundaryName, cursor, StringComparison.OrdinalIgnoreCase);
+                    cursor = body.IndexOf("--" + boundaryName + "\r\n", cursor, StringComparison.OrdinalIgnoreCase);
 
                     if (cursor > -1)
                     {
                         // Calculate the end boundary of the current MIME part.
-                        int boundaryEnd = body.IndexOf("\r\n--" + boundaryName, cursor + boundaryName.Length, StringComparison.OrdinalIgnoreCase);
+                        int mimeStartPosition = cursor + boundaryName.Length + 4;
+                        int boundaryEnd = body.IndexOf("\r\n--" + boundaryName, mimeStartPosition, StringComparison.OrdinalIgnoreCase);
                         if (boundaryEnd > -1)
                         {
-                            string mimeContents = body.Substring(cursor + boundaryName.Length + 4, boundaryEnd - cursor - boundaryName.Length - 4);
+                            string mimeContents = body.Substring(mimeStartPosition, boundaryEnd - mimeStartPosition);
 
                             // Extract the header portion of the current MIME part.
                             int mimeDivider = mimeContents.IndexOf("\r\n\r\n");
@@ -196,6 +197,11 @@ namespace OpaqueMail
                                             foreach (MimePart returnedMIMEPart in returnedMIMEParts)
                                                 mimeParts.Add(returnedMIMEPart);
                                         }
+                                        else
+                                        {
+                                            // If we were unable to decrypt, return this MIME part as-is.
+                                            processed = false;
+                                        }
                                     }
                                     else if (mimeContentType.StartsWith("application/ms-tnef") || mimeFileName.ToLower() == "winmail.dat")
                                     {
@@ -222,11 +228,6 @@ namespace OpaqueMail
 
                                     if (!processed)
                                     {
-                                        // Remove metadata from the Content Type string.
-                                        int contentTypeSemicolonPos = mimeContentType.IndexOf(";");
-                                        if (contentTypeSemicolonPos > -1)
-                                            mimeContentType = mimeContentType.Substring(0, contentTypeSemicolonPos);
-
                                         // Decode and add the message to the MIME parts collection.
                                         switch (mimeContentTransferEncoding)
                                         {
@@ -292,16 +293,25 @@ namespace OpaqueMail
             }
             else if (contentType.StartsWith("application/pkcs7-mime") || contentType.StartsWith("application/x-pkcs7-mime"))
             {
-                // Unless a flag has been set to include this *.p7m block, exclude it from attachments.
-                if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) > 0)
-                    mimeParts.Add(new MimePart("smime.p7m", contentType, "", "", "", body));
-
-                // Decrypt the MIME part and recurse through embedded MIME parts.
-                List<MimePart> returnedMIMEParts = ReturnDecryptedMimeParts(contentType, contentTransferEncoding, body, processingFlags);
-                if (returnedMIMEParts != null)
+                // Don't attempt to decrypt if this is a signed message only.
+                if (contentType.IndexOf("smime-type=signed-data") < 0)
                 {
-                    foreach (MimePart returnedMIMEPart in returnedMIMEParts)
-                        mimeParts.Add(returnedMIMEPart);
+                    // Unless a flag has been set to include this *.p7m block, exclude it from attachments.
+                    if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) > 0)
+                        mimeParts.Add(new MimePart("smime.p7m", contentType, "", "", "", body));
+
+                    // Decrypt the MIME part and recurse through embedded MIME parts.
+                    List<MimePart> returnedMIMEParts = ReturnDecryptedMimeParts(contentType, contentTransferEncoding, body, processingFlags);
+                    if (returnedMIMEParts != null)
+                    {
+                        foreach (MimePart returnedMIMEPart in returnedMIMEParts)
+                            mimeParts.Add(returnedMIMEPart);
+                    }
+                    else
+                    {
+                        // If we were unable to decrypt the message, pass it along as-is.
+                        mimeParts.Add(new MimePart(Functions.ReturnBetween(contentType + ";", "name=", ";").Replace("\"", ""), contentType, "", "", contentTransferEncoding, body));
+                    }
                 }
             }
             else

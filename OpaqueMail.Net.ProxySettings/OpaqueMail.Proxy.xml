@@ -1,15 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <Settings>
+  <RunAsService>True</RunAsService>
   <SMTP>
-    <RunAsService>True</RunAsService>
-    <ServiceCount>2</ServiceCount>
+    <ServiceCount>1</ServiceCount>
     <Service1>
       <LocalIPAddress>Any</LocalIPAddress>
       <LocalPort>587</LocalPort>
       <LocalEnableSSL>True</LocalEnableSSL>
-      <DestinationHostName>smtp.gmail.com</DestinationHostName>
-      <DestinationPort>587</DestinationPort>
-      <DestinationEnableSSL>True</DestinationEnableSSL>
+      <RemoteServerHostName>smtp.gmail.com</RemoteServerHostName>
+      <RemoteServerPort>587</RemoteServerPort>
+      <RemoteServerEnableSSL>True</RemoteServerEnableSSL>
       <Certificate>
         <Location>LocalMachine</Location>
       </Certificate>
@@ -18,6 +18,31 @@
       <SMIMESign>True</SMIMESign>
       <SMIMETripleWrap>True</SMIMETripleWrap>
       <LogFile>SMTPProxy.log</LogFile>
-    </Service1>
+    
+  </Service1>
   </SMTP>
+  <IMAP>
+    <ServiceCount>1</ServiceCount>
+    <Service1>
+      <LocalIPAddress>Any</LocalIPAddress>
+      <LocalPort>993</LocalPort>
+      <LocalEnableSSL>True</LocalEnableSSL>
+      <RemoteServerHostName>imap.gmail.com</RemoteServerHostName>
+      <RemoteServerPort>993</RemoteServerPort>
+      <RemoteServerEnableSSL>True</RemoteServerEnableSSL>
+      <LogFile>IMAPProxy.log</LogFile>
+    </Service1>
+  </IMAP>
+  <POP3>
+    <ServiceCount>1</ServiceCount>
+    <Service1>
+      <LocalIPAddress>Any</LocalIPAddress>
+      <LocalPort>995</LocalPort>
+      <LocalEnableSSL>True</LocalEnableSSL>
+      <RemoteServerHostName>pop3.live.com</RemoteServerHostName>
+      <RemoteServerPort>995</RemoteServerPort>
+      <RemoteServerEnableSSL>True</RemoteServerEnableSSL>
+      <LogFile>POP3Proxy.log</LogFile>
+    </Service1>
+  </POP3>
 </Settings>

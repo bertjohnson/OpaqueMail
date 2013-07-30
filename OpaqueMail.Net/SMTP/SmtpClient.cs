@@ -25,18 +25,30 @@ namespace OpaqueMail
         /// <summary>
         /// Initializes a new instance of the OpaqueMail.SmtpClient class by using configuration file settings.
         /// </summary>
-        public SmtpClient() : base() { }
+        public SmtpClient()
+            : base()
+        {
+            RandomizeBoundaryNames();
+        }
         /// <summary>
         /// Initializes a new instance of the OpaqueMail.SmtpClient class that sends e-mail by using the specified SMTP server.
         /// </summary>
         /// <param name="host">Name or IP of the host used for SMTP transactions.</param>
-        public SmtpClient(string host) : base(host) { }
+        public SmtpClient(string host)
+            : base(host)
+        {
+            RandomizeBoundaryNames();
+        }
         /// <summary>
         /// Initializes a new instance of the OpaqueMail.SmtpClient class that sends e-mail by using the specified SMTP server and port.
         /// </summary>
         /// <param name="host">Name or IP of the host used for SMTP transactions.</param>
         /// <param name="port">Port to be used by the host.</param>
-        public SmtpClient(string host, int port) : base(host, port) { }
+        public SmtpClient(string host, int port)
+            : base(host, port)
+        {
+            RandomizeBoundaryNames();
+        }
         #endregion Constructors
 
         #region Public Members
@@ -75,7 +87,13 @@ namespace OpaqueMail
         {
             // If not performing any S/MIME encryption or signing, use the default System.Net.Mail.SmtpClient Send() method.
             if (!message.SmimeSigned && !message.SmimeEncryptedEnvelope && !message.SmimeTripleWrapped)
-                base.Send(message);
+            {
+                // If this is a read-only message, it was forwarded by the Proxy and should be sent raw.
+                if (message is ReadOnlyMailMessage)
+                    Task.Run(() => SmimeSendRawAsync(message)).Wait();
+                else
+                    base.Send(message);
+            }
             else
             {
                 Task.Run(() => SmimeSendAsync(message)).Wait();
@@ -91,7 +109,13 @@ namespace OpaqueMail
         {
             // If not performing any S/MIME encryption or signing, use the default System.Net.Mail.SmtpClient Send() method.
             if (!message.SmimeSigned && !message.SmimeEncryptedEnvelope && !message.SmimeTripleWrapped)
-                base.Send(message);
+            {
+                // If this is a read-only message, it was forwarded by the Proxy and should be sent raw.
+                if (message is ReadOnlyMailMessage)
+                    await SmimeSendRawAsync(message);
+                else
+                    base.Send(message);
+            }
             else
                 await SmimeSendAsync(message);
         }
@@ -112,6 +136,30 @@ namespace OpaqueMail
         #endregion Public Methods
 
         #region Private Methods
+        /// <summary>
+        /// Ensure boundary names are unique.
+        /// </summary>
+        private void RandomizeBoundaryNames()
+        {
+            string boundaryRandomness = "";
+            Random randomGenerator = new Random();
+
+            // Append 10 random characters.
+            for (int i = 0; i < 10; i++)
+            {
+                int nextCharacter = randomGenerator.Next(1, 36);
+                if (nextCharacter > 26)
+                    boundaryRandomness += (char)(47 + nextCharacter);
+                else
+                    boundaryRandomness += (char)(64 + nextCharacter);
+            }
+
+            SmimeAlternativeViewBoundaryName += "-" + boundaryRandomness;
+            SmimeBoundaryName += "-" + boundaryRandomness;
+            SmimeSignedCmsBoundaryName += "-" + boundaryRandomness;
+            SmimeTripleSignedCmsBoundaryName += "-" + boundaryRandomness;
+        }
+
         /// <summary>
         /// Helper function to look up and validate public keys for each recipient.
         /// </summary>
@@ -310,7 +358,7 @@ namespace OpaqueMail
             StringBuilder rawHeaders = new StringBuilder();
 
             // Specify who the message is from.
-            rawHeaders.Append("From: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.From)) + "\r\n");
+            rawHeaders.Append(Functions.SpanHeaderLines("From: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.From))) + "\r\n");
             await Functions.SendStreamStringAsync(SmtpStream, buffer, "MAIL FROM:<" + message.From.Address + ">\r\n");
             response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
             if (!response.StartsWith("2"))
@@ -318,7 +366,7 @@ namespace OpaqueMail
 
             // Identify all recipients of the message.
             if (message.To.Count > 0)
-                rawHeaders.Append("To: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.To)) + "\r\n");
+                rawHeaders.Append(Functions.SpanHeaderLines("To: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.To))) + "\r\n");
             foreach (MailAddress address in message.To)
             {
                 await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
@@ -328,7 +376,7 @@ namespace OpaqueMail
             }
 
             if (message.CC.Count > 0)
-                rawHeaders.Append("CC: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.CC)) + "\r\n");
+                rawHeaders.Append(Functions.SpanHeaderLines("CC: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.CC))) + "\r\n");
             foreach (MailAddress address in message.CC)
             {
                 await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
@@ -351,24 +399,32 @@ namespace OpaqueMail
             if (!response.StartsWith("3"))
                 throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'DATA' and received '" + response + "'.");
 
-            rawHeaders.Append("Subject: " + Functions.EncodeMailHeader(message.Subject) + "\r\n");
-            foreach (string rawHeader in message.Headers)
+            // If a read-only mail message is passed in with its raw headers and body, save a few steps by sending that directly.
+            if (message is ReadOnlyMailMessage)
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, ((ReadOnlyMailMessage)message).RawHeaders + "\r\n" + ((ReadOnlyMailMessage)message).RawBody + "\r\n.\r\n");
+            else
             {
-                switch (rawHeader.ToUpper())
+                rawHeaders.Append(Functions.SpanHeaderLines("Subject: " + Functions.EncodeMailHeader(message.Subject)) + "\r\n");
+                foreach (string rawHeader in message.Headers)
                 {
-                    case "BCC":
-                    case "CC":
-                    case "FROM":
-                    case "SUBJECT":
-                    case "TO":
-                        break;
-                    default:
-                        rawHeaders.Append(rawHeader + ": " + message.Headers[rawHeader] + "\r\n");
-                        break;
+                    switch (rawHeader.ToUpper())
+                    {
+                        case "BCC":
+                        case "CC":
+                        case "FROM":
+                        case "SUBJECT":
+                        case "TO":
+                            break;
+                        default:
+                            rawHeaders.Append(Functions.SpanHeaderLines(rawHeader + ": " + message.Headers[rawHeader]) + "\r\n");
+                            break;
+                    }
                 }
-            }
 
-            await Functions.SendStreamStringAsync(SmtpStream, buffer, rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
+                File.WriteAllText("C:\\abc.txt", rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
+
+                await Functions.SendStreamStringAsync(SmtpStream, buffer, rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
+            }
 
             response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
             if (!response.StartsWith("2"))
@@ -386,8 +442,18 @@ namespace OpaqueMail
         /// <param name="buffer">A byte array to streamline bit shuffling.</param>
         /// <param name="contentBytes">The contents of the envelope to be encrypted.</param>
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
-        private byte[] SmimeEncryptEnvelope(byte[] buffer, byte[] contentBytes, MailMessage message)
+        private byte[] SmimeEncryptEnvelope(byte[] buffer, byte[] contentBytes, MailMessage message, bool alreadySigned)
         {
+            if (alreadySigned)
+            {
+                // If already signed, prepend S/MIME headers.
+                StringBuilder contentBuilder = new StringBuilder();
+                contentBuilder.Append("Content-Type: multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\r\n\tboundary=\"" + SmimeSignedCmsBoundaryName + "\"\r\n");
+                contentBuilder.Append("Content-Transfer-Encoding: 7bit\r\n\r\n");
+
+                contentBytes = Encoding.UTF8.GetBytes(contentBuilder.ToString() + Encoding.UTF8.GetString(contentBytes));
+            }
+
             // Prepare the encryption envelope.
             ContentInfo contentInfo = new ContentInfo(contentBytes);
 
@@ -472,6 +538,10 @@ namespace OpaqueMail
 
                 if (successfullySigned)
                 {
+                    // Remove any prior content dispositions.
+                    if (message.Headers["Content-Disposition"] != null)
+                        message.Headers.Remove("Content-Disposition");
+
                     message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeSignedCmsBoundaryName + "\"";
                     message.Headers["Content-Transfer-Encoding"] = "7bit";
                     message.Body = Encoding.UTF8.GetString(MIMEMessageBytes);
@@ -483,7 +553,7 @@ namespace OpaqueMail
             if (message.SmimeEncryptedEnvelope || message.SmimeTripleWrapped)
             {
                 int unencryptedSize = MIMEMessageBytes.Length;
-                MIMEMessageBytes = SmimeEncryptEnvelope(buffer, MIMEMessageBytes, message);
+                MIMEMessageBytes = SmimeEncryptEnvelope(buffer, MIMEMessageBytes, message, successfullySigned);
                 successfullyEncrypted = MIMEMessageBytes.Length != unencryptedSize;
 
                 // If the message won't be triple-wrapped, wrap the encrypted message with MIME.
@@ -491,26 +561,26 @@ namespace OpaqueMail
                 {
                     message.Headers["Content-Type"] = "application/pkcs7-mime; name=smime.p7m; smime-type=enveloped-data";
                     message.Headers["Content-Transfer-Encoding"] = "base64";
-                    message.Headers["Content-Disposition"] = "attachment; filename=smime.p7m";
 
                     message.Body = Functions.ToBase64String(MIMEMessageBytes) + "\r\n";
                 }
             }
 
             // Handle S/MIME triple wrapping (i.e. signing, envelope encryption, then signing again).
-            if (successfullyEncrypted && message.SmimeTripleWrapped)
+            if (successfullyEncrypted)
             {
-                message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeTripleSignedCmsBoundaryName + "\"";
-                message.Headers["Content-Transfer-Encoding"] = "7bit";
+                if (message.SmimeTripleWrapped)
+                {
+                    message.Headers["Content-Type"] = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1; boundary=\"" + SmimeTripleSignedCmsBoundaryName + "\"";
+                    message.Headers["Content-Transfer-Encoding"] = "7bit";
 
-                message.Body = Encoding.UTF8.GetString(SmimeSign(buffer, MIMEMessageBytes, message, true));
+                    message.Body = Encoding.UTF8.GetString(SmimeSign(buffer, MIMEMessageBytes, message, true));
+                }
+                else
+                    message.Headers["Content-Disposition"] = "attachment; filename=smime.p7m";
             }
 
-            // Only repackage the message if it's either been signed or encrypted.
-            if (successfullySigned || successfullyEncrypted)
-                await SmimeSendRawAsync(message);
-            else
-                base.Send(message);
+            await SmimeSendRawAsync(message);
         }
 
         /// <summary>
@@ -537,7 +607,7 @@ namespace OpaqueMail
             // If triple wrapping, the previous layer was an encrypted envelope and needs to be Base64 encoded.
             if (alreadyEncrypted)
             {
-                unsignedMessageBuilder.Append("Content-Type: application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"\r\n");
+                unsignedMessageBuilder.Append("Content-Type: application/pkcs7-mime; smime-type=enveloped-data;\r\n\tname=\"smime.p7m\"\r\n");
                 unsignedMessageBuilder.Append("Content-Transfer-Encoding: base64\r\n");
                 unsignedMessageBuilder.Append("Content-Description: \"S/MIME Cryptographic envelopedCms\"\r\n");
                 unsignedMessageBuilder.Append("Content-Disposition: attachment; filename=\"smime.p7m\"\r\n\r\n");
@@ -546,6 +616,8 @@ namespace OpaqueMail
             }
             else
                 unsignedMessageBuilder.Append(Encoding.UTF8.GetString(contentBytes));
+
+            File.WriteAllText("C:\\unsigned.txt", unsignedMessageBuilder.ToString());
 
             // Prepare the signing parameters.
             ContentInfo contentInfo = new ContentInfo(Encoding.UTF8.GetBytes(unsignedMessageBuilder.ToString()));
