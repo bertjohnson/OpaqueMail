@@ -12,8 +12,13 @@ namespace OpaqueMail
     public class Constants
     {
         /// <summary>
-        /// Default buffer size for bit shuffling.
+        /// Large buffer size for bit shuffling.
         /// </summary>
-        public const int BUFFERSIZE = 16777216;
+        public const int LARGEBUFFERSIZE = 16777216;
+
+        /// <summary>
+        /// Small buffer size for bit shuffling.
+        /// </summary>
+        public const int SMALLBUFFERSIZE = 65536;
     }
 }

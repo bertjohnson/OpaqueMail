@@ -156,7 +156,7 @@ namespace OpaqueMail
         /// <summary>Stream for communicating with the IMAP server.</summary>
         private Stream ImapStream;
         /// <summary>Buffer used during various S/MIME operations.</summary>
-        private byte[] InternalBuffer = new byte[Constants.BUFFERSIZE];
+        private byte[] InternalBuffer = new byte[Constants.LARGEBUFFERSIZE];
         /// <summary>The authentication state when capabilities were last queried.</summary>
         private bool LastCapabilitiesCheckAuthenticationState = false;
         /// <summary>Whether the session has successfully been authenticated.</summary>
@@ -1603,7 +1603,7 @@ namespace OpaqueMail
         /// Should always be followed by GetImapStreamString.
         /// </summary>
         /// <param name="command">Text to transmit.</param>
-        public async void SendCommandAsync(string command)
+        public async Task SendCommandAsync(string command)
         {
             await SendCommandAsync(SessionCommandTag, command);
         }

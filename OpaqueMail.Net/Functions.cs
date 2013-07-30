@@ -661,7 +661,7 @@ namespace OpaqueMail
         {
             if (stream.CanRead)
             {
-                int bytesRead = stream.Read(buffer, 0, Constants.BUFFERSIZE);
+                int bytesRead = stream.Read(buffer, 0, Constants.LARGEBUFFERSIZE);
                 return Encoding.UTF8.GetString(buffer, 0, bytesRead);
             }
             else
@@ -694,7 +694,7 @@ namespace OpaqueMail
         {
             if (stream.CanRead)
             {
-                int bytesRead = await stream.ReadAsync(buffer, 0, Constants.BUFFERSIZE);
+                int bytesRead = await stream.ReadAsync(buffer, 0, Constants.LARGEBUFFERSIZE);
                 return Encoding.UTF8.GetString(buffer, 0, bytesRead);
             }
             else

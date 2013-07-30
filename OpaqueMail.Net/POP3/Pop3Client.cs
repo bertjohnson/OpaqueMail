@@ -115,7 +115,7 @@ namespace OpaqueMail
 
         #region Private Members
         /// <summary>Buffer used during various S/MIME operations.</summary>
-        private byte[] InternalBuffer = new byte[Constants.BUFFERSIZE];
+        private byte[] InternalBuffer = new byte[Constants.LARGEBUFFERSIZE];
         /// <summary>Connection to the remote POP3 server.</summary>
         private TcpClient Pop3TcpClient;
         /// <summary>Stream for communicating with the POP3 server.</summary>
@@ -752,7 +752,7 @@ namespace OpaqueMail
             bool receivingMessage = true, firstResponse = true;
             while (receivingMessage)
             {
-                int bytesRead = Pop3Stream.Read(InternalBuffer, 0, Constants.BUFFERSIZE);
+                int bytesRead = Pop3Stream.Read(InternalBuffer, 0, Constants.LARGEBUFFERSIZE);
                 response += Encoding.UTF8.GetString(InternalBuffer, 0, bytesRead);
 
                 // Deal with bad commands and responses with errors.
@@ -825,7 +825,7 @@ namespace OpaqueMail
             bool receivingMessage = true, firstResponse = true;
             while (receivingMessage)
             {
-                int bytesRead = await Pop3Stream.ReadAsync(InternalBuffer, 0, Constants.BUFFERSIZE);
+                int bytesRead = await Pop3Stream.ReadAsync(InternalBuffer, 0, Constants.LARGEBUFFERSIZE);
                 response += Encoding.UTF8.GetString(InternalBuffer, 0, bytesRead);
 
                 // Deal with bad commands and responses with errors.

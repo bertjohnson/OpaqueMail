@@ -72,7 +72,7 @@ namespace OpaqueMail
 
         #region Private Members
         /// <summary>Buffer used during various S/MIME operations.</summary>
-        private byte[] buffer = new byte[Constants.BUFFERSIZE];
+        private byte[] buffer = new byte[Constants.LARGEBUFFERSIZE];
         /// <summary>Cache of recipient public keys to speed up subsequent usage of this SmtpClient.</summary>
         private Dictionary<string, X509Certificate2> SmimeCertificateCache = new Dictionary<string, X509Certificate2>();
         #endregion Private Members
@@ -232,7 +232,7 @@ namespace OpaqueMail
                         if (!addressesNeedingPublicKeys.ContainsKey(canonicalCertSubject))
                             continue;
                     }
-                    else if (cert.Subject.StartsWith("SN="))
+                    else if (cert.Subject.StartsWith("CN="))
                     {
                         canonicalCertSubject = cert.Subject.Substring(3).ToUpper();
                         int certSubjectComma = canonicalCertSubject.IndexOf(",");
@@ -442,22 +442,6 @@ namespace OpaqueMail
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
         private byte[] SmimeEncryptEnvelope(byte[] buffer, byte[] contentBytes, MailMessage message, bool alreadySigned)
         {
-            if (alreadySigned)
-            {
-                // If already signed, prepend S/MIME headers.
-                StringBuilder contentBuilder = new StringBuilder();
-                contentBuilder.Append("Content-Type: multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\r\n\tboundary=\"" + SmimeSignedCmsBoundaryName + "\"\r\n");
-                contentBuilder.Append("Content-Transfer-Encoding: 7bit\r\n\r\n");
-
-                contentBytes = Encoding.UTF8.GetBytes(contentBuilder.ToString() + Encoding.UTF8.GetString(contentBytes));
-            }
-
-            // Prepare the encryption envelope.
-            ContentInfo contentInfo = new ContentInfo(contentBytes);
-
-            // Default to using the AES 256-bit alogorithm with CBC.
-            EnvelopedCms envelope = new EnvelopedCms(contentInfo, new AlgorithmIdentifier(new Oid("2.16.840.1.101.3.4.1.42")));
-
             // Resolve recipient public keys.
             Dictionary<string, MailAddress> addressesNeedingPublicKeys;
             HashSet<string> addressesWithPublicKeys;
@@ -480,6 +464,22 @@ namespace OpaqueMail
                 else
                     return contentBytes;
             }
+
+            if (alreadySigned)
+            {
+                // If already signed, prepend S/MIME headers.
+                StringBuilder contentBuilder = new StringBuilder();
+                contentBuilder.Append("Content-Type: multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\r\n\tboundary=\"" + SmimeSignedCmsBoundaryName + "\"\r\n");
+                contentBuilder.Append("Content-Transfer-Encoding: 7bit\r\n\r\n");
+
+                contentBytes = Encoding.UTF8.GetBytes(contentBuilder.ToString() + Encoding.UTF8.GetString(contentBytes));
+            }
+
+            // Prepare the encryption envelope.
+            ContentInfo contentInfo = new ContentInfo(contentBytes);
+
+            // Default to using the AES 256-bit alogorithm with CBC.
+            EnvelopedCms envelope = new EnvelopedCms(contentInfo, new AlgorithmIdentifier(new Oid("2.16.840.1.101.3.4.1.42")));
 
             // Encrypt the symmetric session key using each recipient's public key.
             foreach (string addressWithPublicKey in addressesWithPublicKeys)
