@@ -8,6 +8,7 @@ namespace OpaqueMail
 {
     public partial class ImapClient
     {
+        #region Public Methods
         /// <summary>
         /// Add one or more flags to a message, referenced by its index.
         /// </summary>
@@ -585,5 +586,39 @@ namespace OpaqueMail
         {
             return Task.Run(() => UnsubscribeMailboxAsync(mailboxName)).Result;
         }
+        #endregion Public Methods
+
+        #region Private Methods
+        /// <summary>
+        /// Read the last response from the IMAP server tied to a specific command tag.
+        /// </summary>
+        /// <param name="commandTag">Command tag identifying the command and its response</param>
+        /// <param name="previousCommand">The previous command issued to the server.</param>
+        private string ReadData(string commandTag, string previousCommand)
+        {
+            return Task.Run(() => ReadDataAsync(commandTag, previousCommand)).Result;
+        }
+        /// <summary>
+        /// Send a message to the IMAP server.
+        /// Should always be followed by GetImapStreamString.
+        /// </summary>
+        /// <param name="command">Text to transmit.</param>
+        private void SendCommand(string command)
+        {
+            SendCommand(SessionCommandTag, command);
+        }
+
+        /// <summary>
+        /// Send a message to the IMAP server, specifying a unique command tag.
+        /// Should always be followed by GetImapStreamString.
+        /// </summary>
+        /// <param name="commandTag">Command tag identifying the command and its response</param>
+        /// <param name="command">Text to transmit.</param>
+        private void SendCommand(string commandTag, string command)
+        {
+            LastCommandIssued = commandTag + " " + command;
+            Functions.SendStreamString(ImapStream, InternalBuffer, commandTag + " " + command);
+        }
+        #endregion Private Methods
     }
 }

@@ -12,23 +12,10 @@ namespace OpaqueMail
 {
     /// <summary>
     /// Allows applications to retrieve and manage e-mail by using the Post Office Protocol (POP3).
-    /// Includes OpaqueMail extensions to facilitate processing of secure S/MIME messages.
     /// </summary>
+    /// <remarks>Includes OpaqueMail extensions to facilitate processing of secure S/MIME messages.</remarks>
     public class Pop3Client : IDisposable
     {
-        #region Constructors
-        /// <summary>
-        /// Initializes a new instance of the OpaqueMail.Pop3Client class by using the specified settings.
-        /// </summary>
-        public Pop3Client(string host, int port, string userName, string password, bool enableSSL)
-        {
-            Host = host;
-            Port = port;
-            Credentials = new NetworkCredential(userName, password);
-            EnableSsl = enableSSL;
-        }
-        #endregion Constructors
-
         #region Public Members
         /// <summary>Optional shared secret for securing authentication via the APOP command.</summary>
         public string APOPSharedSecret = "";
@@ -132,6 +119,35 @@ namespace OpaqueMail
         private bool SessionIsAuthenticated = false;
         #endregion Private Members
 
+        #region Constructors
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.Pop3Client class by using the specified settings.
+        /// </summary>
+        /// <param name="host">Name or IP of the host used for POP3 transactions.</param>
+        /// <param name="port">Port to be used by the host.</param>
+        /// <param name="userName">The username associated with this connection.</param>
+        /// <param name="password">The password associated with this connection.</param>
+        /// <param name="enableSSL">Whether the POP3 connection uses TLS / SSL protection.</param>
+        public Pop3Client(string host, int port, string userName, string password, bool enableSSL)
+        {
+            Host = host;
+            Port = port;
+            Credentials = new NetworkCredential(userName, password);
+            EnableSsl = enableSSL;
+        }
+
+        /// <summary>
+        /// Default destructor.
+        /// </summary>
+        ~Pop3Client()
+        {
+            if (Pop3Stream != null)
+                Pop3Stream.Dispose();
+            if (Pop3TcpClient != null)
+                Pop3TcpClient.Close();
+        }
+        #endregion Constructors
+
         #region Public Methods
         /// <summary>
         /// Perform an authentication handshake with the POP3 server.
@@ -186,7 +202,7 @@ namespace OpaqueMail
 
                 return true;
             }
-            catch (Exception)
+            catch
             {
                 if (Pop3Stream != null)
                     Pop3Stream.Dispose();

@@ -48,13 +48,7 @@
             this.DestinationUseSSL = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.SmtpProxySettingsGroup = new System.Windows.Forms.GroupBox();
             this.SmtpProxySettingsLabel = new System.Windows.Forms.Label();
-            this.CertificatesTab = new System.Windows.Forms.TabPage();
-            this.FreeCertificateSourcesGroup = new System.Windows.Forms.GroupBox();
-            this.FreeCertificateSourcesLabel = new System.Windows.Forms.LinkLabel();
-            this.SigningCertificatesGroup = new System.Windows.Forms.GroupBox();
-            this.SigningCertificatesLabel = new System.Windows.Forms.Label();
             this.ImapSettingsTab = new System.Windows.Forms.TabPage();
-            this.Pop3SettingsTab = new System.Windows.Forms.TabPage();
             this.ImapProxyInstanceGroup = new System.Windows.Forms.GroupBox();
             this.ImapProxyInstanceGrid = new System.Windows.Forms.ListView();
             this.columnHeader1 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -65,6 +59,7 @@
             this.columnHeader6 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.ImapProxySettingsGroup = new System.Windows.Forms.GroupBox();
             this.ImapProxySettingsLabel = new System.Windows.Forms.Label();
+            this.Pop3SettingsTab = new System.Windows.Forms.TabPage();
             this.Pop3ProxyInstanceGroup = new System.Windows.Forms.GroupBox();
             this.Pop3ProxyInstanceGrid = new System.Windows.Forms.ListView();
             this.columnHeader7 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -75,6 +70,11 @@
             this.columnHeader12 = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.Pop3ProxySettingsGroup = new System.Windows.Forms.GroupBox();
             this.Pop3ProxySettingsLabel = new System.Windows.Forms.Label();
+            this.CertificatesTab = new System.Windows.Forms.TabPage();
+            this.FreeCertificateSourcesGroup = new System.Windows.Forms.GroupBox();
+            this.FreeCertificateSourcesLabel = new System.Windows.Forms.LinkLabel();
+            this.SigningCertificatesGroup = new System.Windows.Forms.GroupBox();
+            this.SigningCertificatesLabel = new System.Windows.Forms.Label();
             this.Tabs.SuspendLayout();
             this.StartupTab.SuspendLayout();
             this.ProxyStatusGroup.SuspendLayout();
@@ -82,15 +82,15 @@
             this.SmtpSettingsTab.SuspendLayout();
             this.SmtpProxyInstanceGroup.SuspendLayout();
             this.SmtpProxySettingsGroup.SuspendLayout();
+            this.ImapSettingsTab.SuspendLayout();
+            this.ImapProxyInstanceGroup.SuspendLayout();
+            this.ImapProxySettingsGroup.SuspendLayout();
+            this.Pop3SettingsTab.SuspendLayout();
+            this.Pop3ProxyInstanceGroup.SuspendLayout();
+            this.Pop3ProxySettingsGroup.SuspendLayout();
             this.CertificatesTab.SuspendLayout();
             this.FreeCertificateSourcesGroup.SuspendLayout();
             this.SigningCertificatesGroup.SuspendLayout();
-            this.ImapSettingsTab.SuspendLayout();
-            this.Pop3SettingsTab.SuspendLayout();
-            this.ImapProxyInstanceGroup.SuspendLayout();
-            this.ImapProxySettingsGroup.SuspendLayout();
-            this.Pop3ProxyInstanceGroup.SuspendLayout();
-            this.Pop3ProxySettingsGroup.SuspendLayout();
             this.SuspendLayout();
             // 
             // Tabs
@@ -270,56 +270,6 @@
             this.SmtpProxySettingsLabel.TabIndex = 0;
             this.SmtpProxySettingsLabel.Text = "TBD";
             // 
-            // CertificatesTab
-            // 
-            this.CertificatesTab.Controls.Add(this.FreeCertificateSourcesGroup);
-            this.CertificatesTab.Controls.Add(this.SigningCertificatesGroup);
-            this.CertificatesTab.Location = new System.Drawing.Point(4, 22);
-            this.CertificatesTab.Name = "CertificatesTab";
-            this.CertificatesTab.Size = new System.Drawing.Size(570, 332);
-            this.CertificatesTab.TabIndex = 3;
-            this.CertificatesTab.Text = "Certificates";
-            this.CertificatesTab.UseVisualStyleBackColor = true;
-            // 
-            // FreeCertificateSourcesGroup
-            // 
-            this.FreeCertificateSourcesGroup.Controls.Add(this.FreeCertificateSourcesLabel);
-            this.FreeCertificateSourcesGroup.Location = new System.Drawing.Point(6, 153);
-            this.FreeCertificateSourcesGroup.Name = "FreeCertificateSourcesGroup";
-            this.FreeCertificateSourcesGroup.Size = new System.Drawing.Size(558, 141);
-            this.FreeCertificateSourcesGroup.TabIndex = 5;
-            this.FreeCertificateSourcesGroup.TabStop = false;
-            this.FreeCertificateSourcesGroup.Text = "Free Certificate Sources";
-            // 
-            // FreeCertificateSourcesLabel
-            // 
-            this.FreeCertificateSourcesLabel.AutoSize = true;
-            this.FreeCertificateSourcesLabel.LinkArea = new System.Windows.Forms.LinkArea(0, 0);
-            this.FreeCertificateSourcesLabel.Location = new System.Drawing.Point(6, 28);
-            this.FreeCertificateSourcesLabel.Name = "FreeCertificateSourcesLabel";
-            this.FreeCertificateSourcesLabel.Size = new System.Drawing.Size(468, 65);
-            this.FreeCertificateSourcesLabel.TabIndex = 0;
-            this.FreeCertificateSourcesLabel.Text = resources.GetString("FreeCertificateSourcesLabel.Text");
-            // 
-            // SigningCertificatesGroup
-            // 
-            this.SigningCertificatesGroup.Controls.Add(this.SigningCertificatesLabel);
-            this.SigningCertificatesGroup.Location = new System.Drawing.Point(6, 6);
-            this.SigningCertificatesGroup.Name = "SigningCertificatesGroup";
-            this.SigningCertificatesGroup.Size = new System.Drawing.Size(558, 141);
-            this.SigningCertificatesGroup.TabIndex = 4;
-            this.SigningCertificatesGroup.TabStop = false;
-            this.SigningCertificatesGroup.Text = "Valid Signing Certificates";
-            // 
-            // SigningCertificatesLabel
-            // 
-            this.SigningCertificatesLabel.AutoSize = true;
-            this.SigningCertificatesLabel.Location = new System.Drawing.Point(6, 28);
-            this.SigningCertificatesLabel.Name = "SigningCertificatesLabel";
-            this.SigningCertificatesLabel.Size = new System.Drawing.Size(29, 13);
-            this.SigningCertificatesLabel.TabIndex = 0;
-            this.SigningCertificatesLabel.Text = "TBD";
-            // 
             // ImapSettingsTab
             // 
             this.ImapSettingsTab.Controls.Add(this.ImapProxyInstanceGroup);
@@ -330,17 +280,6 @@
             this.ImapSettingsTab.TabIndex = 4;
             this.ImapSettingsTab.Text = "IMAP Proxy Settings";
             this.ImapSettingsTab.UseVisualStyleBackColor = true;
-            // 
-            // Pop3SettingsTab
-            // 
-            this.Pop3SettingsTab.Controls.Add(this.Pop3ProxyInstanceGroup);
-            this.Pop3SettingsTab.Controls.Add(this.Pop3ProxySettingsGroup);
-            this.Pop3SettingsTab.Location = new System.Drawing.Point(4, 22);
-            this.Pop3SettingsTab.Name = "Pop3SettingsTab";
-            this.Pop3SettingsTab.Size = new System.Drawing.Size(570, 332);
-            this.Pop3SettingsTab.TabIndex = 5;
-            this.Pop3SettingsTab.Text = "POP3 Proxy Settings";
-            this.Pop3SettingsTab.UseVisualStyleBackColor = true;
             // 
             // ImapProxyInstanceGroup
             // 
@@ -417,6 +356,17 @@
             this.ImapProxySettingsLabel.TabIndex = 0;
             this.ImapProxySettingsLabel.Text = "TBD";
             // 
+            // Pop3SettingsTab
+            // 
+            this.Pop3SettingsTab.Controls.Add(this.Pop3ProxyInstanceGroup);
+            this.Pop3SettingsTab.Controls.Add(this.Pop3ProxySettingsGroup);
+            this.Pop3SettingsTab.Location = new System.Drawing.Point(4, 22);
+            this.Pop3SettingsTab.Name = "Pop3SettingsTab";
+            this.Pop3SettingsTab.Size = new System.Drawing.Size(570, 332);
+            this.Pop3SettingsTab.TabIndex = 5;
+            this.Pop3SettingsTab.Text = "POP3 Proxy Settings";
+            this.Pop3SettingsTab.UseVisualStyleBackColor = true;
+            // 
             // Pop3ProxyInstanceGroup
             // 
             this.Pop3ProxyInstanceGroup.Controls.Add(this.Pop3ProxyInstanceGrid);
@@ -492,6 +442,56 @@
             this.Pop3ProxySettingsLabel.TabIndex = 0;
             this.Pop3ProxySettingsLabel.Text = "TBD";
             // 
+            // CertificatesTab
+            // 
+            this.CertificatesTab.Controls.Add(this.FreeCertificateSourcesGroup);
+            this.CertificatesTab.Controls.Add(this.SigningCertificatesGroup);
+            this.CertificatesTab.Location = new System.Drawing.Point(4, 22);
+            this.CertificatesTab.Name = "CertificatesTab";
+            this.CertificatesTab.Size = new System.Drawing.Size(570, 332);
+            this.CertificatesTab.TabIndex = 3;
+            this.CertificatesTab.Text = "Certificates";
+            this.CertificatesTab.UseVisualStyleBackColor = true;
+            // 
+            // FreeCertificateSourcesGroup
+            // 
+            this.FreeCertificateSourcesGroup.Controls.Add(this.FreeCertificateSourcesLabel);
+            this.FreeCertificateSourcesGroup.Location = new System.Drawing.Point(6, 153);
+            this.FreeCertificateSourcesGroup.Name = "FreeCertificateSourcesGroup";
+            this.FreeCertificateSourcesGroup.Size = new System.Drawing.Size(558, 141);
+            this.FreeCertificateSourcesGroup.TabIndex = 5;
+            this.FreeCertificateSourcesGroup.TabStop = false;
+            this.FreeCertificateSourcesGroup.Text = "Free Certificate Sources";
+            // 
+            // FreeCertificateSourcesLabel
+            // 
+            this.FreeCertificateSourcesLabel.AutoSize = true;
+            this.FreeCertificateSourcesLabel.LinkArea = new System.Windows.Forms.LinkArea(0, 0);
+            this.FreeCertificateSourcesLabel.Location = new System.Drawing.Point(6, 28);
+            this.FreeCertificateSourcesLabel.Name = "FreeCertificateSourcesLabel";
+            this.FreeCertificateSourcesLabel.Size = new System.Drawing.Size(468, 65);
+            this.FreeCertificateSourcesLabel.TabIndex = 0;
+            this.FreeCertificateSourcesLabel.Text = resources.GetString("FreeCertificateSourcesLabel.Text");
+            // 
+            // SigningCertificatesGroup
+            // 
+            this.SigningCertificatesGroup.Controls.Add(this.SigningCertificatesLabel);
+            this.SigningCertificatesGroup.Location = new System.Drawing.Point(6, 6);
+            this.SigningCertificatesGroup.Name = "SigningCertificatesGroup";
+            this.SigningCertificatesGroup.Size = new System.Drawing.Size(558, 141);
+            this.SigningCertificatesGroup.TabIndex = 4;
+            this.SigningCertificatesGroup.TabStop = false;
+            this.SigningCertificatesGroup.Text = "Valid Signing Certificates";
+            // 
+            // SigningCertificatesLabel
+            // 
+            this.SigningCertificatesLabel.AutoSize = true;
+            this.SigningCertificatesLabel.Location = new System.Drawing.Point(6, 28);
+            this.SigningCertificatesLabel.Name = "SigningCertificatesLabel";
+            this.SigningCertificatesLabel.Size = new System.Drawing.Size(29, 13);
+            this.SigningCertificatesLabel.TabIndex = 0;
+            this.SigningCertificatesLabel.Text = "TBD";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -516,19 +516,19 @@
             this.SmtpProxyInstanceGroup.ResumeLayout(false);
             this.SmtpProxySettingsGroup.ResumeLayout(false);
             this.SmtpProxySettingsGroup.PerformLayout();
+            this.ImapSettingsTab.ResumeLayout(false);
+            this.ImapProxyInstanceGroup.ResumeLayout(false);
+            this.ImapProxySettingsGroup.ResumeLayout(false);
+            this.ImapProxySettingsGroup.PerformLayout();
+            this.Pop3SettingsTab.ResumeLayout(false);
+            this.Pop3ProxyInstanceGroup.ResumeLayout(false);
+            this.Pop3ProxySettingsGroup.ResumeLayout(false);
+            this.Pop3ProxySettingsGroup.PerformLayout();
             this.CertificatesTab.ResumeLayout(false);
             this.FreeCertificateSourcesGroup.ResumeLayout(false);
             this.FreeCertificateSourcesGroup.PerformLayout();
             this.SigningCertificatesGroup.ResumeLayout(false);
             this.SigningCertificatesGroup.PerformLayout();
-            this.ImapSettingsTab.ResumeLayout(false);
-            this.Pop3SettingsTab.ResumeLayout(false);
-            this.ImapProxyInstanceGroup.ResumeLayout(false);
-            this.ImapProxySettingsGroup.ResumeLayout(false);
-            this.ImapProxySettingsGroup.PerformLayout();
-            this.Pop3ProxyInstanceGroup.ResumeLayout(false);
-            this.Pop3ProxySettingsGroup.ResumeLayout(false);
-            this.Pop3ProxySettingsGroup.PerformLayout();
             this.ResumeLayout(false);
 
         }

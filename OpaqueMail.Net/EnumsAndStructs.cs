@@ -91,6 +91,7 @@ namespace OpaqueMail
     /// <summary>
     /// Flags representing the processed state of the ReadOnlyMailMessage.
     /// </summary>
+    [Flags]
     public enum Flags
     {
         None = 0,
@@ -132,6 +133,7 @@ namespace OpaqueMail
     /// <summary>
     /// Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.
     /// </summary>
+    [Flags]
     public enum ReadOnlyMailMessageProcessingFlags
     {
         None = 0,
@@ -145,6 +147,7 @@ namespace OpaqueMail
     /// <summary>
     /// Bit flags to determine how an S/MIME envelope is encrypted.
     /// </summary>
+    [Flags]
     public enum SmimeEncryptionOptionFlags
     {
         None = 0,

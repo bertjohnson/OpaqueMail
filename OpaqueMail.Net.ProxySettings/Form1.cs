@@ -10,6 +10,7 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.ServiceProcess;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.XPath;
@@ -67,9 +68,7 @@ namespace OpaqueMail.Net.ProxySettings
                         StartService();
                     }
                 }
-                catch (Exception)
-                {
-                }
+                catch { }
             }
 
             // If the proxy isn't supposed to run as a Windows service, start all proxy instances from this application.
@@ -180,6 +179,8 @@ CACert: http://cacert.org/";
                 StopService();
                 UninstallService();
 
+                Thread.Sleep(2500);
+
                 // Start all proxy instances.
                 imapProxies = ImapProxy.StartProxiesFromSettingsFile(SettingsFileName);
                 pop3Proxies = Pop3Proxy.StartProxiesFromSettingsFile(SettingsFileName);
@@ -199,11 +200,13 @@ CACert: http://cacert.org/";
             if (OperationalModeWindowsService.Checked)
             {
                 foreach (ImapProxy imapProxy in imapProxies)
-                    imapProxy.StopProxy();
+                    imapProxy.Stop();
                 foreach (Pop3Proxy pop3Proxy in pop3Proxies)
-                    pop3Proxy.StopProxy();
+                    pop3Proxy.Stop();
                 foreach (SmtpProxy smtpProxy in smtpProxies)
-                    smtpProxy.StopProxy();
+                    smtpProxy.Stop();
+
+                Thread.Sleep(2500);
 
                 InstallService();
                 StartService();
@@ -219,7 +222,7 @@ CACert: http://cacert.org/";
         /// </summary>
         private void RefreshCertificates()
         {
-            StringBuilder certificatesText = new StringBuilder();
+            StringBuilder certificatesText = new StringBuilder(Constants.SMALLSBSIZE);
 
             // Load ceritificates for both the Current User and Local machine.
             X509Certificate2Collection certs = CertHelper.GetWindowsCertificates(StoreLocation.CurrentUser);
@@ -268,9 +271,7 @@ CACert: http://cacert.org/";
                         ImapProxyInstanceGrid.Items.Add(new ListViewItem(properties));
                     }
                 }
-                catch (Exception)
-                {
-                }
+                catch { }
             }
         }
 
@@ -302,9 +303,7 @@ CACert: http://cacert.org/";
                         Pop3ProxyInstanceGrid.Items.Add(new ListViewItem(properties));
                     }
                 }
-                catch (Exception)
-                {
-                }
+                catch { }
             }
         }
 
@@ -336,9 +335,7 @@ CACert: http://cacert.org/";
                         SmtpProxyInstanceGrid.Items.Add(new ListViewItem(properties));
                     }
                 }
-                catch (Exception)
-                {
-                }
+                catch { }
             }
         }
 

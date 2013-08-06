@@ -212,7 +212,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// <summary>
         /// When a message has been selected, attempt to load its preview.
         /// </summary>
-        private void ImapMessageList_SelectedIndexChanged(object sender, EventArgs e)
+        private async void ImapMessageList_SelectedIndexChanged(object sender, EventArgs e)
         {
             ImapDeleteMessageButton.Enabled = ImapMessageList.SelectedIndex > -1;
             if (ImapMessageList.SelectedIndex > -1)
@@ -232,6 +232,9 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
                             if (myImapClient.IsConnected)
                             {
+                                if (myImapClient.IsIdle)
+                                    await myImapClient.IdleStopAsync();
+
                                 // Retrieve the selected message.
                                 ReadOnlyMailMessage message = myImapClient.GetMessageUid(ImapMessageIDs[ImapMessageList.SelectedIndex].Item1, ImapMessageIDs[ImapMessageList.SelectedIndex].Item2);
 
@@ -248,6 +251,8 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                                     ImapWebPreview.Document.Write("Message not found.");
                                     ImapWebPreviewPanel.Refresh();
                                 }
+
+                                await myImapClient.IdleStartAsync();
                             }
                         }
                     }
@@ -575,7 +580,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             }
             catch (Exception ex)
             {
-                MessageBox.Show("SMTP send exception:\r\n\r\n" + ex.ToString(), "SMTP send exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("SMTP send exception:\r\n\r\n" + ex.Message, "SMTP send exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         #endregion Event Handlers
@@ -676,7 +681,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Error loading settings from \"" + fileName + "\".\r\n\r\nException: " + ex.ToString(), "Error loading settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Error loading settings from \"" + fileName + "\".\r\n\r\nException: " + ex.Message, "Error loading settings", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -715,6 +720,9 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 }
             }
 
+            // Alert if the connection is throttled.
+            myImapClient.ImapClientThrottleEvent += myImapClient_ImapClientThrottleEvent;
+
             // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
             await myImapClient.SelectMailboxAsync("INBOX");
             List<ReadOnlyMailMessage> messages = await myImapClient.GetMessagesAsync("INBOX", 25, 1, true, true, false);
@@ -728,11 +736,40 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 ImapMessageIDs[i] = new Tuple<string, int>(messages[i].Mailbox, messages[i].ImapUid);
             }
 
+            // Start checking for messages on a regular basis.
+            myImapClient.ImapClientNewMessageEvent += myImapClient_ImapClientNewMessageEvent;
+            myImapClient.ImapClientMessageExpungeEvent += myImapClient_ImapClientMessageExpungeEvent;
+            await myImapClient.IdleStartAsync();
+
             // Reset the preview viewport.
             ImapHeaders.BackColor = Color.White;
             ImapHeaders.Text = "";
             ImapWebPreview.DocumentText = "Please select a message from the left-hand panel.";
             ImapWebPreviewPanel.Refresh();
+        }
+
+        /// <summary>
+        /// Notify the user if the connection is throttled.
+        /// </summary>
+        void myImapClient_ImapClientThrottleEvent(object sender)
+        {
+            MessageBox.Show("Connection throttled by server.", "Connection throttled.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        /// <summary>
+        /// Notify the user of messages expunged while IDLE.
+        /// </summary>
+        void myImapClient_ImapClientMessageExpungeEvent(object sender, ImapClientEventArgs e)
+        {
+            MessageBox.Show("Message expunged.\r\n\r\nMailbox: " + e.MailboxName + "\r\nMessage ID: " + e.MessageId, "Message expunged.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        /// <summary>
+        /// Notify the user of new messages received while IDLE.
+        /// </summary>
+        void myImapClient_ImapClientNewMessageEvent(object sender, ImapClientEventArgs e)
+        {
+            MessageBox.Show("New message received.\r\n\r\nMailbox: " + e.MailboxName + "\r\nMessage ID: " + e.MessageId, "New message received", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         /// <summary>
@@ -797,7 +834,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// <param name="bodyWebBrowserPanel">The panel containing the web browser.</param>
         private void RenderMessage(ReadOnlyMailMessage message, TextBox headerTextBox, WebBrowser bodyWebBrowser, Panel bodyWebBrowserPanel)
         {
-            StringBuilder headersText = new StringBuilder();
+            StringBuilder headersText = new StringBuilder(Constants.SMALLSBSIZE);
 
             // Output selected headers.
             headersText.Append("Date: " + message.Date.ToString() + "\r\n");

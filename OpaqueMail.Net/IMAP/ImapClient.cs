@@ -7,29 +7,17 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace OpaqueMail
 {
     /// <summary>
     /// Allows applications to retrieve and manage e-mail by using the Internet Message Access Protocol (IMAP).
-    /// Includes OpaqueMail extensions to facilitate processing of secure S/MIME messages.
     /// </summary>
+    /// <remarks>Includes OpaqueMail extensions to facilitate processing of secure S/MIME messages.</remarks>
     public partial class ImapClient : IDisposable
     {
-        #region Constructors
-        /// <summary>
-        /// Initializes a new instance of the OpaqueMail.ImapClient class by using the specified settings.
-        /// </summary>
-        public ImapClient(string host, int port, string userName, string password, bool enableSSL)
-        {
-            Host = host;
-            Port = port;
-            Credentials = new NetworkCredential(userName, password);
-            EnableSsl = enableSSL;
-        }
-        #endregion Constructors
-
         #region Public Members
         /// <summary>Set of extended IMAP capabilities.</summary>
         public HashSet<string> Capabilities = new HashSet<string>();
@@ -39,6 +27,8 @@ namespace OpaqueMail
         public bool EnableSsl;
         /// <summary>Gets or sets the name or IP address of the host used for IMAP transactions.</summary>
         public string Host;
+        /// <summary>Frequency of sending NOOP commands to check for mailbox notifications.</summary>
+        public TimeSpan IdleFrequency = new TimeSpan(0, 1, 0);
         /// <summary>Version of IMAP reported by the server.</summary>
         public string ImapVersion = "";
         /// <summary>Whether the session has successfully been authenticated.</summary>
@@ -77,18 +67,6 @@ namespace OpaqueMail
             get
             {
                 return SessionIsMailboxSelected;
-            }
-        }
-        /// <summary>Whether to keep the session open through periodic NOOP messages.</summary>
-        public bool KeepAlive
-        {
-            get
-            {
-                return SessionKeepAlive;
-            }
-            set
-            {
-                SessionKeepAlive = value;
             }
         }
         /// <summary>The last command issued to the IMAP server.</summary>
@@ -151,25 +129,152 @@ namespace OpaqueMail
         private Mailbox CurrentMailbox;
         /// <summary>Name of the remote IMAP mailbox currently being accessed.</summary>
         private string CurrentMailboxName = "INBOX";
+        /// <summary>Timer to listen for IDLE notifications.</summary>
+        private Timer IdleTimer;
         /// <summary>Connection to the remote IMAP server.</summary>
         private TcpClient ImapTcpClient;
         /// <summary>Stream for communicating with the IMAP server.</summary>
         private Stream ImapStream;
+        /// <summary>Lock to coordinate asynchronous stream reading.</summary>
+        private readonly AsyncLock ImapStreamLock = new AsyncLock();
+        /// <summary>StreamReader for receiving data from the IMAP server.</summary>
+        private StreamReader ImapStreamReader;
+        /// <summary>StreamWriter for sending data to the IMAP server</summary>
+        private StreamWriter ImapStreamWriter;
         /// <summary>Buffer used during various S/MIME operations.</summary>
         private byte[] InternalBuffer = new byte[Constants.LARGEBUFFERSIZE];
         /// <summary>The authentication state when capabilities were last queried.</summary>
         private bool LastCapabilitiesCheckAuthenticationState = false;
+        /// <summary>When a "[THROTTLED]" notice was last received.</summary>
+        private DateTime LastThrottleTime = new DateTime(1900, 1, 1);
+        /// <summary>Collection of server responses that didn't directly match the request.</summary>
+        /// <remarks>Used when multiple requests are issued concurrently on one connection.</remarks>
+        private Dictionary<string, string> SwitchBoard = new Dictionary<string, string>();
         /// <summary>Whether the session has successfully been authenticated.</summary>
         private bool SessionIsAuthenticated = false;
         /// <summary>Whether the session has explicitly entered the IDLE state.</summary>
         private bool SessionIsIdle = false;
         /// <summary>Whether a mailbox has been selected in the session.</summary>
         private bool SessionIsMailboxSelected = false;
-        /// <summary>Whether to keep the session open through periodic NOOP messages.</summary>
-        private bool SessionKeepAlive = false;
         /// <summary>The welcome message provided by the IMAP server.</summary>
         private String SessionWelcomeMessage = "";
         #endregion Private Members
+
+        #region Constructors
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.ImapClient class by using the specified settings.
+        /// </summary>
+        /// <param name="host">Name or IP of the host used for IMAP transactions.</param>
+        /// <param name="port">Port to be used by the host.</param>
+        /// <param name="userName">The username associated with this connection.</param>
+        /// <param name="password">The password associated with this connection.</param>
+        /// <param name="enableSSL">Whether the IMAP connection uses TLS / SSL protection.</param>
+        public ImapClient(string host, int port, string userName, string password, bool enableSSL)
+        {
+            Host = host;
+            Port = port;
+            Credentials = new NetworkCredential(userName, password);
+            EnableSsl = enableSSL;
+        }
+
+        /// <summary>
+        /// Default destructor.
+        /// </summary>
+        ~ImapClient()
+        {
+            if (ImapStreamWriter != null)
+                ImapStreamWriter.Dispose();
+            if (ImapStreamReader != null)
+                ImapStreamReader.Dispose();
+            if (ImapStream != null)
+                ImapStream.Dispose();
+            if (ImapTcpClient != null)
+                ImapTcpClient.Close();
+        }
+        #endregion Constructors
+
+        #region Events
+        /// <summary>
+        /// Represents the event handler that will handle ImapClientDisconnectEvents.
+        /// </summary>
+        /// <param name="sender">The event's sender.</param>
+        public delegate void ImapClientDisconnectEventHandler(object sender);
+
+        /// <summary>
+        /// Represents the event handler that will handle ImapClientMessageExpungeEvents.
+        /// </summary>
+        /// <param name="sender">The event's sender.</param>
+        /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
+        public delegate void ImapClientMessageExpungeHandler(object sender, ImapClientEventArgs e);
+
+        /// <summary>
+        /// Represents the event handler that will handle ImapClientNewMessageEvents.
+        /// </summary>
+        /// <param name="sender">The event's sender.</param>
+        /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
+        public delegate void ImapClientNewMessageHandler(object sender, ImapClientEventArgs e);
+
+        /// <summary>
+        /// Represents the event handler that will handle ImapClientThrottleEvents.
+        /// </summary>
+        /// <param name="sender">The event's sender.</param>
+        public delegate void ImapClientThrottleHandler(object sender);
+
+        /// <summary>
+        /// Represents the event handler that will handle an ImapClientNewMessageEvent.
+        /// </summary>
+        public event ImapClientDisconnectEventHandler ImapClientDisconnectEvent;
+
+        /// <summary>
+        /// Represents the event handler that will handle an ImapClientMessageExpungeEvent.
+        /// </summary>
+        public event ImapClientMessageExpungeHandler ImapClientMessageExpungeEvent;
+
+        /// <summary>
+        /// Represents the event handler that will handle an ImapClientNewMessageEvent.
+        /// </summary>
+        public event ImapClientNewMessageHandler ImapClientNewMessageEvent;
+
+        /// <summary>
+        /// Represents the event handler that will handle an ImapClientThrottleEvent.
+        /// </summary>
+        public event ImapClientThrottleHandler ImapClientThrottleEvent;
+
+        /// <summary>
+        /// Raises an event indicating the IMAP server disconnecting this connection due to a "BYE" command.
+        /// </summary>
+        /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
+        protected void OnImapClientDisconnectEvent()
+        {
+            ImapClientDisconnectEvent(this);
+        }
+
+        /// <summary>
+        /// Raises an event indicating a message being expunged.
+        /// </summary>
+        /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
+        protected void OnImapClientMessageExpungeEvent(ImapClientEventArgs e)
+        {
+            ImapClientMessageExpungeEvent(this, e);
+        }
+
+        /// <summary>
+        /// Raises an event indicating a new message being received.
+        /// </summary>
+        /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
+        protected void OnImapClientNewMessageEvent(ImapClientEventArgs e)
+        {
+            ImapClientNewMessageEvent(this, e);
+        }
+
+        /// <summary>
+        /// Raises an event indicating a connection being throttled by the server.
+        /// </summary>
+        protected void OnImapClientThrottleEvent()
+        {
+            ImapClientThrottleEvent(this);
+        }
+        #endregion Events
 
         #region Public Methods
         /// <summary>
@@ -215,14 +320,14 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the APPEND command.");
 
             // Ensure the message has an ending carriage return and line feed.
             if (!message.EndsWith("\r\n"))
                 message += "\r\n";
 
             // Create the initial APPEND command.
-            StringBuilder commandBuilder = new StringBuilder();
+            StringBuilder commandBuilder = new StringBuilder(Constants.SMALLSBSIZE);
             commandBuilder.Append("APPEND " + mailboxName + " ");
 
             // If flags are specified, add them as parameters.
@@ -255,11 +360,11 @@ namespace OpaqueMail
             await SendCommandAsync(commandTag, commandBuilder.ToString());
 
             // Confirm the server is ready to accept our raw data.
-            string response = await Functions.ReadStreamStringAsync(ImapStream, InternalBuffer);
+            string response = await ReadDataAsync("+", "APPEND");
             if (response.StartsWith("+"))
             {
                 await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, message + "\r\n");
-                response = await ReadDataAsync(commandTag);
+                response = await ReadDataAsync(commandTag, "APPEND");
 
                 return LastCommandResult;
             }
@@ -289,7 +394,7 @@ namespace OpaqueMail
             {
                 case AuthenticationMode.CramMD5:
                     SendCommand(commandTag, "AUTHENTICATE CRAM-MD5\r\n");
-                    response = ReadData(commandTag);
+                    response = ReadData(commandTag, "AUTHENTICATE");
 
                     // If handshake started successfully, respond to the challenge.
                     if (LastCommandResult)
@@ -301,7 +406,7 @@ namespace OpaqueMail
                             string challengeResponse = Convert.ToBase64String(Encoding.UTF8.GetBytes(Credentials.UserName + " " + key));
 
                             Functions.SendStreamString(ImapStream, InternalBuffer, challengeResponse + "\r\n");
-                            response = ReadData(commandTag);
+                            response = ReadData(commandTag, "AUTHENTICATE");
                         }
                     }
                     else
@@ -310,11 +415,11 @@ namespace OpaqueMail
                     break;
                 case AuthenticationMode.Login:
                     SendCommand(commandTag, "LOGIN " + Credentials.UserName + " " + Credentials.Password + "\r\n");
-                    response = ReadData(commandTag);
+                    response = ReadData(commandTag, "LOGIN");
                     break;
                 case AuthenticationMode.Plain:
                     SendCommand(commandTag, "AUTHENTICATE PLAIN " + Convert.ToBase64String(Encoding.UTF8.GetBytes("\0" + Credentials.UserName + "\0" + Credentials.Password)) + "\r\n");
-                    response = ReadData(commandTag);
+                    response = ReadData(commandTag, "AUTHENTICATE");
                     break;
             }
 
@@ -350,17 +455,17 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the CHECK command.");
 
             // Require a mailbox to be selected first.
             if (string.IsNullOrEmpty(CurrentMailboxName))
-                return false;
+                throw new ImapException("A mailbox must be selected prior to calling the CHECK command.");
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "CHECK\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "CHECK");
 
             return LastCommandResult;
         }
@@ -373,17 +478,17 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the CLOSE command.");
 
             // Require a mailbox to be selected first.
             if (string.IsNullOrEmpty(CurrentMailboxName))
-                return false;
+                throw new ImapException("A mailbox must be selected prior to calling the CLOSE command.");
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "CLOSE\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "CLOSE");
 
             return LastCommandResult;
         }
@@ -402,22 +507,27 @@ namespace OpaqueMail
                 if (EnableSsl)
                     StartTLS();
 
+                ImapStreamReader = new StreamReader(ImapStream);
+                ImapStreamWriter = new StreamWriter(ImapStream);
+
                 // Remember the welcome message.
-                SessionWelcomeMessage = ReadData("*");
-                if (!LastCommandResult)
-                    return false;
-
-                return true;
+                SessionWelcomeMessage = ReadData("*", "");
+                if (LastCommandResult)
+                    return true;
             }
-            catch (Exception)
-            {
-                if (ImapStream != null)
-                    ImapStream.Dispose();
-                if (ImapTcpClient != null)
-                    ImapTcpClient.Close();
+            catch { }
 
-                return false;
-            }
+            // If we didn't successfully receive the welcome message, dispose all objects.
+            if (ImapStreamWriter != null)
+                ImapStreamWriter.Dispose();
+            if (ImapStreamReader != null)
+                ImapStreamReader.Dispose();
+            if (ImapStream != null)
+                ImapStream.Dispose();
+            if (ImapTcpClient != null)
+                ImapTcpClient.Close();
+
+            return false;
         }
 
         /// <summary>
@@ -430,13 +540,13 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the COPY command.");
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "COPY " + index.ToString() + " " + destMailboxName + "\r\n");
-            string result = await ReadDataAsync(commandTag);
+            string result = await ReadDataAsync(commandTag, "COPY");
 
             return LastCommandResult;
         }
@@ -451,13 +561,13 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the COPY command.");
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "UID COPY " + uid.ToString() + " " + destMailboxName + "\r\n");
-            await ReadDataAsync(commandTag);
+            await ReadDataAsync(commandTag, "COPY");
 
             return LastCommandResult;
         }
@@ -470,11 +580,11 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the CREATE command.");
 
             // Disallow wildcard characters in mailbox names;
             if (mailboxName.Contains("*") || mailboxName.Contains("%"))
-                return false;
+                throw new ImapException("A mailbox must be selected prior to calling the CREATE command.");
 
             // Encode ampersands and Unicode characters.
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -483,7 +593,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "CREATE " + mailboxName + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "CREATE");
 
             return LastCommandResult;
         }
@@ -496,7 +606,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the DELETE command.");
 
             // Encode ampersands and Unicode characters.
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -505,7 +615,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "DELETE " + mailboxName + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "DELETE");
 
             return LastCommandResult;
         }
@@ -531,10 +641,14 @@ namespace OpaqueMail
         }
 
         /// <summary>
-        /// Sends a LOGOUT message to the IMAP server, gracefully ends the TCP connection, and releases all resources used by the current instances of the OpaqueMail.ImapClient class.
+        /// Ends the TCP connection and releases all resources used by the current instances of the OpaqueMail.ImapClient class.
         /// </summary>
-        public void Dispose()
+        public void Disconnect()
         {
+            if (ImapStreamWriter != null)
+                ImapStreamWriter.Dispose();
+            if (ImapStreamReader != null)
+                ImapStreamReader.Dispose();
             if (ImapTcpClient != null)
             {
                 if (ImapTcpClient.Connected)
@@ -546,6 +660,14 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Ends the TCP connection and releases all resources used by the current instances of the OpaqueMail.ImapClient class.
+        /// </summary>
+        public void Dispose()
+        {
+            Disconnect();
+        }
+
+        /// <summary>
         /// Notify the IMAP server that the client supports the specified capability.
         /// </summary>
         /// <param name="capabilityName">Name of the capability to enable.</param>
@@ -553,13 +675,13 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the ENABLE command.");
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "ENABLE " + capabilityName + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "ENABLE");
             return LastCommandResult;
         }
 
@@ -571,7 +693,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return null;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the EXAMINE command.");
 
             // Encode ampersands and Unicode characters.
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -580,7 +702,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "EXAMINE " + mailboxName + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "EXAMINE");
 
             if (LastCommandResult)
                 return new Mailbox(mailboxName, response);
@@ -595,17 +717,17 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the EXPUNGE command.");
 
             // Require a mailbox to be selected first.
             if (string.IsNullOrEmpty(CurrentMailboxName))
-                return false;
+                throw new ImapException("A mailbox must be selected prior to calling the EXPUNGE command.");
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "EXPUNGE\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "EXPUNGE");
 
             return LastCommandResult;
         }
@@ -633,7 +755,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "CAPABILITY\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "CAPABILITY");
 
             imapVersion = "";
             if (response.StartsWith("* CAPABILITY "))
@@ -713,7 +835,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return -1;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the STATUS command.");
 
             // Encode ampersands and Unicode characters.
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -722,7 +844,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "STATUS " + mailboxName + " (messages)\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "STATUS");
             response = Functions.ReturnBetween(response, "(MESSAGES ", ")");
 
             int numMessages = -1;
@@ -844,7 +966,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated || string.IsNullOrEmpty(mailboxName))
-                return null;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the FETCH command.");
 
             if (mailboxName != CurrentMailboxName)
                 await SelectMailboxAsync(mailboxName);
@@ -891,7 +1013,7 @@ namespace OpaqueMail
             {
                 // Protect against commands being called out of order.
                 if (!IsAuthenticated)
-                    return quota;
+                    throw new ImapException("Must be connected to the server and authenticated prior to calling the GETQUOTA command.");
 
                 // Encode ampersands and Unicode characters.
                 mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -900,7 +1022,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "GETQUOTA \"" + mailboxName + "\"\r\n");
-                string response = await ReadDataAsync(commandTag);
+                string response = await ReadDataAsync(commandTag, "GETQUOTA");
 
                 if (LastCommandResult)
                 {
@@ -931,13 +1053,13 @@ namespace OpaqueMail
             {
                 // Protect against commands being called out of order.
                 if (!IsAuthenticated)
-                    return quota;
+                    throw new ImapException("Must be connected to the server and authenticated prior to calling the GETQUOTAROOT command.");
 
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "GETQUOTAROOT \"" + mailboxName + "\"\r\n");
-                string response = await ReadDataAsync(commandTag);
+                string response = await ReadDataAsync(commandTag, "GETQUOTAROOT");
 
                 if (LastCommandResult)
                 {
@@ -959,7 +1081,7 @@ namespace OpaqueMail
         /// <param name="identification">Values to be sent.</param>
         public async Task IdentifyAsync(ImapIdentification identification)
         {
-            StringBuilder identificationBuilder = new StringBuilder();
+            StringBuilder identificationBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
             if (!string.IsNullOrEmpty(identification.Name))
                 identificationBuilder.Append("\"name\" \"" + identification.Name + "\" ");
@@ -991,7 +1113,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "ID (" + identificationString.Substring(0, identificationString.Length - 1) + ")\r\n");
-                string response = await ReadDataAsync(commandTag);
+                string response = await ReadDataAsync(commandTag, "ID");
             }
         }
 
@@ -1007,13 +1129,17 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "IDLE\r\n");
-                string response = await ReadDataAsync(commandTag);
+                string response = await ReadDataAsync(commandTag, "IDLE");
 
                 SessionIsIdle = LastCommandResult;
+                
+                if (SessionIsIdle)
+                    IdleTimer = new Timer(new TimerCallback(CheckIdle), null, 60000, 60000);
+
                 return LastCommandResult;
             }
             else
-            return false;
+                return false;
         }
 
         /// <summary>
@@ -1024,13 +1150,14 @@ namespace OpaqueMail
             // Ensure that we've already entered the IDLE state.
             if (SessionIsIdle)
             {
-                // Generate a unique command tag for tracking this command and its response.
-                string commandTag = UniqueCommandTag();
-
-                await SendCommandAsync(commandTag, "DONE\r\n");
-                string response = await ReadDataAsync(commandTag);
+                await SendCommandAsync("", "DONE\r\n");
+                string response = await ReadDataAsync("", "IDLE");
 
                 SessionIsIdle = false;
+
+                // Abort and dispose of the IDLE thread.
+                if (IdleTimer != null)
+                    IdleTimer.Dispose();
             }
 
             return true;
@@ -1054,7 +1181,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return new Mailbox[] { };
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the LIST command.");
 
             List<Mailbox> mailboxes = new List<Mailbox>();
 
@@ -1076,7 +1203,7 @@ namespace OpaqueMail
                     await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %/%\r\n");
             }
 
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "LIST");
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
             char[] space = " ".ToCharArray();
@@ -1108,7 +1235,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return new string[] { };
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the LIST command.");
 
             List<string> mailboxNames = new List<string>();
 
@@ -1130,7 +1257,7 @@ namespace OpaqueMail
                     await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %/%\r\n");
             }
 
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "LIST");
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
             char[] space = " ".ToCharArray();
@@ -1162,7 +1289,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return new Mailbox[] { };
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the LSUB command.");
 
             List<Mailbox> mailboxes = new List<Mailbox>();
 
@@ -1182,7 +1309,7 @@ namespace OpaqueMail
                     await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %/%\r\n");
             }
 
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "LSUB");
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
             char[] space = " ".ToCharArray();
@@ -1214,7 +1341,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return new string[] { };
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the LSUB command.");
 
             List<string> mailboxNames = new List<string>();
 
@@ -1234,7 +1361,7 @@ namespace OpaqueMail
                     await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %/%\r\n");
             }
 
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "LSUB");
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
             char[] space = " ".ToCharArray();
@@ -1257,7 +1384,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             SendCommand(commandTag, "LOGOUT\r\n");
-            string response = ReadData(commandTag);
+            string response = ReadData(commandTag, "LOGOUT");
             SessionIsAuthenticated = false;
         }
 
@@ -1290,162 +1417,39 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the NOOP command.");
 
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "NOOP\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "NOOP");
 
             return LastCommandResult;
         }
 
         /// <summary>
-        /// Read the last response from the IMAP server.
+        /// Request that the server forwards notifications matching the specified criteria.
         /// </summary>
-        public string ReadData()
+        /// <param name="searchQuery">Well-formatted notification criteria string.</param>
+        public async Task<bool> Notify(string notificationCriteria)
         {
-            return ReadData(SessionCommandTag);
-        }
-
-        /// <summary>
-        /// Read the last response from the IMAP server tied to a specific command tag.
-        /// </summary>
-        /// <param name="commandTag">Command tag identifying the command and its response</param>
-        public string ReadData(string commandTag)
-        {
-            string response = "";
-
-            LastCommandResult = false;
-            bool receivingMessage = true, firstResponse = true;
-            while (receivingMessage)
+            if (ServerSupportsNotify)
             {
-                response += Functions.ReadStreamString(ImapStream, InternalBuffer);
+                // Protect against commands being called out of order.
+                if (!IsAuthenticated)
+                    throw new ImapException("Must be connected to the server and authenticated prior to calling the NOTIFY command.");
 
-                // Deal with bad commands and responses with errors.
-                if (firstResponse)
-                {
-                    if (response.StartsWith(commandTag + " BAD"))
-                    {
-                        LastErrorMessage = response.Substring(commandTag.Length + 5);
-                        return "";
-                    }
-                    else if (firstResponse && (response.StartsWith(commandTag + " NO")))
-                    {
-                        LastErrorMessage = response.Substring(commandTag.Length + 4);
-                        return "";
-                    }
-                }
+                // Generate a unique command tag for tracking this command and its response.
+                string commandTag = UniqueCommandTag();
 
-                // Check if the last sequence received ends with a line break, possibly indicating an end of message.
-                if (response.EndsWith("\r\n"))
-                {
-                    // Check if the message includes an IMAP "OK" signature, signifying the message is complete.
-                    int lastLineBreak = response.LastIndexOf("\r\n", response.Length - 2);
-                    if (lastLineBreak > 0)
-                    {
-                        if (response.Substring(lastLineBreak + 2).StartsWith(commandTag + " OK"))
-                        {
-                            receivingMessage = false;
-                            response = response.Substring(0, lastLineBreak);
-                        }
-                    }
-                    else
-                    {
-                        if (response.StartsWith(commandTag + " OK\r\n"))
-                        {
-                            receivingMessage = false;
-                            response = response.Substring(commandTag.Length + 5, response.Length - commandTag.Length - 7);
-                        }
-                        else if (response.StartsWith(commandTag + " OK"))
-                        {
-                            receivingMessage = false;
-                            response = response.Substring(commandTag.Length + 3, response.Length - commandTag.Length - 5);
-                        }
-                        else if (response.StartsWith("+ "))
-                        {
-                            receivingMessage = false;
-                            response = response.Substring(commandTag.Length + 2, response.Length - commandTag.Length - 4);
-                        }
-                    }
-                }
-                firstResponse = false;
+                await SendCommandAsync(commandTag, "NOTIFY " + notificationCriteria + "\r\n");
+                string response = await ReadDataAsync(commandTag, "NOTIFY");
+
+                return LastCommandResult;
             }
-
-            LastCommandResult = true;
-            return response;
-        }
-
-        /// <summary>
-        /// Read the last response from the IMAP server.
-        /// </summary>
-        public async Task<string> ReadDataAsync()
-        {
-            return await ReadDataAsync(SessionCommandTag);
-        }
-
-        /// <summary>
-        /// Read the last response from the IMAP server tied to a specific command tag.
-        /// </summary>
-        /// <param name="commandTag">Command tag identifying the command and its response</param>
-        public async Task<string> ReadDataAsync(string commandTag)
-        {
-            string response = "";
-
-            LastCommandResult = false;
-            bool receivingMessage = true, firstResponse = true;
-            while (receivingMessage)
-            {
-                response += await Functions.ReadStreamStringAsync(ImapStream, InternalBuffer);
-
-                // Deal with bad commands and responses with errors.
-                if (firstResponse)
-                {
-                    if (response.StartsWith(commandTag + " BAD"))
-                    {
-                        LastErrorMessage = response.Substring(commandTag.Length + 5);
-                        return "";
-                    }
-                    else if (response.StartsWith(commandTag + " NO"))
-                    {
-                        LastErrorMessage = response.Substring(commandTag.Length + 4);
-                        return "";
-                    }
-                }
-
-                // Check if the last sequence received ends with a line break, possibly indicating an end of message.
-                if (response.EndsWith("\r\n"))
-                {
-                    // Check if the message includes an IMAP "OK" signature, signifying the message is complete.
-                    int lastLineBreak = response.LastIndexOf("\r\n", response.Length - 2);
-                    if (lastLineBreak > 0)
-                    {
-                        if (response.Substring(lastLineBreak + 2).StartsWith(commandTag + " OK"))
-                        {
-                            receivingMessage = false;
-                            response = response.Substring(0, lastLineBreak);
-                        }
-                    }
-                    else
-                    {
-                        if (response.StartsWith(commandTag + " OK\r\n"))
-                        {
-                            receivingMessage = false;
-                            response = response.Substring(commandTag.Length + 5, response.Length - commandTag.Length - 7);
-                        }
-                        else if (response.StartsWith(commandTag + " OK"))
-                        {
-                            receivingMessage = false;
-                            response = response.Substring(commandTag.Length + 3, response.Length - commandTag.Length - 5);
-                        }
-                    }
-                }
-                firstResponse = false;
-            }
-
-            LastCommandResult = true;
-            return response;
+            else
+                return false;
         }
 
         /// <summary>
@@ -1479,7 +1483,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the RENAME command.");
 
             // Encode ampersands and Unicode characters.
             currentMailboxName = Functions.ToModifiedUTF7(currentMailboxName);
@@ -1493,7 +1497,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "RENAME " + currentMailboxName + " " + newMailboxName + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "RENAME");
 
             return LastCommandResult;
         }
@@ -1506,7 +1510,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return null;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the SEARCH command.");
 
             // Strip the command if it was passed since we'll be adding it.
             if (searchQuery.StartsWith("SEARCH "))
@@ -1518,7 +1522,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "SEARCH " + searchQuery + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "SEARCH");
 
             if (LastCommandResult)
             {
@@ -1553,7 +1557,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return null;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the SELECT command.");
 
             // Encode ampersands and Unicode characters.
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -1562,7 +1566,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "SELECT " + mailboxName + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "SELECT");
 
             if (LastCommandResult)
             {
@@ -1577,50 +1581,6 @@ namespace OpaqueMail
         }
 
         /// <summary>
-        /// Send a message to the IMAP server.
-        /// Should always be followed by GetImapStreamString.
-        /// </summary>
-        /// <param name="command">Text to transmit.</param>
-        public void SendCommand(string command)
-        {
-            SendCommand(SessionCommandTag, command);
-        }
-
-        /// <summary>
-        /// Send a message to the IMAP server, specifying a unique command tag.
-        /// Should always be followed by GetImapStreamString.
-        /// </summary>
-        /// <param name="commandTag">Command tag identifying the command and its response</param>
-        /// <param name="command">Text to transmit.</param>
-        public void SendCommand(string commandTag, string command)
-        {
-            LastCommandIssued = commandTag + " " + command;
-            Functions.SendStreamString(ImapStream, InternalBuffer, commandTag + " " + command);
-        }
-
-        /// <summary>
-        /// Send a message to the IMAP server.
-        /// Should always be followed by GetImapStreamString.
-        /// </summary>
-        /// <param name="command">Text to transmit.</param>
-        public async Task SendCommandAsync(string command)
-        {
-            await SendCommandAsync(SessionCommandTag, command);
-        }
-
-        /// <summary>
-        /// Send a message to the IMAP server, specifying a unique command tag.
-        /// Should always be followed by GetImapStreamString.
-        /// </summary>
-        /// <param name="commandTag">Command tag identifying the command and its response</param>
-        /// <param name="command">Text to transmit.</param>
-        public async Task SendCommandAsync(string commandTag, string command)
-        {
-            LastCommandIssued = commandTag + " " + command;
-            await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, commandTag + " " + command);
-        }
-
-        /// <summary>
         /// Set a quota for the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">Name of the mailbox to work with.</param>
@@ -1632,7 +1592,7 @@ namespace OpaqueMail
             {
                 // Protect against commands being called out of order.
                 if (!IsAuthenticated)
-                    return false;
+                    throw new ImapException("Must be connected to the server and authenticated prior to calling the SETQUOTA command.");
 
                 // Encode ampersands and Unicode characters.
                 mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -1641,7 +1601,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "SETQUOTA \"" + mailboxName + "\" (STORAGE " + quotaSize.ToString() + ")\r\n");
-                string response = await ReadDataAsync(commandTag);
+                string response = await ReadDataAsync(commandTag, "SETQUOTA");
 
                 return LastCommandResult;
             }
@@ -1691,7 +1651,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the SUBSCRIBE command.");
 
             // Encode ampersands and Unicode characters.
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -1700,7 +1660,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "SUBSCRIBE " + mailboxName + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "SUBSCRIBE");
 
             return LastCommandResult;
         }
@@ -1713,7 +1673,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the UNSUBSCRIBE command.");
 
             // Encode ampersands and Unicode characters.
             mailboxName = Functions.ToModifiedUTF7(mailboxName);
@@ -1722,7 +1682,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "UNSUBSCRIBE " + mailboxName + "\r\n");
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "UNSUSBSCRIBE");
 
             return LastCommandResult;
         }
@@ -1740,7 +1700,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the STORE command.");
 
             // Ensure that at least one flag will be added.
             if (flags.Length < 1)
@@ -1758,8 +1718,16 @@ namespace OpaqueMail
             else
                 await SendCommandAsync(commandTag, "STORE " + id.ToString() + " +Flags (" + flagsString.Substring(0, flagsString.Length - 1) + ")\r\n");
 
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "STORE");
             return LastCommandResult;
+        }
+
+        /// <summary>
+        /// Periodically check for message notifications.
+        /// </summary>
+        private async void CheckIdle(object stateInfo)
+        {
+            await ReadDataAsync("", "IDLE");
         }
 
         /// <summary>
@@ -1774,7 +1742,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return null;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the FETCH command.");
 
             if (mailboxName != CurrentMailboxName)
                 await SelectMailboxAsync(mailboxName);
@@ -1795,7 +1763,7 @@ namespace OpaqueMail
                     await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[] UID FLAGS)\r\n");
             }
 
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "FETCH");
 
             // Ensure the message was actually found.
             if (response.IndexOf("\r\n") > -1)
@@ -2011,7 +1979,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the MOVE command.");
 
             // Encode ampersands and Unicode characters.
             sourceMailboxName = Functions.ToModifiedUTF7(sourceMailboxName);
@@ -2030,7 +1998,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, uidPrefix + "MOVE " + id.ToString() + " " + destMailboxName + "\r\n");
-                string response = await ReadDataAsync(commandTag);
+                string response = await ReadDataAsync(commandTag, "MOVE");
 
                 return LastCommandResult;
             }
@@ -2047,6 +2015,176 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Read the last response from the IMAP server tied to a specific command tag.
+        /// </summary>
+        /// <param name="commandTag">Command tag identifying the command and its response.</param>
+        /// <param name="previousCommand">The previous command issued to the server.</param>
+        private async Task<string> ReadDataAsync(string commandTag, string previousCommand)
+        {
+            StringBuilder responseBuilder = new StringBuilder();
+
+            // Exclusively lock the IMAP stream reader.
+            using (await ImapStreamLock.LockAsync())
+            {
+                // If this is a poll during an IDLE command, time out after 15 seconds.
+                if (previousCommand == "IDLE")
+                    ImapStream.ReadTimeout = 15000;
+                else
+                    ImapStream.ReadTimeout = -1;
+
+                // Loop until the anticipated result is received.
+                while (true)
+                {
+                    // Check if another reader instance already found this command tag's response.
+                    if (SwitchBoard.ContainsKey(commandTag))
+                    {
+                        string returnValue = SwitchBoard[commandTag];
+                        SwitchBoard.Remove(commandTag);
+                        return returnValue;
+                    }
+
+                    string responseLine = await ImapStreamReader.ReadLineAsync();
+
+                    // If the stream timed out during IDLE, return "".
+                    if (previousCommand == "IDLE" && string.IsNullOrEmpty(responseLine))
+                        return "";
+
+                    // Split the line into its components and check if this is a tagged response.
+                    string[] responseParts = responseLine.Split(new char[] { ' ' }, 3);
+
+                    if (responseParts.Length > 1)
+                    {
+                        // If it's a tagged response and it matches the tag we're expecting, return the proper result.
+                        switch (responseParts[1])
+                        {
+                            // Handle successes.
+                            case "OK":
+                                if (responseLine.EndsWith("[THROTTLED]"))
+                                {
+                                    if (DateTime.Now - LastThrottleTime >= new TimeSpan(0, 20, 0))
+                                    {
+                                        // Raise a throttling event if the server indicates it and we haven't raised the event in 20 minutes.
+                                        if (ImapClientThrottleEvent != null)
+                                            OnImapClientThrottleEvent();
+                                        LastThrottleTime = DateTime.Now;
+                                    }
+                                }
+
+                                string result = "";
+                                if (responseBuilder.Length > 0)
+                                    result = responseBuilder.ToString();
+                                else if (responseParts.Length > 2)
+                                    result = responseParts[2];
+
+                                // If the result matches our expected tag, return it; otherwise, save it for later and continue with the next result.
+                                if (responseParts[0] == commandTag || previousCommand == "IDLE")
+                                {
+                                    LastCommandResult = true;
+                                    return result;
+                                }
+                                else if (responseParts[0] != "*")
+                                {
+                                    SwitchBoard[responseParts[0]] = result;
+                                    continue;
+                                }
+                                else
+                                {
+                                    responseBuilder.Append(responseLine + "\r\n");
+                                    continue;
+                                }
+
+                            // Handle errors.
+                            case "BAD":
+                            case "NO":
+                                if (responseParts.Length > 2)
+                                    LastErrorMessage = responseParts[2];
+
+                                if (responseParts[0] == commandTag)
+                                {
+                                    LastCommandResult = false;
+                                    return "";
+                                }
+                                else
+                                {
+                                    SwitchBoard[responseParts[0]] = "";
+                                    continue;
+                                }
+
+                            // Handle explicit server disconnections by raising the "Disconnect" event.
+                            case "BYE":
+                                LastCommandResult = false;
+                                if (ImapClientDisconnectEvent != null)
+                                    OnImapClientDisconnectEvent();
+                                Disconnect();
+                                return "";
+
+                            // If not a known response, return it verbatim.
+                            default:
+                                result = responseLine.Substring(responseLine.IndexOf(" ") + 1); ;
+
+                                if (responseParts[0] == commandTag || responseParts[0] == "+")
+                                    return result;
+                                else
+                                    responseBuilder.Append(responseLine + "\r\n");
+
+                                break;
+                        }
+                    }
+                    else
+                        responseBuilder.Append(responseLine + "\r\n");
+
+                    // Handle status notifications.
+                    if (responseLine.StartsWith("* "))
+                    {
+                        responseParts = responseLine.Split(new char[] { ' ' }, 4);
+
+                        if (responseParts.Length > 2)
+                        {
+                            switch (responseParts[2])
+                            {
+                                case "EXISTS":
+                                    if (ImapClientNewMessageEvent != null)
+                                        OnImapClientNewMessageEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                    break;
+                                case "EXPUNGE":
+                                    if (ImapClientMessageExpungeEvent != null)
+                                        OnImapClientMessageExpungeEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Send a message to the IMAP server.
+        /// Should always be followed by GetImapStreamString.
+        /// </summary>
+        /// <param name="command">Text to transmit.</param>
+        private async Task SendCommandAsync(string command)
+        {
+            await SendCommandAsync(SessionCommandTag, command);
+        }
+
+        /// <summary>
+        /// Send a message to the IMAP server, specifying a unique command tag.
+        /// Should always be followed by GetImapStreamString.
+        /// </summary>
+        /// <param name="commandTag">Command tag identifying the command and its response</param>
+        /// <param name="command">Text to transmit.</param>
+        private async Task SendCommandAsync(string commandTag, string command)
+        {
+            if (!string.IsNullOrEmpty(commandTag))
+            {
+                LastCommandIssued = commandTag + " " + command;
+                await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, commandTag + " " + command);
+            }
+            else
+                await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, command);
+        }
+
+        /// <summary>
         /// Update the flags associated with a message, referenced by its UID.
         /// </summary>
         /// <param name="mailboxName">Mailbox containing the message to update.</param>
@@ -2057,7 +2195,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the STORE command.");
 
             // Ensure that at least one flag will be removed.
             if (flags.Length < 1)
@@ -2075,7 +2213,7 @@ namespace OpaqueMail
             else
                 await SendCommandAsync(commandTag, "STORE " + id.ToString() + " Flags (" + flagsString.Substring(0, flagsString.Length - 1) + ")\r\n");
 
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "STORE");
             return LastCommandResult;
         }
 
@@ -2090,7 +2228,7 @@ namespace OpaqueMail
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
-                return false;
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the STORE command.");
 
             // Ensure that at least one flag will be removed.
             if (flags.Length < 1)
@@ -2108,7 +2246,7 @@ namespace OpaqueMail
             else
                 await SendCommandAsync(commandTag, "STORE " + id.ToString() + " -Flags (" + flagsString.Substring(0, flagsString.Length - 1) + ")\r\n");
 
-            string response = await ReadDataAsync(commandTag);
+            string response = await ReadDataAsync(commandTag, "STORE");
             return LastCommandResult;
         }
 
@@ -2120,6 +2258,21 @@ namespace OpaqueMail
             return (++CommandTagCounter).ToString();
         }
         #endregion Private Methods
+    }
+
+    /// <summary>
+    /// Provides data for ImapClient events.
+    /// </summary>
+    public class ImapClientEventArgs : EventArgs
+    {   
+        public string MailboxName;
+        public int MessageId;
+
+        public ImapClientEventArgs(string mailboxName, int messageId)
+        {
+            MailboxName = mailboxName;
+            MessageId = messageId;
+        }
     }
 
     /// <summary>

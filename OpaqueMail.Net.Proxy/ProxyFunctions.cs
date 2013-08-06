@@ -15,6 +15,7 @@ namespace OpaqueMail.Net.Proxy
         /// Process special characters in a log file name.
         /// </summary>
         /// <param name="fileName">Name of the log file.</param>
+        /// <returns>The final log file name, with full path, to be used.</returns>
         public static string GetLogFileName(string fileName)
         {
             // If the log file location doesn't contain a directory, make it relative to where the service lives.
@@ -35,7 +36,7 @@ namespace OpaqueMail.Net.Proxy
                 }
             }
 
-            StringBuilder logFileNameBuilder = new StringBuilder();
+            StringBuilder logFileNameBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
             DateTime now = DateTime.Now;
 
@@ -56,7 +57,7 @@ namespace OpaqueMail.Net.Proxy
                             // Attempt to append the .NET DateTime.ToString() representation of the variable.
                             logFileNameBuilder.Append(DateTime.Now.ToString(fileName.Substring(pos + 1, endPos - pos - 1)));
                         }
-                        catch (Exception)
+                        catch
                         {
                         }
 
@@ -78,6 +79,7 @@ namespace OpaqueMail.Net.Proxy
         /// </summary>
         /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
         /// <param name="xpathExpression">The XPath expression to evaluate.</param>
+        /// <returns>A boolean representation of the setting, or false if none was found.</returns>
         public static bool GetXmlBoolValue(XPathNavigator navigator, string xpathExpression)
         {
             XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
@@ -96,6 +98,7 @@ namespace OpaqueMail.Net.Proxy
         /// </summary>
         /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
         /// <param name="xpathExpression">The XPath expression to evaluate.</param>
+        /// <returns>An integer representation of the setting, or 0 if none was found.</returns>
         public static int GetXmlIntValue(XPathNavigator navigator, string xpathExpression)
         {
             XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
@@ -114,6 +117,7 @@ namespace OpaqueMail.Net.Proxy
         /// </summary>
         /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
         /// <param name="xpathExpression">The XPath expression to evaluate.</param>
+        /// <returns>A string representation of the setting, or an empty string if none was found.</returns>
         public static string GetXmlStringValue(XPathNavigator navigator, string xpathExpression)
         {
             XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
@@ -163,11 +167,17 @@ namespace OpaqueMail.Net.Proxy
         /// </summary>
         /// <param name="acceptedIPs">Range of accepted IPs.</param>
         /// <param name="ipAddress">IP address to check.</param>
+        /// <returns>True if the IP provided falls within the accepted IP range..</returns>
         public static bool ValidateIP(string acceptedIPs, string ipAddress)
         {
+            // Remove leading or trailing whitespace.
+            acceptedIPs = acceptedIPs.Trim();
+
             // If there's no accepted IP range string or if all are accepted, return true.
             if (string.IsNullOrEmpty(acceptedIPs) || acceptedIPs == "*" || acceptedIPs.ToUpper() == "ANY")
                 return true;
+
+            int[] ipAddressOctets = ExplodeIPAddress(ipAddress);
 
             string[] acceptedIPparts = acceptedIPs.Split(',');
             foreach (string acceptedIPpart in acceptedIPparts)
@@ -178,46 +188,73 @@ namespace OpaqueMail.Net.Proxy
                 if (canonicalAcceptedIPpart == "*" || canonicalAcceptedIPpart == "ANY")
                     return true;
 
-                int[] ipAddressOctets = ExplodeIPAddress(ipAddress);
-
-                bool matchedPart = true;
-
-                // If this is an IP range, check that the address falls between them.
-                if (canonicalAcceptedIPpart.IndexOf("-") > -1)
+                // Don't process blank strings.
+                if (!string.IsNullOrEmpty(canonicalAcceptedIPpart))
                 {
-                    string[] ipRangeParts = canonicalAcceptedIPpart.Split(new char[] { '-' }, 2);
+                    bool matchedPart = true;
 
-                    int[] ipRangeMinOctets = ExplodeIPAddress(ipRangeParts[0]);
-                    int[] ipRangeMaxOctets = ExplodeIPAddress(ipRangeParts[1]);
-
-                    // Make sure we're above the range's minimum value.
-                    int octetsToCompare = ipAddressOctets.Length <= ipRangeMinOctets.Length ? ipAddressOctets.Length : ipRangeMinOctets.Length;
-                    for (int i = 0; i < ipAddressOctets.Length; i++)
+                    // If this is an IP range, check that the address falls between them.
+                    if (canonicalAcceptedIPpart.IndexOf("-") > -1)
                     {
-                        // If the octet is a wildcard, we've successfully matched.
-                        if (ipRangeMinOctets[i] == -1)
-                            break;
+                        string[] ipRangeParts = canonicalAcceptedIPpart.Split(new char[] { '-' }, 2);
 
-                        // If the octet is below the minimum value, we haven't matched.
-                        if (ipAddressOctets[i] < ipRangeMinOctets[i])
-                        {
-                            matchedPart = false;
-                            break;
-                        }
-                    }
+                        int[] ipRangeMinOctets = ExplodeIPAddress(ipRangeParts[0]);
+                        int[] ipRangeMaxOctets = ExplodeIPAddress(ipRangeParts[1]);
 
-                    // Only check the range's maximum value if we're above the range's minimum value.
-                    if (matchedPart)
-                    {
-                        octetsToCompare = ipAddressOctets.Length <= ipRangeMaxOctets.Length ? ipAddressOctets.Length : ipRangeMaxOctets.Length;
+                        // Make sure we're above the range's minimum value.
+                        int octetsToCompare = ipAddressOctets.Length <= ipRangeMinOctets.Length ? ipAddressOctets.Length : ipRangeMinOctets.Length;
                         for (int i = 0; i < ipAddressOctets.Length; i++)
                         {
                             // If the octet is a wildcard, we've successfully matched.
-                            if (ipRangeMaxOctets[i] == -1)
+                            if (ipRangeMinOctets[i] == -1)
                                 break;
 
-                            // If the octet is above the maximum value, we haven't matched.
-                            if (ipAddressOctets[i] > ipRangeMaxOctets[i])
+                            // If the octet is below the minimum value, we haven't matched.
+                            if (ipAddressOctets[i] < ipRangeMinOctets[i])
+                            {
+                                matchedPart = false;
+                                break;
+                            }
+                        }
+
+                        // Only check the range's maximum value if we're above the range's minimum value.
+                        if (matchedPart)
+                        {
+                            octetsToCompare = ipAddressOctets.Length <= ipRangeMaxOctets.Length ? ipAddressOctets.Length : ipRangeMaxOctets.Length;
+                            for (int i = 0; i < ipAddressOctets.Length; i++)
+                            {
+                                // If the octet is a wildcard, we've successfully matched.
+                                if (ipRangeMaxOctets[i] == -1)
+                                    break;
+
+                                // If the octet is above the maximum value, we haven't matched.
+                                if (ipAddressOctets[i] > ipRangeMaxOctets[i])
+                                {
+                                    matchedPart = false;
+                                    break;
+                                }
+                            }
+
+                            // If we've made it this far, we've successfully matched the IP.
+                            if (matchedPart)
+                                return true;
+                        }
+                    }
+                    else
+                    {
+                        // At this point, we're matching against a specific IP.
+                        int[] ipTargetOctets = ExplodeIPAddress(canonicalAcceptedIPpart);
+
+                        // Compare to the target value.
+                        int octetsToCompare = ipAddressOctets.Length <= ipTargetOctets.Length ? ipAddressOctets.Length : ipTargetOctets.Length;
+                        for (int i = 0; i < ipAddressOctets.Length; i++)
+                        {
+                            // If the octet is a wildcard, we've successfully matched.
+                            if (ipTargetOctets[i] == -1)
+                                break;
+
+                            // If the octet isn't equal to the target value, we haven't matched.
+                            if (ipAddressOctets[i] != ipTargetOctets[i])
                             {
                                 matchedPart = false;
                                 break;
@@ -228,31 +265,6 @@ namespace OpaqueMail.Net.Proxy
                         if (matchedPart)
                             return true;
                     }
-                }
-                else
-                {
-                    // At this point, we're matching against a specific IP.
-                    int[] ipTargetOctets = ExplodeIPAddress(canonicalAcceptedIPpart);
-
-                    // Compare to the target value.
-                    int octetsToCompare = ipAddressOctets.Length <= ipTargetOctets.Length ? ipAddressOctets.Length : ipTargetOctets.Length;
-                    for (int i = 0; i < ipAddressOctets.Length; i++)
-                    {
-                        // If the octet is a wildcard, we've successfully matched.
-                        if (ipTargetOctets[i] == -1)
-                            break;
-
-                        // If the octet isn't equal to the target value, we haven't matched.
-                        if (ipAddressOctets[i] != ipTargetOctets[i])
-                        {
-                            matchedPart = false;
-                            break;
-                        }
-                    }
-
-                    // If we've made it this far, we've successfully matched the IP.
-                    if (matchedPart)
-                        return true;
                 }
             }
 
@@ -265,7 +277,7 @@ namespace OpaqueMail.Net.Proxy
         /// Divide an IP address string into its discrete components, representing wildcards with -1.
         /// </summary>
         /// <param name="ipAddress">The IP address string to process.</param>
-        /// <returns></returns>
+        /// <returns>An array of integers representing the IP octets, with a -1 specifying a wildcard character.</returns>
         private static int[] ExplodeIPAddress(string ipAddress)
         {
             string[] ipAddressParts = ipAddress.Split('.');
@@ -274,8 +286,8 @@ namespace OpaqueMail.Net.Proxy
 
             for (int i = 0; i < ipAddressParts.Length; i++)
             {
-                ipAddressOctets[i] = -1;
-                int.TryParse(ipAddressParts[i], out ipAddressOctets[i]);
+                if (!int.TryParse(ipAddressParts[i], out ipAddressOctets[i]))
+                    ipAddressOctets[i] = -1;
             }
 
             return ipAddressOctets;

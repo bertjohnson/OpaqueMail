@@ -21,9 +21,10 @@ namespace OpaqueMail
         #region Public Methods
         /// <summary>
         /// Create HTML links for embedded URLs.
-        /// Useful for text/plain messages.
         /// </summary>
+        /// <remarks>Useful for text/plain messages.</remarks>
         /// <param name="html">HTML block to process.</param>
+        /// <returns>The HTML block with any URLs encapsulated in HTML links.</returns>
         public static string ConvertPlainTextToHTML(string html)
         {
             // Handle the special case of e-mail starting or endding with a link by padding with spaces on either side, which will be removed at the end.
@@ -36,7 +37,7 @@ namespace OpaqueMail
             html = html.Replace("\r\n", "<br/>");
             
             // Build a new string using the following buffer.
-            StringBuilder htmlBuilder = new StringBuilder();
+            StringBuilder htmlBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
             int pos = 0, lastPos = 0;
             while (pos > -1)
@@ -88,12 +89,13 @@ namespace OpaqueMail
         /// Escapes embedded encoding of e-mail headers.
         /// </summary>
         /// <param name="header">E-mail header to be decoded.</param>
+        /// <returns>The decoded e-mail header.</returns>
         public static string DecodeMailHeader(string header)
         {
             try
             {
                 // Build a new string using the following buffer.
-                StringBuilder headerBuilder = new StringBuilder();
+                StringBuilder headerBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
                 int cursor = 0, lastCursor = 0;
                 while (cursor > -1)
@@ -144,7 +146,7 @@ namespace OpaqueMail
 
                 return headerBuilder.ToString();
             }
-            catch (Exception)
+            catch
             {
                 // If the header is malformed, return it as passed in.
                 return header;
@@ -153,14 +155,15 @@ namespace OpaqueMail
 
         /// <summary>
         /// Convert CID: object references to Base-64 encoded versions.
-        /// Useful for displaying text/html messages with image references.
         /// </summary>
+        /// <remarks>Useful for displaying text/html messages with image references.</remarks>
         /// <param name="html">HTML block to process.</param>
         /// <param name="attachments">Collection of attachments available to be embedded.</param>
+        /// <returns>The HTML block with any CID: object references replaced by their Base-64 encoded bytes.</returns>
         public static string EmbedAttachments(string html, AttachmentCollection attachments)
         {
             // Build a new string using the following buffer.
-            StringBuilder htmlBuilder = new StringBuilder();
+            StringBuilder htmlBuilder = new StringBuilder(Constants.MEDIUMSBSIZE);
 
             int srcStartPos = 0, lastPos = 0;
             while (srcStartPos > -1)
@@ -251,6 +254,7 @@ namespace OpaqueMail
         /// Encodes e-mail headers to escape extended characters.
         /// </summary>
         /// <param name="header">E-mail header to be encoded.</param>
+        /// <returns>Base-64 encoded version of the e-mail header.</returns>
         public static string EncodeMailHeader(string header)
         {
             bool extendedCharacterFound = false;
@@ -270,6 +274,7 @@ namespace OpaqueMail
         /// Returns a base-64 string representing the original input.
         /// </summary>
         /// <param name="input">The string to convert.</param>
+        /// <returns>Base-64 representation of the input string.</returns>
         public static string FromBase64(string input)
         {
             return Encoding.UTF8.GetString(System.Convert.FromBase64String(input));
@@ -279,6 +284,7 @@ namespace OpaqueMail
         /// Parse a text representation of e-mail addresses into a collection of MailAddress objects.
         /// </summary>
         /// <param name="addresses">String representation of e-mail addresses to parse.</param>
+        /// <returns>A MailAddressCollection representing the string passed in.</returns>
         public static MailAddressCollection FromMailAddressString(string addresses)
         {
             // Escape embedded encoding.
@@ -426,9 +432,10 @@ namespace OpaqueMail
         /// Decode modified UTF-7, as used for IMAP mailbox names.
         /// </summary>
         /// <param name="input">String to decode</param>
+        /// <returns>Decoded version of the input string.</returns>
         public static string FromModifiedUTF7(string input)
         {
-            StringBuilder outputBuilder = new StringBuilder();
+            StringBuilder outputBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
             int ampCursor = 0, lastAmpCursor = 0;
             while (ampCursor > -1)
@@ -464,9 +471,10 @@ namespace OpaqueMail
         }
 
         /// <summary>
-        /// Returns a quoted-printable string representing the original input.
+        /// Escapes quoted-printable encoding.
         /// </summary>
         /// <param name="input">The string to convert.</param>
+        /// <returns>The decoded version of the quoted-printable string passed in.</returns>
         public static string FromQuotedPrintable(string input)
         {
             try
@@ -475,7 +483,7 @@ namespace OpaqueMail
                 input = input.Replace("=0D", "");
 
                 // Build a new string using the following buffer.
-                StringBuilder outputBuilder = new StringBuilder();
+                StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
                 // Buffer for holding UTF-8 encoded characters.
                 byte[] utf8Buffer = new byte[1024];
@@ -549,7 +557,7 @@ namespace OpaqueMail
                 }
                 return outputBuilder.ToString();
             }
-            catch (Exception)
+            catch
             {
                 // If the quoted-printable encoding is invalid, return the message as-is.
                 return input;
@@ -560,6 +568,7 @@ namespace OpaqueMail
         /// Provide a best guess of a file's content type based on its filename.
         /// </summary>
         /// <param name="fileExtension">File extension to interpret.</param>
+        /// <returns>A string representing the best guess for the file extension's content type.</returns>
         public static string GetDefaultContentTypeForExtension(string fileExtension)
         {
             // If a full filename pas been supplied, extract the extension.
@@ -617,7 +626,8 @@ namespace OpaqueMail
         /// <summary>
         /// Return the machine's fully-qualified domain name.
         /// </summary>
-        public static string FQDN()
+        /// <returns>The machine's fully-qualified domain name.</returns>
+        public static string GetLocalFQDN()
         {
             string domainName = IPGlobalProperties.GetIPGlobalProperties().DomainName;
             string hostName = Dns.GetHostName();
@@ -629,6 +639,7 @@ namespace OpaqueMail
         /// Check if the specified e-mail address validates. 
         /// </summary>
         /// <param name="address">Address to validate.</param>
+        /// <returns>True if the e-mail address provided passes validation.</returns>
         private static bool IsValidEmailAddress(string address)
         {
             return Regex.IsMatch(address, @"^(?("")(""[^""]+?""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-z])@))(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-\w]*[0-9a-z]*\.)+[a-z0-9]{2,17}))$", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
@@ -638,6 +649,7 @@ namespace OpaqueMail
         /// Calculates an MD5 has of the string provided.
         /// </summary>
         /// <param name="input">The string to hash.</param>
+        /// <returns>A hexadecimal representation of the MD5 hash.</returns>
         public static string MD5(string input)
         {
             // Compute the hash into a byte array.
@@ -645,7 +657,7 @@ namespace OpaqueMail
             byte[] hb = md5.ComputeHash(Encoding.UTF8.GetBytes(input));
 
             // Convert the byte array into a hexadecimal string representation.
-            StringBuilder hashBuilder = new StringBuilder();
+            StringBuilder hashBuilder = new StringBuilder(Constants.TINYSBSIZE);
             for (int i = 0; i < hb.Length; i++)
                 hashBuilder.Append(Convert.ToString(hb[i], 16).PadLeft(2, '0'));
 
@@ -657,15 +669,23 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="stream">Stream to receive message from.</param>
         /// <param name="buffer">A byte array to streamline bit shuffling.</param>
+        /// <returns>Any text read from the stream connection.</returns>
         public static string ReadStreamString(Stream stream, byte[] buffer)
         {
-            if (stream.CanRead)
-            {
-                int bytesRead = stream.Read(buffer, 0, Constants.LARGEBUFFERSIZE);
-                return Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            }
-            else
-                return "";
+            int bytesRead = stream.Read(buffer, 0, Constants.LARGEBUFFERSIZE);
+            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+        }
+
+        /// <summary>
+        /// Returns string representation of message sent over stream.
+        /// </summary>
+        /// <param name="streamReader">StreamReader to receive message from.</param>
+        /// <param name="buffer">A character array to streamline bit shuffling.</param>
+        /// <returns>Any text read from the stream connection.</returns>
+        public static string ReadStreamString(StreamReader streamReader, char[] buffer)
+        {
+            int bytesRead = streamReader.Read(buffer, 0, Constants.LARGEBUFFERSIZE);
+            return new string(buffer, 0, bytesRead);
         }
 
         /// <summary>
@@ -674,15 +694,23 @@ namespace OpaqueMail
         /// <param name="stream">Stream to receive message from.</param>
         /// <param name="buffer">A byte array to streamline bit shuffling.</param>
         /// <param name="maximumBytes">Maximum number of bytes to receive.</param>
+        /// <returns>Any text read from the stream connection.</returns>
         public static string ReadStreamString(Stream stream, byte[] buffer, int maximumBytes)
         {
-            if (stream.CanRead)
-            {
-                int bytesRead = stream.Read(buffer, 0, maximumBytes);
-                return Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            }
-            else
-                return "";
+            int bytesRead = stream.Read(buffer, 0, maximumBytes);
+            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+        }
+
+        /// <summary>
+        /// Returns string representation of message sent over stream.
+        /// </summary>
+        /// <param name="streamReader">StreamReader to receive message from.</param>
+        /// <param name="buffer">A character array to streamline bit shuffling.</param>
+        /// <returns>Any text read from the stream connection.</returns>
+        public static string ReadStreamString(StreamReader streamReader, char[] buffer, int maximumBytes)
+        {
+            int bytesRead = streamReader.Read(buffer, 0, maximumBytes);
+            return new string(buffer, 0, bytesRead);
         }
 
         /// <summary>
@@ -690,15 +718,23 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="stream">Stream to receive message from.</param>
         /// <param name="buffer">A byte array to streamline bit shuffling.</param>
+        /// <returns>Any text read from the stream connection.</returns>
         public async static Task<string> ReadStreamStringAsync(Stream stream, byte[] buffer)
         {
-            if (stream.CanRead)
-            {
-                int bytesRead = await stream.ReadAsync(buffer, 0, Constants.LARGEBUFFERSIZE);
-                return Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            }
-            else
-                return "";
+            int bytesRead = await stream.ReadAsync(buffer, 0, Constants.LARGEBUFFERSIZE);
+            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+        }
+
+        /// <summary>
+        /// Returns string representation of message sent over stream.
+        /// </summary>
+        /// <param name="streamReader">StreamReader to receive message from.</param>
+        /// <param name="buffer">A character array to streamline bit shuffling.</param>
+        /// <returns>Any text read from the stream connection.</returns>
+        public async static Task<string> ReadStreamStringAsync(StreamReader streamReader, char[] buffer)
+        {
+            int bytesRead = await streamReader.ReadAsync(buffer, 0, Constants.LARGEBUFFERSIZE);
+            return new string(buffer, 0, bytesRead);
         }
 
         /// <summary>
@@ -707,29 +743,38 @@ namespace OpaqueMail
         /// <param name="stream">Stream to receive message from.</param>
         /// <param name="buffer">A byte array to streamline bit shuffling.</param>
         /// <param name="maximumBytes">Maximum number of bytes to receive.</param>
+        /// <returns>Any text read from the stream connection.</returns>
         public async static Task<string> ReadStreamStringAsync(Stream stream, byte[] buffer, int maximumBytes)
         {
-            if (stream.CanRead)
-            {
-                int bytesRead = await stream.ReadAsync(buffer, 0, maximumBytes);
-                return Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            }
-            else
-                return "";
+            int bytesRead = await stream.ReadAsync(buffer, 0, maximumBytes);
+            return Encoding.UTF8.GetString(buffer, 0, bytesRead);
+        }
+
+        /// <summary>
+        /// Returns string representation of message sent over stream.
+        /// </summary>
+        /// <param name="streamReader">StreamReader to receive message from.</param>
+        /// <param name="buffer">A character array to streamline bit shuffling.</param>
+        /// <param name="maximumBytes">Maximum number of bytes to receive.</param>
+        /// <returns>Any text read from the stream connection.</returns>
+        public async static Task<string> ReadStreamStringAsync(StreamReader streamReader, char[] buffer, int maximumBytes)
+        {
+            int bytesRead = await streamReader.ReadAsync(buffer, 0, maximumBytes);
+            return new string(buffer, 0, bytesRead);
         }
 
         /// <summary>
         /// Remove <script/> blocks from HTML.
         /// </summary>
-        /// <param name="html"></param>
-        /// <returns></returns>
+        /// <param name="html">An HTML block whose Javascript code should be removed.</param>
+        /// <returns>The HTML block with Javscript removed.</returns>
         public static string RemoveScriptTags(string html)
         {
             // Treat all whitespace equivalently and ignore case.
             string canonicalHtml = html.ToLower();
 
             // Build a new string using the following buffer.
-            StringBuilder htmlBuilder = new StringBuilder();
+            StringBuilder htmlBuilder = new StringBuilder(Constants.SMALLSBSIZE);
             
             // First, process <script> blocks.
             int pos = 0, lastPos = 0;
@@ -893,6 +938,7 @@ namespace OpaqueMail
         /// <param name="haystack">Container string to search within.</param>
         /// <param name="start">First string boundary.</param>
         /// <param name="end">Second string boundary.</param>
+        /// <returns>Any text found in the haystack between the specified start and end strings.</returns>
         public static string ReturnBetween(string haystack, string start, string end)
         {
             int pos = haystack.IndexOf(start, StringComparison.OrdinalIgnoreCase);
@@ -917,7 +963,18 @@ namespace OpaqueMail
             stream.Write(buffer, 0, message.Length);
             stream.Flush();
         }
-        
+
+        /// <summary>
+        /// Sends a string message over stream.
+        /// </summary>
+        /// <param name="streamWriter">StreamWriter to send message to.</param>
+        /// <param name="message">Text to transmit.</param>
+        public static void SendStreamString(StreamWriter streamWriter, string message)
+        {
+            streamWriter.Write(message);
+            streamWriter.Flush();
+        }
+
         /// <summary>
         /// Sends a string message over stream.
         /// </summary>
@@ -928,18 +985,30 @@ namespace OpaqueMail
         {
             Buffer.BlockCopy(Encoding.UTF8.GetBytes(message), 0, buffer, 0, message.Length);
             await stream.WriteAsync(buffer, 0, message.Length);
-            stream.Flush();
+            await stream.FlushAsync();
+        }
+
+        /// <summary>
+        /// Sends a string message over stream.
+        /// </summary>
+        /// <param name="streamWriter">StreamWriter to send message to.</param>
+        /// <param name="message">Text to transmit.</param>
+        public async static Task SendStreamStringAsync(StreamWriter streamWriter, string message)
+        {
+            await streamWriter.WriteAsync(message);
+            await streamWriter.FlushAsync();
         }
 
         /// <summary>
         /// Attempt to keep the number of characters per subject line to 78 or fewer.
         /// </summary>
-        /// <param name="header"></param>
+        /// <param name="header">E-mail header to be spanned.</param>
+        /// <returns>The original e-mail header spread over lines no longer than 78 characters each.</returns>
         public static string SpanHeaderLines(string header)
         {
             if (header.Length > 78)
             {
-                StringBuilder headerBuilder = new StringBuilder();
+                StringBuilder headerBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
                 int pos = 0, lastPos = 0;
                 while (pos > -1 && pos < header.Length - 78)
@@ -973,6 +1042,7 @@ namespace OpaqueMail
         /// Encodes a message as a 7-bit string, spanned over lines of 100 base-64 characters each.
         /// </summary>
         /// <param name="message">The message to be 7-bit encoded.</param>
+        /// <returns>A 7-bit encoded representation of the message.</returns>
         public static string To7BitString(string message)
         {
             return To7BitString(message, 998);
@@ -983,9 +1053,10 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="message">The message to be 7-bit encoded.</param>
         /// <param name="lineLength">The number of base-64 characters per line.</param>
+        /// <returns>A 7-bit encoded representation of the message.</returns>
         public static string To7BitString(string message, int lineLength)
         {
-            StringBuilder sevenBitBuilder = new StringBuilder();
+            StringBuilder sevenBitBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
             int position = 0, lastPosition = 0;
             while (position > 0 && position < (message.Length - lineLength))
@@ -1028,6 +1099,7 @@ namespace OpaqueMail
         /// Converts a string to its equivalent string representation with base-64 digits.
         /// </summary>
         /// <param name="input">The string to convert.</param>
+        /// <returns>Base-64 string representation of the input.</returns>
         public static string ToBase64String(string input)
         {
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(input), Base64FormattingOptions.InsertLineBreaks);
@@ -1037,6 +1109,7 @@ namespace OpaqueMail
         /// Converts an array of 8-bit unsigned integers to its equivalent string representation with base-64 digits.
         /// </summary>
         /// <param name="inArray">An array of 8-bit unsigned integers.</param>
+        /// <returns>Base-64 string representation of the input.</returns>
         public static string ToBase64String(byte[] inArray)
         {
             return Convert.ToBase64String(inArray, Base64FormattingOptions.InsertLineBreaks);
@@ -1049,6 +1122,7 @@ namespace OpaqueMail
         /// <param name="inArray">An array of 8-bit unsigned integers.</param>
         /// <param name="offset">An offset in inArray.</param>
         /// <param name="length">The number of elements of inArray to convert.</param>
+        /// <returns>Base-64 string representation of the input.</returns>
         public static string ToBase64String(byte[] inArray, int offset, int length)
         {
             return Convert.ToBase64String(inArray, offset, length, Base64FormattingOptions.InsertLineBreaks);
@@ -1058,6 +1132,7 @@ namespace OpaqueMail
         /// Provides a string representation of one or more e-mail addresses.
         /// </summary>
         /// <param name="address">MailAddress to display.</param>
+        /// <returns>A string listing all e-mail addresses in the collection, with their display names and address.</returns>
         public static string ToMailAddressString(MailAddress address)
         {
             if (address != null)
@@ -1074,9 +1149,10 @@ namespace OpaqueMail
         /// Provides a string representation of one or more e-mail addresses.
         /// </summary>
         /// <param name="addresses">Collection of MailAddresses to display.</param>
+        /// <returns>A string listing all e-mail addresses in the collection, with their display names and address.</returns>
         public static string ToMailAddressString(MailAddressCollection addresses)
         {
-            StringBuilder addressString = new StringBuilder();
+            StringBuilder addressString = new StringBuilder(Constants.TINYSBSIZE);
 
             foreach (MailAddress address in addresses)
             {
@@ -1094,11 +1170,12 @@ namespace OpaqueMail
         /// <summary>
         /// Encode modified UTF-7, as used for IMAP mailbox names.
         /// </summary>
-        /// <param name="input">String to encode</param>
+        /// <param name="input">String to encode.</param>
+        /// <returns>Modified UTF-7 representation of the input.</returns>
         public static string ToModifiedUTF7(string input)
         {
-            StringBuilder outputBuilder = new StringBuilder();
-            StringBuilder encodedOutputBuilder = new StringBuilder();
+            StringBuilder outputBuilder = new StringBuilder(Constants.TINYSBSIZE);
+            StringBuilder encodedOutputBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
             // Loop through each character, adding the encoded character to our output.
             foreach (char inputChar in input)
@@ -1135,6 +1212,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="utf8Bytes">Array of UTF-8 encoded characters.</param>
         /// <param name="byteCount">Number of characters to process.</param>
+        /// <returns>Unicode string representing the UTF-8 bytes passed in.</returns>
         public static string Utf8toUnicode(byte[] utf8Bytes, int byteCount)
         {
             string outputString = "";
@@ -1186,9 +1264,10 @@ namespace OpaqueMail
         /// Escape UUEncoded (Unix-to-Unix encoded) message.
         /// </summary>
         /// <param name="input">Block of input to decode to plain-text.</param>
+        /// <returns>UUDecoded version of input.</returns>
         public static string UUDecode(string input)
         {
-            StringBuilder outputBuilder = new StringBuilder();
+            StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
             // Process each line.
             string[] lines = input.Replace("\r", "").Split('\n');
@@ -1202,9 +1281,10 @@ namespace OpaqueMail
         /// Convert a message to its UUEncoded (Unix-to-Unix encoding) representation.
         /// </summary>
         /// <param name="input">Block of input to encode.</param>
+        /// <returns>A UUEncoded representation of input.</returns>
         public static string UUEncode(string input)
         {
-            StringBuilder outputBuilder = new StringBuilder();
+            StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
             // UUEncoding requires the message's byte count to be a multiple of 3.
             if (input.Length % 3 != 0)
@@ -1227,8 +1307,8 @@ namespace OpaqueMail
         /// <summary>
         /// Helper function for converting UTF-8 bytes to Unicode strings.
         /// </summary>
-        /// <param name="characterCode"></param>
-        /// <returns></returns>
+        /// <param name="characterCode">The Unicode character's ordinal.</param>
+        /// <returns>Unicode string representation of the UTF-8 sequence.</returns>
         private static string Utf8toUnicodeNumberToString(int characterCode)
         {
             string output = "";
@@ -1248,9 +1328,10 @@ namespace OpaqueMail
         /// Helper function to UUDecode a single line of input.
         /// </summary>
         /// <param name="inputLine">Line of input to decode to plain-text.</param>
+        /// <returns>The single line of UUDecoded input.</returns>
         private static string UUDecodeLine(string inputLine)
         {
-            StringBuilder outputBuilder = new StringBuilder();
+            StringBuilder outputBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
             char[] lineAsCharacterArray = inputLine.ToCharArray();
 

@@ -24,6 +24,11 @@
       <RemoteServerPort>587</RemoteServerPort>
       <!-- Whether the remote SMTP server supports TLS/SSL protection. -->
       <RemoteServerEnableSSL>True</RemoteServerEnableSSL>
+
+      <!-- (Optional) Username used when authenticating to the remote SMTP server.  When supplied, it will override any values sent from the client. -->
+      <RemoteServerUsername></RemoteServerUsername>
+      <!-- (Optional) Password used when authenticating to the remote SMTP server.  When supplied, it will override any values sent from the client. -->
+      <RemoteServerPassword></RemoteServerPassword>
       
       <Certificate>
         <!-- Where certificates should be stored and retrieved from by default.  "LocalMachine" or "CurrentUser" only. -->
@@ -49,7 +54,8 @@
       <!-- Where log files should be stored, if any.  Leave blank to avoid logging. -->
       <!-- Date variables can be encased in angle braces.  For example, "Logs\SMTPProxy-{yyyy-MM-dd}.log". -->
       <LogFile>Logs\SMTPProxy-{yyyy-MM-dd}.log</LogFile>
-  </Service1>
+    
+    </Service1>
   </SMTP>
   <IMAP>
     <!-- The number of IMAP proxy services to run.  Each proxy's settings will be outlined in subsequent <Service#/> blocks. -->

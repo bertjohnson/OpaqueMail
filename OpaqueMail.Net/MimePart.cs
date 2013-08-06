@@ -400,7 +400,7 @@ namespace OpaqueMail
 
                 return mimeParts;
             }
-            catch (Exception)
+            catch
             {
                 // If unable to decrypt the body, return null.
                 return null;
@@ -430,7 +430,7 @@ namespace OpaqueMail
                 
                 return true;
             }
-            catch (Exception)
+            catch
             {
                 // If an exception occured, the signature could not be verified.
                 signingCertificates = null;

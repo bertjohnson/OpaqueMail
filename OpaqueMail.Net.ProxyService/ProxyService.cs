@@ -56,24 +56,110 @@ namespace OpaqueMail
             if (imapProxies != null)
             {
                 foreach (ImapProxy imapProxy in imapProxies)
-                    imapProxy.StopProxy();
+                    imapProxy.Stop();
 
                 imapProxies.Clear();
             }
             if (pop3Proxies != null)
             {
                 foreach (Pop3Proxy pop3Proxy in pop3Proxies)
-                    pop3Proxy.StopProxy();
+                    pop3Proxy.Stop();
 
                 pop3Proxies.Clear();
             }
             if (smtpProxies != null)
             {
                 foreach (SmtpProxy smtpProxy in smtpProxies)
-                    smtpProxy.StopProxy();
+                    smtpProxy.Stop();
 
                 smtpProxies.Clear();
             }
+        }
+
+        /// <summary>
+        /// Handle service continuations following pauses.
+        /// </summary>
+        protected override void OnContinue()
+        {
+            if (imapProxies != null)
+            {
+                foreach (ImapProxy imapProxy in imapProxies)
+                    imapProxy.ProcessContinuation();
+
+                imapProxies.Clear();
+            }
+            if (pop3Proxies != null)
+            {
+                foreach (Pop3Proxy pop3Proxy in pop3Proxies)
+                    pop3Proxy.ProcessContinuation();
+
+                pop3Proxies.Clear();
+            }
+            if (smtpProxies != null)
+            {
+                foreach (SmtpProxy smtpProxy in smtpProxies)
+                    smtpProxy.ProcessContinuation();
+
+                smtpProxies.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Handle pause event.
+        /// </summary>
+        protected override void OnPause()
+        {
+            if (imapProxies != null)
+            {
+                foreach (ImapProxy imapProxy in imapProxies)
+                    imapProxy.ProcessPause();
+
+                imapProxies.Clear();
+            }
+            if (pop3Proxies != null)
+            {
+                foreach (Pop3Proxy pop3Proxy in pop3Proxies)
+                    pop3Proxy.ProcessPause();
+
+                pop3Proxies.Clear();
+            }
+            if (smtpProxies != null)
+            {
+                foreach (SmtpProxy smtpProxy in smtpProxies)
+                    smtpProxy.ProcessPause();
+
+                smtpProxies.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Handle power events, such as hibernation.
+        /// </summary>
+        protected override bool OnPowerEvent(PowerBroadcastStatus powerStatus)
+        {
+            if (imapProxies != null)
+            {
+                foreach (ImapProxy imapProxy in imapProxies)
+                    imapProxy.ProcessPowerEvent((int)powerStatus);
+
+                imapProxies.Clear();
+            }
+            if (pop3Proxies != null)
+            {
+                foreach (Pop3Proxy pop3Proxy in pop3Proxies)
+                    pop3Proxy.ProcessPowerEvent((int)powerStatus);
+
+                pop3Proxies.Clear();
+            }
+            if (smtpProxies != null)
+            {
+                foreach (SmtpProxy smtpProxy in smtpProxies)
+                    smtpProxy.ProcessPowerEvent((int)powerStatus);
+
+                smtpProxies.Clear();
+            }
+
+            return base.OnPowerEvent(powerStatus);
         }
         #endregion Protected Methods
 
@@ -88,6 +174,9 @@ namespace OpaqueMail
         #endregion Private Methods
     }
 
+    /// <summary>
+    /// Set the service account to the local system.
+    /// </summary>
     [RunInstaller(true)]
     public sealed class ProxyServiceProcessInstaller : ServiceProcessInstaller
     {
@@ -97,9 +186,15 @@ namespace OpaqueMail
         }
     }
 
+    /// <summary>
+    /// Handle OpaqueMail Proxy service installation.
+    /// </summary>
     [RunInstaller(true)]
     public sealed class ProxyServiceInstaller : ServiceInstaller
     {
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
         public ProxyServiceInstaller()
         {
             Description = "Serves as a local SMTP, IMAP, and POP3 proxy, optionally adding authentication and S/MIME signing or encryption to all outbound email.";
@@ -108,32 +203,39 @@ namespace OpaqueMail
             StartType = ServiceStartMode.Automatic;
         }
 
-        public void Install(bool undo, string[] args)
+        /// <summary>
+        /// Handle installation and uninstallation.
+        /// </summary>
+        /// <param name="uninstall">Whether we're uninstalling.  False if installing, true if uninstalling</param>
+        /// <param name="args">Any service installation arguments.</param>
+        public void Install(bool uninstall, string[] args)
         {
             try
             {
-                Console.WriteLine(undo ? "uninstalling" : "installing"); 
-                using (AssemblyInstaller inst = new AssemblyInstaller(typeof(Program).Assembly, args))
+                using (AssemblyInstaller installer = new AssemblyInstaller(typeof(Program).Assembly, args))
                 {
                     IDictionary state = new Hashtable();
-                    inst.UseNewContext = true;
+                    installer.UseNewContext = true;
                     try
                     {
-                        if (undo)
-                            inst.Uninstall(state);
+                        // Attempt to install or uninstall.
+                        if (uninstall)
+                            installer.Uninstall(state);
                         else
                         {
-                            inst.Install(state);
-                            inst.Commit(state);
+                            installer.Install(state);
+                            installer.Commit(state);
                         }
                     }
                     catch
                     {
+                        // If an error is encountered, attempt to roll back.
                         try
                         {
-                            inst.Rollback(state);
+                            installer.Rollback(state);
                         }
                         catch { }
+
                         throw;
                     }
                 }

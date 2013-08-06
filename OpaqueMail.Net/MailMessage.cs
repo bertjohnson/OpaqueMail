@@ -18,41 +18,6 @@ namespace OpaqueMail
     /// </summary>
     public class MailMessage : System.Net.Mail.MailMessage
     {
-        #region Constructors
-        /// <summary>
-        /// Initializes an empty instance of the OpaqueMail.MailMessage class.
-        /// </summary>
-        public MailMessage() : base() { }
-        /// <summary>
-        /// Initializes an empty instance of the OpaqueMail.MailMessage class by using the specified OpaqueMail.MailAddress class objects.
-        /// </summary>
-        /// <param name="from">A System.Net.Mail.MailAddress that contains the address of the sender of the e-mail message.</param>
-        /// <param name="to">A System.Net.Mail.MailAddress that contains the address of the recipient of the e-mail message.</param>
-        public MailMessage(MailAddress from, MailAddress to) : base(from, to) { }
-        /// <summary>
-        /// Initializes an empty instance of the OpaqueMail.MailMessage class by using the specified System.String class objects.
-        /// </summary>
-        /// <param name="from">A System.String that contains the address of the sender of the e-mail message.</param>
-        /// <param name="to">A System.String that contains the address of the recipient of the e-mail message.</param>
-        public MailMessage(string from, string to) : base(from, to) { }
-        /// <summary>
-        /// Initializes an empty instance of the OpaqueMail.MailMessage class.
-        /// </summary>
-        /// <param name="from">A System.String that contains the address of the sender of the e-mail message.</param>
-        /// <param name="to">A System.String that contains the address of the recipient of the e-mail message.</param>
-        /// <param name="subject">A System.String that contains the subject text.</param>
-        /// <param name="body">A System.String that contains the message body.</param>
-        public MailMessage(string from, string to, string subject, string body) : base(from, to, subject, body) { }
-        /// <summary>
-        /// Cast a ReadOnlyMailMessage as a regular MailMessage.
-        /// </summary>
-        /// <param name="message">ReadOnlyMailMessage to import properties from.</param>
-        public MailMessage FromReadOnlyMailMessage(ReadOnlyMailMessage message)
-        {
-            return message as MailMessage;
-        }
-        #endregion Constructors
-
         #region Public Members
         /// <summary>
         /// Size of the entire message.
@@ -118,6 +83,41 @@ namespace OpaqueMail
         private long loadedSize = -1;
         #endregion Private Members
 
+        #region Constructors
+        /// <summary>
+        /// Initializes an empty instance of the OpaqueMail.MailMessage class.
+        /// </summary>
+        public MailMessage() : base() { }
+        /// <summary>
+        /// Initializes an empty instance of the OpaqueMail.MailMessage class by using the specified OpaqueMail.MailAddress class objects.
+        /// </summary>
+        /// <param name="from">A System.Net.Mail.MailAddress that contains the address of the sender of the e-mail message.</param>
+        /// <param name="to">A System.Net.Mail.MailAddress that contains the address of the recipient of the e-mail message.</param>
+        public MailMessage(MailAddress from, MailAddress to) : base(from, to) { }
+        /// <summary>
+        /// Initializes an empty instance of the OpaqueMail.MailMessage class by using the specified System.String class objects.
+        /// </summary>
+        /// <param name="from">A System.String that contains the address of the sender of the e-mail message.</param>
+        /// <param name="to">A System.String that contains the address of the recipient of the e-mail message.</param>
+        public MailMessage(string from, string to) : base(from, to) { }
+        /// <summary>
+        /// Initializes an empty instance of the OpaqueMail.MailMessage class.
+        /// </summary>
+        /// <param name="from">A System.String that contains the address of the sender of the e-mail message.</param>
+        /// <param name="to">A System.String that contains the address of the recipient of the e-mail message.</param>
+        /// <param name="subject">A System.String that contains the subject text.</param>
+        /// <param name="body">A System.String that contains the message body.</param>
+        public MailMessage(string from, string to, string subject, string body) : base(from, to, subject, body) { }
+        /// <summary>
+        /// Cast a ReadOnlyMailMessage as a regular MailMessage.
+        /// </summary>
+        /// <param name="message">ReadOnlyMailMessage to import properties from.</param>
+        public MailMessage FromReadOnlyMailMessage(ReadOnlyMailMessage message)
+        {
+            return message as MailMessage;
+        }
+        #endregion Constructors
+
         #region Public Methods
         /// <summary>
         /// Generate a multipart/mixed message containing the e-mail's body, alternate views, and attachments.
@@ -127,7 +127,7 @@ namespace OpaqueMail
         public async Task<byte[]> MIMEEncode(byte[] buffer, string SmimeBoundaryName, string SmimeAlternativeViewBoundaryName)
         {
             // Write out body of the message.
-            StringBuilder MIMEBuilder = new StringBuilder();
+            StringBuilder MIMEBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
             MIMEBuilder.Append("Content-Type: multipart/mixed; boundary=\"" + SmimeBoundaryName + "\"\r\n");
             MIMEBuilder.Append("Content-Transfer-Encoding: 7bit\r\n\r\n");

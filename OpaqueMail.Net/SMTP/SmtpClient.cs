@@ -21,6 +21,32 @@ namespace OpaqueMail
     /// </summary>
     public class SmtpClient : System.Net.Mail.SmtpClient
     {
+        #region Public Members
+        /// <summary>
+        /// Collection of certificates to be used when searching for recipient public keys.
+        /// If not specified, SmtpClient will use the current Windows user's certificate store.
+        /// </summary>
+        public X509Certificate2Collection SmimeValidCertificates = null;
+        #endregion Public Members
+
+        #region Protected Members
+        /// <summary>Text delimiting S/MIME alternative view message parts.</summary>
+        protected string SmimeAlternativeViewBoundaryName = "OpaqueMail-alternative-boundary";
+        /// <summary>Text delimiting S/MIME message parts.</summary>
+        protected string SmimeBoundaryName = "OpaqueMail-boundary";
+        /// <summary>Text delimiting S/MIME message parts related to signatures.</summary>
+        protected string SmimeSignedCmsBoundaryName = "OpaqueMail-signature-boundary";
+        /// <summary>Text delimiting MIME message parts in triple wrapped messages.</summary>
+        protected string SmimeTripleSignedCmsBoundaryName = "OpaqueMail-triple-signature-boundary";
+        #endregion Protected Members
+
+        #region Private Members
+        /// <summary>Buffer used during various S/MIME operations.</summary>
+        private byte[] buffer = new byte[Constants.LARGEBUFFERSIZE];
+        /// <summary>Cache of recipient public keys to speed up subsequent usage of this SmtpClient.</summary>
+        private Dictionary<string, X509Certificate2> SmimeCertificateCache = new Dictionary<string, X509Certificate2>();
+        #endregion Private Members
+
         #region Constructors
         /// <summary>
         /// Initializes a new instance of the OpaqueMail.SmtpClient class by using configuration file settings.
@@ -50,32 +76,6 @@ namespace OpaqueMail
             RandomizeBoundaryNames();
         }
         #endregion Constructors
-
-        #region Public Members
-        /// <summary>
-        /// Collection of certificates to be used when searching for recipient public keys.
-        /// If not specified, SmtpClient will use the current Windows user's certificate store.
-        /// </summary>
-        public X509Certificate2Collection SmimeValidCertificates = null;
-        #endregion Public Members
-
-        #region Protected Members
-        /// <summary>Text delimiting S/MIME alternative view message parts.</summary>
-        protected string SmimeAlternativeViewBoundaryName = "OpaqueMail-alternative-boundary";
-        /// <summary>Text delimiting S/MIME message parts.</summary>
-        protected string SmimeBoundaryName = "OpaqueMail-boundary";
-        /// <summary>Text delimiting S/MIME message parts related to signatures.</summary>
-        protected string SmimeSignedCmsBoundaryName = "OpaqueMail-signature-boundary";
-        /// <summary>Text delimiting MIME message parts in triple wrapped messages.</summary>
-        protected string SmimeTripleSignedCmsBoundaryName = "OpaqueMail-triple-signature-boundary";
-        #endregion Protected Members
-
-        #region Private Members
-        /// <summary>Buffer used during various S/MIME operations.</summary>
-        private byte[] buffer = new byte[Constants.LARGEBUFFERSIZE];
-        /// <summary>Cache of recipient public keys to speed up subsequent usage of this SmtpClient.</summary>
-        private Dictionary<string, X509Certificate2> SmimeCertificateCache = new Dictionary<string, X509Certificate2>();
-        #endregion Private Members
 
         #region Public Methods
         /// <summary>
@@ -355,7 +355,7 @@ namespace OpaqueMail
             }
 
             // Build our raw headers block.
-            StringBuilder rawHeaders = new StringBuilder();
+            StringBuilder rawHeaders = new StringBuilder(Constants.SMALLSBSIZE);
 
             // Specify who the message is from.
             rawHeaders.Append(Functions.SpanHeaderLines("From: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.From))) + "\r\n");
@@ -453,7 +453,7 @@ namespace OpaqueMail
                 // If the implementation requires S/MIME encryption (the default), throw an error if there's no certificate.
                 if ((message.SmimeSettingsMode & SmimeSettingsMode.RequireExactSettings) > 0)
                 {
-                    StringBuilder exceptionMessage = new StringBuilder();
+                    StringBuilder exceptionMessage = new StringBuilder(Constants.TINYSBSIZE);
                     exceptionMessage.Append("Trying to send encrypted message to one or more recipients without a trusted public key.\r\nRecipients without public keys: ");
                     foreach (string addressNeedingPublicKey in addressesNeedingPublicKeys.Keys)
                         exceptionMessage.Append(addressNeedingPublicKey + ", ");
@@ -468,7 +468,7 @@ namespace OpaqueMail
             if (alreadySigned)
             {
                 // If already signed, prepend S/MIME headers.
-                StringBuilder contentBuilder = new StringBuilder();
+                StringBuilder contentBuilder = new StringBuilder(Constants.TINYSBSIZE);
                 contentBuilder.Append("Content-Type: multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\r\n\tboundary=\"" + SmimeSignedCmsBoundaryName + "\"\r\n");
                 contentBuilder.Append("Content-Transfer-Encoding: 7bit\r\n\r\n");
 
@@ -600,7 +600,7 @@ namespace OpaqueMail
             }
 
             // First, create a buffer for tracking the unsigned portion of this message.
-            StringBuilder unsignedMessageBuilder = new StringBuilder();
+            StringBuilder unsignedMessageBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
             // If triple wrapping, the previous layer was an encrypted envelope and needs to be Base64 encoded.
             if (alreadyEncrypted)
@@ -634,7 +634,7 @@ namespace OpaqueMail
             byte[] signedBytes = signedCms.Encode();
 
             // Embed the signed and original version of the message using MIME.
-            StringBuilder messageBuilder = new StringBuilder();
+            StringBuilder messageBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
             // Build the MIME message by embedding the unsigned and signed portions.
             messageBuilder.Append("This is a multi-part S/MIME signed message.\r\n\r\n");
