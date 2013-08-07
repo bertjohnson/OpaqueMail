@@ -45,8 +45,8 @@ namespace OpaqueMail
                 lastPos = pos;
 
                 // Find the next link, whether using the HTTP or HTTPS protocol.
-                int httpPos = canonicalHtml.IndexOf(" http://", pos);
-                int httpsPos = canonicalHtml.IndexOf(" https://", pos);
+                int httpPos = canonicalHtml.IndexOf(" http://", pos, StringComparison.Ordinal);
+                int httpsPos = canonicalHtml.IndexOf(" https://", pos, StringComparison.Ordinal);
             
                 if (httpPos > -1)
                 {
@@ -63,7 +63,7 @@ namespace OpaqueMail
                 // A URL was found, so insert a link.
                 if (pos > -1)
                 {
-                    int endPos = canonicalHtml.IndexOf(" ", pos + 1);
+                    int endPos = canonicalHtml.IndexOf(" ", pos + 1, StringComparison.Ordinal);
                     if (endPos > -1)
                     {
                         string link = html.Substring(pos + 1, endPos - pos - 1);
@@ -101,13 +101,13 @@ namespace OpaqueMail
                 while (cursor > -1)
                 {
                     lastCursor = cursor;
-                    cursor = header.IndexOf("=?", cursor);
+                    cursor = header.IndexOf("=?", cursor, StringComparison.Ordinal);
                     if (cursor > -1)
                     {
-                        int middleCursor = header.IndexOf("?", cursor + 2);
+                        int middleCursor = header.IndexOf("?", cursor + 2, StringComparison.Ordinal);
                         if (middleCursor > -1 && middleCursor < header.Length - 2)
                         {
-                            int endCursor = header.IndexOf("?=", middleCursor + 1);
+                            int endCursor = header.IndexOf("?=", middleCursor + 1, StringComparison.Ordinal);
                             if (endCursor > -1 && endCursor > middleCursor + 2)
                             {
                                 // Try to create a decoder for the encoding.
@@ -169,8 +169,8 @@ namespace OpaqueMail
             while (srcStartPos > -1)
             {
                 // Find the next SRC= attribute and handle either single or double quotes.
-                int srcStartQuotePos = html.IndexOf("src=\"cid:", srcStartPos);
-                int srcStartApostrophePos = html.IndexOf("src='cid:", srcStartPos);
+                int srcStartQuotePos = html.IndexOf("src=\"cid:", srcStartPos, StringComparison.Ordinal);
+                int srcStartApostrophePos = html.IndexOf("src='cid:", srcStartPos, StringComparison.Ordinal);
 
                 if (srcStartQuotePos > -1)
                 {
@@ -188,7 +188,7 @@ namespace OpaqueMail
 
                 if (srcStartPos > -1)
                 {
-                    int srcEndPos = html.IndexOf(srcEndDelimiter, srcStartPos + 9);
+                    int srcEndPos = html.IndexOf(srcEndDelimiter, srcStartPos + 9, StringComparison.Ordinal);
                     if (srcEndPos > 0)
                     {
                         htmlBuilder.Append(html.Substring(lastPos, srcStartPos + 5 - lastPos));
@@ -214,7 +214,7 @@ namespace OpaqueMail
                         if (!matchingAttachmentFound)
                         {
                             // Ignore the non-file name portion of this Content-ID.
-                            int cidAtPos = cid.IndexOf("@");
+                            int cidAtPos = cid.IndexOf("@", StringComparison.Ordinal);
                             if (cidAtPos > -1)
                                 cid = cid.Substring(0, cidAtPos);
 
@@ -297,29 +297,29 @@ namespace OpaqueMail
             string displayName = "";
             while (cursor < addresses.Length)
             {
-                int quoteCursor = addresses.IndexOf("\"", cursor);
+                int quoteCursor = addresses.IndexOf("\"", cursor, StringComparison.Ordinal);
                 if (quoteCursor == -1)
                     quoteCursor = addresses.Length + 1;
-                int aposCursor = addresses.IndexOf("'", cursor);
+                int aposCursor = addresses.IndexOf("'", cursor, StringComparison.Ordinal);
                 if (aposCursor == -1)
                     aposCursor = addresses.Length + 1;
-                int angleCursor = addresses.IndexOf("<", cursor);
+                int angleCursor = addresses.IndexOf("<", cursor, StringComparison.Ordinal);
                 if (angleCursor == -1)
                     angleCursor = addresses.Length + 1;
-                int bracketCursor = addresses.IndexOf("[", cursor);
+                int bracketCursor = addresses.IndexOf("[", cursor, StringComparison.Ordinal);
                 if (bracketCursor == -1)
                     bracketCursor = addresses.Length + 1;
-                int commaCursor = addresses.IndexOf(",", cursor);
+                int commaCursor = addresses.IndexOf(",", cursor, StringComparison.Ordinal);
                 if (commaCursor == -1)
                     commaCursor = addresses.Length + 1;
-                int semicolonCursor = addresses.IndexOf(";", cursor);
+                int semicolonCursor = addresses.IndexOf(";", cursor, StringComparison.Ordinal);
                 if (semicolonCursor == -1)
                     semicolonCursor = addresses.Length + 1;
 
                 if (quoteCursor < aposCursor && quoteCursor < angleCursor && quoteCursor < bracketCursor && quoteCursor < commaCursor && quoteCursor < semicolonCursor)
                 {
                     // The address display name is enclosed in quotes.
-                    int endQuoteCursor = addresses.IndexOf("\"", quoteCursor + 1);
+                    int endQuoteCursor = addresses.IndexOf("\"", quoteCursor + 1, StringComparison.Ordinal);
                     if (endQuoteCursor > -1)
                     {
                         displayName = addresses.Substring(quoteCursor + 1, endQuoteCursor - quoteCursor - 1);
@@ -331,7 +331,7 @@ namespace OpaqueMail
                 else if (aposCursor < quoteCursor && aposCursor < angleCursor && aposCursor < bracketCursor && aposCursor < commaCursor && aposCursor < semicolonCursor)
                 {
                     // The address display name may be enclosed in apostrophes.
-                    int endAposCursor = addresses.IndexOf("'", aposCursor + 1);
+                    int endAposCursor = addresses.IndexOf("'", aposCursor + 1, StringComparison.Ordinal);
                     if (endAposCursor > -1)
                     {
                         displayName = addresses.Substring(aposCursor + 1, endAposCursor - aposCursor - 1);
@@ -340,10 +340,10 @@ namespace OpaqueMail
                     else
                     {
                         // The address contains an apostophe, but it's not enclosed in apostrophes.
-                        angleCursor = addresses.IndexOf("<", cursor);
+                        angleCursor = addresses.IndexOf("<", cursor, StringComparison.Ordinal);
                         if (angleCursor == -1)
                             angleCursor = addresses.Length + 1;
-                        bracketCursor = addresses.IndexOf("[", cursor);
+                        bracketCursor = addresses.IndexOf("[", cursor, StringComparison.Ordinal);
                         if (bracketCursor == -1)
                             bracketCursor = addresses.Length + 1;
 
@@ -364,7 +364,7 @@ namespace OpaqueMail
                 else if (angleCursor < quoteCursor && angleCursor < aposCursor && angleCursor < bracketCursor && angleCursor < commaCursor && angleCursor < semicolonCursor)
                 {
                     // The address is enclosed in angle brackets.
-                    int endAngleCursor = addresses.IndexOf(">", angleCursor + 1);
+                    int endAngleCursor = addresses.IndexOf(">", angleCursor + 1, StringComparison.Ordinal);
                     if (endAngleCursor > -1)
                     {
                         // If we didn't find a display name between quotes or apostrophes, look at all characters prior to the angle bracket.
@@ -386,7 +386,7 @@ namespace OpaqueMail
                 else if (bracketCursor < quoteCursor && angleCursor < aposCursor && bracketCursor < angleCursor && bracketCursor < commaCursor && bracketCursor < semicolonCursor)
                 {
                     // The address is enclosed in brackets.
-                    int endBracketCursor = addresses.IndexOf(">", bracketCursor + 1);
+                    int endBracketCursor = addresses.IndexOf(">", bracketCursor + 1, StringComparison.Ordinal);
                     if (endBracketCursor > -1)
                     {
                         // If we didn't find a display name between quotes or apostrophes, look at all characters prior to the bracket.
@@ -441,11 +441,11 @@ namespace OpaqueMail
             while (ampCursor > -1)
             {
                 lastAmpCursor = ampCursor;
-                ampCursor = input.IndexOf("&", ampCursor);
+                ampCursor = input.IndexOf("&", ampCursor, StringComparison.Ordinal);
                 if (ampCursor > -1)
                 {
                     outputBuilder.Append(input.Substring(lastAmpCursor, ampCursor - lastAmpCursor));
-                    int minusCursor = input.IndexOf("-", ampCursor + 1);
+                    int minusCursor = input.IndexOf("-", ampCursor + 1, StringComparison.Ordinal);
                     if (minusCursor > -1)
                     {
                         // Check if this is an encoded ampersand.
@@ -486,14 +486,14 @@ namespace OpaqueMail
                 StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
                 // Buffer for holding UTF-8 encoded characters.
-                byte[] utf8Buffer = new byte[1024];
+                byte[] utf8Buffer = new byte[Constants.SMALLBUFFERSIZE];
 
                 // Loop through and process quoted-printable strings, denoted by equals signs.
                 int equalsPos = 0, lastPos = 0;
                 while (equalsPos > -1)
                 {
                     lastPos = equalsPos;
-                    equalsPos = input.IndexOf('=', equalsPos);
+                    equalsPos = input.IndexOf("=", equalsPos, StringComparison.Ordinal);
                     if (equalsPos > -1 && equalsPos < input.Length - 2)
                     {
                         outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
@@ -632,7 +632,7 @@ namespace OpaqueMail
             string domainName = IPGlobalProperties.GetIPGlobalProperties().DomainName;
             string hostName = Dns.GetHostName();
 
-            return hostName.Contains(domainName) ? hostName : hostName + "." + domainName;
+            return hostName.IndexOf(domainName, StringComparison.Ordinal) > -1 ? hostName : hostName + "." + domainName;
         }
 
         /// <summary>
@@ -783,7 +783,7 @@ namespace OpaqueMail
                 lastPos = pos;
 
                 // Find the next link, whether using the HTTP or HTTPS protocol.
-                pos = canonicalHtml.IndexOf("<script", pos);
+                pos = canonicalHtml.IndexOf("<script", pos, StringComparison.Ordinal);
 
                 if (pos > -1)
                 {
@@ -794,19 +794,19 @@ namespace OpaqueMail
                     bool tagClosed = false;
                     while (!tagClosed)
                     {
-                        int quotePos = canonicalHtml.IndexOf("\"", pos);
+                        int quotePos = canonicalHtml.IndexOf("\"", pos, StringComparison.Ordinal);
                         if (quotePos < 0)
                             quotePos = canonicalHtml.Length + 1;
-                        int aposPos = canonicalHtml.IndexOf("'", pos);
+                        int aposPos = canonicalHtml.IndexOf("'", pos, StringComparison.Ordinal);
                         if (aposPos < 0)
                             aposPos = canonicalHtml.Length + 1;
-                        int anglePos = canonicalHtml.IndexOf(">", pos);
+                        int anglePos = canonicalHtml.IndexOf(">", pos, StringComparison.Ordinal);
                         if (anglePos < 0)
                             anglePos = canonicalHtml.Length + 1;
 
                         if (quotePos < aposPos && quotePos < anglePos)
                         {
-                            int endQuotePos = canonicalHtml.IndexOf("\"", quotePos + 1);
+                            int endQuotePos = canonicalHtml.IndexOf("\"", quotePos + 1, StringComparison.Ordinal);
                             if (endQuotePos > -1)
                                 pos = endQuotePos + 1;
                             else
@@ -814,7 +814,7 @@ namespace OpaqueMail
                         }
                         else if (aposPos < quotePos && aposPos < anglePos)
                         {
-                            int endAposPos = canonicalHtml.IndexOf("'", aposPos + 1);
+                            int endAposPos = canonicalHtml.IndexOf("'", aposPos + 1, StringComparison.Ordinal);
                             if (endAposPos > -1)
                                 pos = endAposPos + 1;
                             else
@@ -829,10 +829,10 @@ namespace OpaqueMail
                             }
                             else
                             {
-                                int endScriptPos = canonicalHtml.IndexOf("</script", anglePos);
+                                int endScriptPos = canonicalHtml.IndexOf("</script", anglePos, StringComparison.Ordinal);
                                 if (endScriptPos > -1)
                                 {
-                                    int closeEndScriptPos = canonicalHtml.IndexOf(">", endScriptPos + 7);
+                                    int closeEndScriptPos = canonicalHtml.IndexOf(">", endScriptPos + 7, StringComparison.Ordinal);
                                     if (closeEndScriptPos > -1)
                                     {
                                         tagClosed = true;
@@ -864,7 +864,7 @@ namespace OpaqueMail
             foreach (string eventHandler in eventHandlers)
             {
                 // Only proceed if the event handler name is found.
-                if (canonicalHtml.IndexOf(eventHandler) > -1)
+                if (canonicalHtml.IndexOf(eventHandler, StringComparison.Ordinal) > -1)
                 {
                     htmlBuilder.Clear();
 
@@ -872,7 +872,7 @@ namespace OpaqueMail
                     while (pos > -1)
                     {
                         lastPos = pos;
-                        pos = canonicalHtml.IndexOf(eventHandler, pos);
+                        pos = canonicalHtml.IndexOf(eventHandler, pos, StringComparison.Ordinal);
 
                         if (pos > -1)
                         {
@@ -884,22 +884,22 @@ namespace OpaqueMail
                                 // We're currently in a tag.
                                 htmlBuilder.Append(html.Substring(lastPos, pos - lastPos));
 
-                                int equalsPos = canonicalHtml.IndexOf("=", pos);
-                                int nextCloseAnglePos = canonicalHtml.IndexOf(">", pos);
+                                int equalsPos = canonicalHtml.IndexOf("=", pos, StringComparison.Ordinal);
+                                int nextCloseAnglePos = canonicalHtml.IndexOf(">", pos, StringComparison.Ordinal);
 
                                 // Only continue processing if there's an equals sign after the event handler name and before the tag closes.
                                 if (equalsPos > -1 && nextCloseAnglePos > equalsPos)
                                 {
-                                    int quotePos = canonicalHtml.IndexOf("\"", equalsPos);
+                                    int quotePos = canonicalHtml.IndexOf("\"", equalsPos, StringComparison.Ordinal);
                                     if (quotePos < 0)
                                         quotePos = canonicalHtml.Length + 1;
-                                    int aposPos = canonicalHtml.IndexOf("'", equalsPos);
+                                    int aposPos = canonicalHtml.IndexOf("'", equalsPos, StringComparison.Ordinal);
                                     if (aposPos < 0)
                                         aposPos = canonicalHtml.Length + 1;
 
                                     if (quotePos < aposPos && quotePos < nextCloseAnglePos)
                                     {
-                                        int endQuotePos = canonicalHtml.IndexOf("\"", quotePos + 1);
+                                        int endQuotePos = canonicalHtml.IndexOf("\"", quotePos + 1, StringComparison.Ordinal);
                                         if (endQuotePos > -1 && endQuotePos < nextCloseAnglePos)
                                             pos = endQuotePos + 1;
                                         else
@@ -907,7 +907,7 @@ namespace OpaqueMail
                                     }
                                     else if (aposPos <= canonicalHtml.Length)
                                     {
-                                        int endAposPos = canonicalHtml.IndexOf("'", aposPos + 1);
+                                        int endAposPos = canonicalHtml.IndexOf("'", aposPos + 1, StringComparison.Ordinal);
                                         if (endAposPos > -1)
                                             pos = endAposPos + 1;
                                         else
@@ -941,10 +941,10 @@ namespace OpaqueMail
         /// <returns>Any text found in the haystack between the specified start and end strings.</returns>
         public static string ReturnBetween(string haystack, string start, string end)
         {
-            int pos = haystack.IndexOf(start, StringComparison.OrdinalIgnoreCase);
+            int pos = haystack.IndexOf(start, StringComparison.Ordinal);
             if (pos > -1)
             {
-                int pos2 = haystack.IndexOf(end, pos + start.Length, StringComparison.OrdinalIgnoreCase);
+                int pos2 = haystack.IndexOf(end, pos + start.Length, StringComparison.Ordinal);
                 if (pos2 > -1)
                     return haystack.Substring(pos + start.Length, pos2 - pos - start.Length);
             }
@@ -1063,7 +1063,7 @@ namespace OpaqueMail
             {
                 lastPosition = position;
                 // Find the next linebreak, and move on if it's within lineLength characters.
-                position = message.IndexOf("\r\n", position);
+                position = message.IndexOf("\r\n", position, StringComparison.Ordinal);
                 if (position > -1 && (position - lastPosition) <= lineLength)
                     position = position + 2;
                 else

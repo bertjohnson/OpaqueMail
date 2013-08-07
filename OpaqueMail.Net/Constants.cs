@@ -14,7 +14,7 @@ namespace OpaqueMail
         /// <summary>
         /// Large buffer size for bit shuffling.
         /// </summary>
-        public const int LARGEBUFFERSIZE = 16777216;
+        public const int LARGEBUFFERSIZE = 1048576;
 
         /// <summary>
         /// Small buffer size for bit shuffling.

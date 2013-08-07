@@ -11,16 +11,20 @@ namespace OpaqueMail
     /// </summary>
     public class Mailbox
     {
+        /// <summary>List of FETCH commands returned by QRESYNC.</summary>
+        public List<string> FetchList = new List<string>();
         /// <summary>Standard IMAP flags associated with this mailbox.</summary>
         public HashSet<string> Flags = new HashSet<string>();
         /// <summary>Mailbox hierarchy delimiting string.</summary>
         public string HierarchyDelimiter;
+        /// <summary>Name of the mailbox.</summary>
+        public string Name;
         /// <summary>True if ModSeq is explicitly unavailable.</summary>
         public bool NoModSeq = false;
         /// <summary>Permanent IMAP flags associated with this mailbox.</summary>
         public HashSet<string> PermanentFlags = new HashSet<string>();
-        /// <summary>Name of the mailbox.</summary>
-        public string Name;
+        /// <summary>List of message IDs that have disappeared since the last QRESYNC.</summary>
+        public string VanishedList;
 
         /// <summary>Number of messages in the mailbox.  -1 if COUNT was not parsed.</summary>
         public int Count = -1;
@@ -87,6 +91,10 @@ namespace OpaqueMail
                     string uidValidity = responseLine.Substring(18, responseLine.IndexOf("]") - 18);
                     int.TryParse(uidValidity, out UidValidity);
                 }
+                else if (responseLine.StartsWith("* VANISHED "))
+                    VanishedList = responseLine.Substring(11);
+                else if (responseLine.IndexOf(" FETCH ", StringComparison.Ordinal) > -1)
+                    FetchList.Add(responseLine);
                 else if (responseLine.EndsWith(" EXISTS"))
                 {
                     string existsCount = responseLine.Substring(2, responseLine.Length - 9);

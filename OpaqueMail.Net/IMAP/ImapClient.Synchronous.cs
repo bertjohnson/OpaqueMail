@@ -54,6 +54,30 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Appends messages to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="messages">The raw messages to append.</param>
+        /// <param name="flags">Optional flags to be applied for the message.</param>
+        /// <param name="date">Optional date for the message.</param>
+        public bool AppendMessages(string mailboxName, string[] messages)
+        {
+            return Task.Run(() => AppendMessagesAsync(mailboxName, messages, new string[] { }, null)).Result;
+        }
+
+        /// <summary>
+        /// Appends messages to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="messages">The raw messages to append.</param>
+        /// <param name="flags">Optional flags to be applied for the message.</param>
+        /// <param name="date">Optional date for the message.</param>
+        public bool AppendMessages(string mailboxName, string[] messages, string[] flags, DateTime? date)
+        {
+            return Task.Run(() => AppendMessagesAsync(mailboxName, messages, flags, date)).Result;
+        }
+
+        /// <summary>
         /// Request a checkpoint of the currently selected mailbox.
         /// </summary>
         public bool Check()
@@ -145,7 +169,17 @@ namespace OpaqueMail
         /// <param name="mailboxName">Mailbox to work with.</param>
         public Mailbox ExamineMailbox(string mailboxName)
         {
-            return Task.Run(() => ExamineMailboxAsync(mailboxName)).Result;
+            return Task.Run(() => ExamineMailboxAsync(mailboxName, "")).Result;
+        }
+
+        /// <summary>
+        /// Examine a mailbox, returning its properties.
+        /// </summary>
+        /// <param name="mailboxName">Mailbox to work with.</param>
+        /// <param name="qResyncParameters">Quick Resynchronization parameters, such as UIDValidity, the last known modification sequence, known UIDs, and/or known sequence ranges.</param>
+        public Mailbox ExamineMailbox(string mailboxName, string qResyncParameters)
+        {
+            return Task.Run(() => ExamineMailboxAsync(mailboxName, qResyncParameters)).Result;
         }
 
         /// <summary>
@@ -534,7 +568,17 @@ namespace OpaqueMail
         /// <param name="mailboxName">Mailbox to work with.</param>
         public Mailbox SelectMailbox(string mailboxName)
         {
-            return Task.Run(() => SelectMailboxAsync(mailboxName)).Result;
+            return Task.Run(() => SelectMailboxAsync(mailboxName, "")).Result;
+        }
+
+        /// <summary>
+        /// Select a mailbox for subsequent operations and return its properties.
+        /// </summary>
+        /// <param name="mailboxName">Mailbox to work with.</param>
+        /// <param name="qResyncParameters">Quick Resynchronization parameters, such as UIDValidity, the last known modification sequence, known UIDs, and/or known sequence ranges.</param>
+        public Mailbox SelectMailbox(string mailboxName, string qResyncParameters)
+        {
+            return Task.Run(() => SelectMailboxAsync(mailboxName, qResyncParameters)).Result;
         }
 
         /// <summary>

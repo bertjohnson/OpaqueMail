@@ -89,99 +89,115 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, string logFile)
         {
-            try
+            // Attempt to start up to 3 times in case another service using the port is shutting down.
+            int startAttempts = 0;
+            while (startAttempts < 3)
             {
-                Started = true;
-                X509Certificate serverCertificate = null;
+                startAttempts++;
 
-                // Generate a unique session ID for logging.
-                SessionId = Guid.NewGuid().ToString();
-                ConnectionId = 0;
-
-                // Create the log writer.
-                string logFileName = "";
-                if (!string.IsNullOrEmpty(logFile))
+                // If we've failed to start once, wait an extra 10 seconds.
+                if (startAttempts > 1)
                 {
-                    logFileName = ProxyFunctions.GetLogFileName(logFile);
-                    LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
-
-                    ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
+                    ProxyFunctions.Log(LogWriter, SessionId, "Attempting to start for the " + (startAttempts == 2 ? "2nd" : "3rd") + " time.");
+                    Thread.Sleep(10000 * startAttempts);
                 }
 
-                // If local SSL is supported via STARTTLS, ensure we have a valid server certificate.
-                if (localEnableSsl)
+                try
                 {
-                    string fqdn = Functions.GetLocalFQDN();
-                    serverCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, fqdn);
-                    // In case the service as running as the current user, check the Current User certificate store as well.
-                    if (serverCertificate == null)
-                        serverCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, fqdn);
+                    Started = true;
+                    X509Certificate serverCertificate = null;
 
-                    // If no certificate was found, generate a self-signed certificate.
-                    if (serverCertificate == null)
+                    // Generate a unique session ID for logging.
+                    SessionId = Guid.NewGuid().ToString();
+                    ConnectionId = 0;
+
+                    // Create the log writer.
+                    string logFileName = "";
+                    if (!string.IsNullOrEmpty(logFile))
                     {
-                        ProxyFunctions.Log(LogWriter, SessionId, "No signing certificate found, so generating new certificate.");
+                        logFileName = ProxyFunctions.GetLogFileName(logFile);
+                        LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
 
-                        List<string> oids = new List<string>();
-                        oids.Add("1.3.6.1.5.5.7.3.1");    // Server Authentication.
-
-                        // Generate the certificate with a duration of 10 years, 4096-bits, and a key usage of server authentication.
-                        serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, true, 4096, 10, oids);
-
-                        ProxyFunctions.Log(LogWriter, SessionId, "New certificate generated with Serial Number {" + Encoding.UTF8.GetString(serverCertificate.GetSerialNumber()) + "}.");
-                    }
-                }
-
-                // Start listening on the specified port and IP address.
-                Listener = new TcpListener(localIPAddress, localPort);
-                Listener.Start();
-
-                ProxyFunctions.Log(LogWriter, SessionId, "Listening on address {" + localIPAddress.ToString() + "}, port {" + localPort + "}.");
-
-                // Accept client requests, forking each into its own thread.
-                while (Started)
-                {
-                    TcpClient client = Listener.AcceptTcpClient();
-
-                    string newLogFileName = ProxyFunctions.GetLogFileName(logFile);
-                    if (newLogFileName != logFileName)
-                    {
-                        LogWriter.Close();
-                        LogWriter = new StreamWriter(newLogFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
-                        LogWriter.AutoFlush = true;
+                        ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
                     }
 
-                    // Prepare the arguments for our new thread.
-                    SmtpProxyConnectionArguments arguments = new SmtpProxyConnectionArguments();
-                    arguments.AcceptedIPs = acceptedIPs;
-                    arguments.TcpClient = client;
-                    arguments.Certificate = serverCertificate;
-                    arguments.LocalIpAddress = localIPAddress;
-                    arguments.LocalPort = localPort;
-                    arguments.LocalEnableSsl = localEnableSsl;
-                    arguments.RemoteServerHostName = remoteServerHostName;
-                    arguments.RemoteServerPort = remoteServerPort;
-                    arguments.RemoteServerEnableSsl = remoteServerEnableSsl;
-                    arguments.RemoteServerCredential = remoteServerCredential;
+                    // If local SSL is supported via STARTTLS, ensure we have a valid server certificate.
+                    if (localEnableSsl)
+                    {
+                        string fqdn = Functions.GetLocalFQDN();
+                        serverCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, fqdn);
+                        // In case the service as running as the current user, check the Current User certificate store as well.
+                        if (serverCertificate == null)
+                            serverCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, fqdn);
 
-                    arguments.SmimeSettingsMode = smimeSettingsMode;
-                    arguments.SmimeSigned = smimeSigned;
-                    arguments.SmimeEncryptedEnvelope = smimeEncryptedEnvelope;
-                    arguments.SmimeTripleWrapped = smimeTripleWrapped;
-                    arguments.SmimeRemovePreviousOperations = smimeRemovePreviousOperations;
+                        // If no certificate was found, generate a self-signed certificate.
+                        if (serverCertificate == null)
+                        {
+                            ProxyFunctions.Log(LogWriter, SessionId, "No signing certificate found, so generating new certificate.");
 
-                    // Increment the connection counter;
-                    arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
+                            List<string> oids = new List<string>();
+                            oids.Add("1.3.6.1.5.5.7.3.1");    // Server Authentication.
 
-                    // Fork the thread and continue listening for new connections.
-                    Thread processThread = new Thread(new ParameterizedThreadStart(ProcessConnection));
-                    processThread.Name = "OpaqueMail SMTP Proxy Connection";
-                    processThread.Start(arguments);
+                            // Generate the certificate with a duration of 10 years, 4096-bits, and a key usage of server authentication.
+                            serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, true, 4096, 10, oids);
+
+                            ProxyFunctions.Log(LogWriter, SessionId, "New certificate generated with Serial Number {" + Encoding.UTF8.GetString(serverCertificate.GetSerialNumber()) + "}.");
+                        }
+                    }
+
+                    // Start listening on the specified port and IP address.
+                    Listener = new TcpListener(localIPAddress, localPort);
+                    Listener.Start();
+
+                    ProxyFunctions.Log(LogWriter, SessionId, "Listening on address {" + localIPAddress.ToString() + "}, port {" + localPort + "}.");
+
+                    // Accept client requests, forking each into its own thread.
+                    while (Started)
+                    {
+                        TcpClient client = Listener.AcceptTcpClient();
+
+                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile);
+                        if (newLogFileName != logFileName)
+                        {
+                            LogWriter.Close();
+                            LogWriter = new StreamWriter(newLogFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
+                            LogWriter.AutoFlush = true;
+                        }
+
+                        // Prepare the arguments for our new thread.
+                        SmtpProxyConnectionArguments arguments = new SmtpProxyConnectionArguments();
+                        arguments.AcceptedIPs = acceptedIPs;
+                        arguments.TcpClient = client;
+                        arguments.Certificate = serverCertificate;
+                        arguments.LocalIpAddress = localIPAddress;
+                        arguments.LocalPort = localPort;
+                        arguments.LocalEnableSsl = localEnableSsl;
+                        arguments.RemoteServerHostName = remoteServerHostName;
+                        arguments.RemoteServerPort = remoteServerPort;
+                        arguments.RemoteServerEnableSsl = remoteServerEnableSsl;
+                        arguments.RemoteServerCredential = remoteServerCredential;
+
+                        arguments.SmimeSettingsMode = smimeSettingsMode;
+                        arguments.SmimeSigned = smimeSigned;
+                        arguments.SmimeEncryptedEnvelope = smimeEncryptedEnvelope;
+                        arguments.SmimeTripleWrapped = smimeTripleWrapped;
+                        arguments.SmimeRemovePreviousOperations = smimeRemovePreviousOperations;
+
+                        // Increment the connection counter;
+                        arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
+
+                        // Fork the thread and continue listening for new connections.
+                        Thread processThread = new Thread(new ParameterizedThreadStart(ProcessConnection));
+                        processThread.Name = "OpaqueMail SMTP Proxy Connection";
+                        processThread.Start(arguments);
+                    }
+
+                    return;
                 }
-            }
-            catch (Exception ex)
-            {
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception when starting proxy: " + ex.Message);
+                catch (Exception ex)
+                {
+                    ProxyFunctions.Log(LogWriter, SessionId, "Exception when starting proxy: " + ex.Message);
+                }
             }
         }
 

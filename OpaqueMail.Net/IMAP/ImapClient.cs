@@ -147,7 +147,7 @@ namespace OpaqueMail
         private bool LastCapabilitiesCheckAuthenticationState = false;
         /// <summary>When a "[THROTTLED]" notice was last received.</summary>
         private DateTime LastThrottleTime = new DateTime(1900, 1, 1);
-        /// <summary>Collection of server responses that didn't directly match the request.</summary>
+        /// <summary>Collection of server responses that haven't been processed yet.</summary>
         /// <remarks>Used when multiple requests are issued concurrently on one connection.</remarks>
         private Dictionary<string, string> SwitchBoard = new Dictionary<string, string>();
         /// <summary>Whether the session has successfully been authenticated.</summary>
@@ -361,7 +361,7 @@ namespace OpaqueMail
 
             // Confirm the server is ready to accept our raw data.
             string response = await ReadDataAsync("+", "APPEND");
-            if (response.StartsWith("+"))
+            if (LastCommandResult)
             {
                 await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, message + "\r\n");
                 response = await ReadDataAsync(commandTag, "APPEND");
@@ -370,6 +370,116 @@ namespace OpaqueMail
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Appends messages to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="messages">The raw messages to append.</param>
+        /// <param name="flags">Optional flags to be applied for the message.</param>
+        /// <param name="date">Optional date for the message.</param>
+        public async Task<bool> AppendMessagesAsync(string mailboxName, string[] messages)
+        {
+            return await AppendMessagesAsync(mailboxName, messages, new string[] { }, null);
+        }
+
+        /// <summary>
+        /// Appends messages to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="messages">The raw messages to append.</param>
+        /// <param name="flags">Optional flags to be applied for the message.</param>
+        /// <param name="date">Optional date for the message.</param>
+        public async Task<bool> AppendMessagesAsync(string mailboxName, string[] messages, string[] flags, DateTime? date)
+        {
+            // Protect against commands being called out of order.
+            if (!IsAuthenticated)
+                throw new ImapException("Must be connected to the server and authenticated prior to calling the APPEND command.");
+
+            // If the server supports MULTIAPPEND, piepline the append statements.
+            if (ServerSupportsMultiAppend)
+            {
+                bool firstMessage = true;
+                for (int i = 0; i < messages.Length; i++)
+                {
+                    string message = messages[i];
+
+                    // Ensure the message has an ending carriage return and line feed.
+                    if (!message.EndsWith("\r\n"))
+                        message += "\r\n";
+
+                    // Create the initial APPEND command.
+                    StringBuilder commandBuilder = new StringBuilder(Constants.SMALLSBSIZE);
+
+                    string commandTag = "";
+
+                    if (firstMessage)
+                    {
+                        commandBuilder.Append("APPEND " + mailboxName);
+
+                        // Generate a unique command tag for tracking this command and its response.
+                        commandTag = UniqueCommandTag();
+
+                        firstMessage = false;
+                    }
+
+                    commandBuilder.Append(" ");
+
+                    // If flags are specified, add them as parameters.
+                    if (flags != null)
+                    {
+                        if (flags.Length > 0)
+                        {
+                            commandBuilder.Append("(");
+                            bool firstFlag = true;
+                            foreach (string flag in flags)
+                            {
+                                if (!firstFlag)
+                                    commandBuilder.Append(" ");
+                                commandBuilder.Append(flag);
+                                firstFlag = false;
+                            }
+                            commandBuilder.Append(") ");
+                        }
+                    }
+
+                    // If a date is specified, add it as a parameter.
+                    if (date != null)
+                        commandBuilder.Append("\"" + ((DateTime)date).ToString("dd-MM-yyyy hh:mm:ss") + " " + ((DateTime)date).ToString("zzzz").Replace(":", "") + "\" ");
+
+                    // Complete the initial command send it.
+                    commandBuilder.Append("{" + message.Length + "}\r\n");
+                    await SendCommandAsync(commandTag, commandBuilder.ToString());
+
+                    // Confirm the server is ready to accept our raw data.
+                    string response = await ReadDataAsync("+", "APPEND");
+                    if (LastCommandResult)
+                    {
+                        // If on the last message, add an extra line break and return the result.
+                        if (i == messages.Length - 1)
+                        {
+                            await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, message + "\r\n");
+                            response = await ReadDataAsync(commandTag, "APPEND");
+
+                            return LastCommandResult;
+                        }
+                        else
+                            await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, message);
+                    }
+                }
+
+                return false;
+            }
+            else
+            {
+                bool returnValue = true;
+
+                foreach (string message in messages)
+                    returnValue = returnValue && await AppendMessageAsync(mailboxName, message, new string[] { }, null);
+
+                return returnValue;
+            }
         }
 
         /// <summary>
@@ -583,7 +693,7 @@ namespace OpaqueMail
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the CREATE command.");
 
             // Disallow wildcard characters in mailbox names;
-            if (mailboxName.Contains("*") || mailboxName.Contains("%"))
+            if (mailboxName.IndexOf("*", StringComparison.Ordinal) > -1 || mailboxName.IndexOf("%", StringComparison.Ordinal) > -1)
                 throw new ImapException("A mailbox must be selected prior to calling the CREATE command.");
 
             // Encode ampersands and Unicode characters.
@@ -691,6 +801,16 @@ namespace OpaqueMail
         /// <param name="mailboxName">Mailbox to work with.</param>
         public async Task<Mailbox> ExamineMailboxAsync(string mailboxName)
         {
+            return await ExamineMailboxAsync(mailboxName, "");
+        }
+
+        /// <summary>
+        /// Examine a mailbox, returning its properties.
+        /// </summary>
+        /// <param name="mailboxName">Mailbox to work with.</param>
+        /// <param name="qResyncParameters">Quick Resynchronization parameters, such as UIDValidity, the last known modification sequence, known UIDs, and/or known sequence ranges.</param>
+        public async Task<Mailbox> ExamineMailboxAsync(string mailboxName, string qResyncParameters)
+        {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the EXAMINE command.");
@@ -701,7 +821,11 @@ namespace OpaqueMail
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "EXAMINE " + mailboxName + "\r\n");
+            if (!string.IsNullOrEmpty(qResyncParameters))
+                await SendCommandAsync(commandTag, "EXAMINE " + mailboxName + " (QRESYNC (" + qResyncParameters + "))\r\n");
+            else
+                await SendCommandAsync(commandTag, "EXAMINE " + mailboxName + "\r\n");
+            
             string response = await ReadDataAsync(commandTag, "EXAMINE");
 
             if (LastCommandResult)
@@ -1134,7 +1258,7 @@ namespace OpaqueMail
                 SessionIsIdle = LastCommandResult;
                 
                 if (SessionIsIdle)
-                    IdleTimer = new Timer(new TimerCallback(CheckIdle), null, 60000, 60000);
+                    IdleTimer = new Timer(new TimerCallback(CheckIdle), null, (int)IdleFrequency.TotalMilliseconds, (int)IdleFrequency.TotalMilliseconds);
 
                 return LastCommandResult;
             }
@@ -1150,10 +1274,10 @@ namespace OpaqueMail
             // Ensure that we've already entered the IDLE state.
             if (SessionIsIdle)
             {
-                await SendCommandAsync("", "DONE\r\n");
-                string response = await ReadDataAsync("", "IDLE");
-
                 SessionIsIdle = false;
+
+                await SendCommandAsync("", "DONE\r\n");
+                string response = await ReadDataAsync("", "DONE");
 
                 // Abort and dispose of the IDLE thread.
                 if (IdleTimer != null)
@@ -1490,7 +1614,7 @@ namespace OpaqueMail
             newMailboxName = Functions.ToModifiedUTF7(newMailboxName);
 
             // Disallow wildcard characters in mailbox names;
-            if (newMailboxName.Contains("*") || newMailboxName.Contains("%"))
+            if (newMailboxName.IndexOf("*", StringComparison.Ordinal) > -1 || newMailboxName.IndexOf("%", StringComparison.Ordinal) > -1)
                 return false;
 
             // Generate a unique command tag for tracking this command and its response.
@@ -1555,6 +1679,16 @@ namespace OpaqueMail
         /// <param name="mailboxName">Mailbox to work with.</param>
         public async Task<Mailbox> SelectMailboxAsync(string mailboxName)
         {
+            return await SelectMailboxAsync(mailboxName, "");
+        }
+
+        /// <summary>
+        /// Select a mailbox for subsequent operations and return its properties.
+        /// </summary>
+        /// <param name="mailboxName">Mailbox to work with.</param>
+        /// <param name="qResyncParameters">Quick Resynchronization parameters, such as UIDValidity, the last known modification sequence, known UIDs, and/or known sequence ranges.</param>
+        public async Task<Mailbox> SelectMailboxAsync(string mailboxName, string qResyncParameters)
+        {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the SELECT command.");
@@ -1565,7 +1699,11 @@ namespace OpaqueMail
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "SELECT " + mailboxName + "\r\n");
+            if (!string.IsNullOrEmpty(qResyncParameters))
+                await SendCommandAsync(commandTag, "SELECT " + mailboxName + " (QRESYNC (" + qResyncParameters + "))\r\n");
+            else
+                await SendCommandAsync(commandTag, "SELECT " + mailboxName + "\r\n");
+
             string response = await ReadDataAsync(commandTag, "SELECT");
 
             if (LastCommandResult)
@@ -1727,7 +1865,8 @@ namespace OpaqueMail
         /// </summary>
         private async void CheckIdle(object stateInfo)
         {
-            await ReadDataAsync("", "IDLE");
+            if (SessionIsIdle)
+                await ReadDataAsync("", "IDLE");
         }
 
         /// <summary>
@@ -1766,7 +1905,7 @@ namespace OpaqueMail
             string response = await ReadDataAsync(commandTag, "FETCH");
 
             // Ensure the message was actually found.
-            if (response.IndexOf("\r\n") > -1)
+            if (response.IndexOf("\r\n", StringComparison.Ordinal) > -1)
             {
                 // Read the message's UID and flags.
                 int uid = 0;
@@ -2026,12 +2165,6 @@ namespace OpaqueMail
             // Exclusively lock the IMAP stream reader.
             using (await ImapStreamLock.LockAsync())
             {
-                // If this is a poll during an IDLE command, time out after 15 seconds.
-                if (previousCommand == "IDLE")
-                    ImapStream.ReadTimeout = 15000;
-                else
-                    ImapStream.ReadTimeout = -1;
-
                 // Loop until the anticipated result is received.
                 while (true)
                 {
@@ -2043,11 +2176,14 @@ namespace OpaqueMail
                         return returnValue;
                     }
 
-                    string responseLine = await ImapStreamReader.ReadLineAsync();
+                    // If this is a poll during an IDLE command, time out after 5 seconds.
+                    if (previousCommand == "IDLE")
+                    {
+                        if (!ImapTcpClient.Client.Poll(5000, SelectMode.SelectRead))
+                            return "";
+                    }
 
-                    // If the stream timed out during IDLE, return "".
-                    if (previousCommand == "IDLE" && string.IsNullOrEmpty(responseLine))
-                        return "";
+                    string responseLine = await ImapStreamReader.ReadLineAsync();
 
                     // Split the line into its components and check if this is a tagged response.
                     string[] responseParts = responseLine.Split(new char[] { ' ' }, 3);
@@ -2066,7 +2202,7 @@ namespace OpaqueMail
                                     result = responseParts[2];
 
                                 // If the result matches our expected tag, return it; otherwise, save it for later and continue with the next result.
-                                if (responseParts[0] == commandTag || previousCommand == "IDLE")
+                                if (responseParts[0] == commandTag || previousCommand == "DONE")
                                 {
                                     LastCommandResult = true;
                                     return result;
