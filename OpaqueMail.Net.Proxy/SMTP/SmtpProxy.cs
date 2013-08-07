@@ -29,7 +29,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, SmimeSettingsMode.BestEffort, true, true, true, "");
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, SmimeSettingsMode.BestEffort, true, true, true, true, "");
         }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, SmimeSettingsMode.BestEffort, true, true, true, logFile);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, SmimeSettingsMode.BestEffort, true, true, true, true, logFile);
         }
 
         /// <summary>
@@ -64,9 +64,10 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="smimeEncryptedEnvelope">Whether the e-mail's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
         /// <param name="smimeSigned">Whether the e-mail should be signed.  When true, signing is the first S/MIME operation</param>
         /// <param name="smimeTripleWrapped">Whether the e-mail should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped)
+        /// <param name="smimeRemovePreviousOperations">Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</param>
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, smimeSettingsMode, smimeSigned, smimeEncryptedEnvelope, smimeTripleWrapped, "");
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, smimeSettingsMode, smimeSigned, smimeEncryptedEnvelope, smimeTripleWrapped, smimeRemovePreviousOperations, "");
         }
 
         /// <summary>
@@ -84,8 +85,9 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="smimeEncryptedEnvelope">Whether the e-mail's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
         /// <param name="smimeSigned">Whether the e-mail should be signed.  When true, signing is the first S/MIME operation</param>
         /// <param name="smimeTripleWrapped">Whether the e-mail should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
+        /// <param name="smimeRemovePreviousOperations">Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, string logFile)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, string logFile)
         {
             try
             {
@@ -166,6 +168,7 @@ namespace OpaqueMail.Net.Proxy
                     arguments.SmimeSigned = smimeSigned;
                     arguments.SmimeEncryptedEnvelope = smimeEncryptedEnvelope;
                     arguments.SmimeTripleWrapped = smimeTripleWrapped;
+                    arguments.SmimeRemovePreviousOperations = smimeRemovePreviousOperations;
 
                     // Increment the connection counter;
                     arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
@@ -287,6 +290,7 @@ namespace OpaqueMail.Net.Proxy
                         }
 
                         arguments.SmimeEncryptedEnvelope = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SMIMEEncrypt");
+                        arguments.SmimeRemovePreviousOperations = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SmimeRemovePreviousOperations");
                         arguments.SmimeSigned = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SMIMESign");
                         arguments.SmimeTripleWrapped = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SMIMETripleWrap");
 
@@ -410,9 +414,9 @@ namespace OpaqueMail.Net.Proxy
                                     {
                                         ReadOnlyMailMessage message = new ReadOnlyMailMessage(command.Substring(0, command.Length - 5), ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody);
 
-                                        // If the received message is already signed or encrypted, forward it as-is.
+                                        // If the received message is already signed or encrypted and we don't want to remove previous S/MIME operations, forward it as-is.
                                         string contentType = message.ContentType;
-                                        if (contentType.StartsWith("application/pkcs7-mime") || contentType.StartsWith("application/x-pkcs7-mime"))
+                                        if ((contentType.StartsWith("application/pkcs7-mime") || contentType.StartsWith("application/x-pkcs7-mime") || contentType.StartsWith("application/x-pkcs7-signature")) && !arguments.SmimeRemovePreviousOperations)
                                         {
                                             message.SmimeSigned = message.SmimeEncryptedEnvelope = message.SmimeTripleWrapped = false;
                                             await smtpClient.SendAsync(message);
@@ -668,7 +672,7 @@ namespace OpaqueMail.Net.Proxy
             SmtpProxyArguments arguments = (SmtpProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.SmimeSettingsMode, arguments.SmimeSigned, arguments.SmimeEncryptedEnvelope, arguments.SmimeTripleWrapped, arguments.LogFile);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.SmimeSettingsMode, arguments.SmimeSigned, arguments.SmimeEncryptedEnvelope, arguments.SmimeTripleWrapped, arguments.SmimeRemovePreviousOperations, arguments.LogFile);
         }
         #endregion Private Methods
     }

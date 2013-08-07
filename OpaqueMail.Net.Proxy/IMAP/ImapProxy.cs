@@ -288,13 +288,18 @@ namespace OpaqueMail.Net.Proxy
                 // If the IP address range filter contains the localhost entry 0.0.0.0, check if the client IP is a local address and update it to 0.0.0.0 if so.
                 if (arguments.AcceptedIPs.IndexOf("0.0.0.0") > -1)
                 {
-                    IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
-                    foreach (IPAddress hostIP in hostEntry.AddressList)
+                    if (ip == "127.0.0.1")
+                        ip = "0.0.0.0";
+                    else
                     {
-                        if (hostIP.ToString() == ip)
+                        IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
+                        foreach (IPAddress hostIP in hostEntry.AddressList)
                         {
-                            ip = "0.0.0.0";
-                            break;
+                            if (hostIP.ToString() == ip)
+                            {
+                                ip = "0.0.0.0";
+                                break;
+                            }
                         }
                     }
                 }
@@ -389,6 +394,9 @@ namespace OpaqueMail.Net.Proxy
             ulong bytesTransmitted = 0;
             int appendLength = 0, appendBytesTransmitted = 0;
 
+            //  When a "[THROTTLED]" notice was last received.
+            DateTime lastThrottleTime = new DateTime(1900, 1, 1);
+
             bool stillReceiving = true;
             try
             {
@@ -472,6 +480,15 @@ namespace OpaqueMail.Net.Proxy
 
                                     if (!inMessage)
                                     {
+                                        if (stringRead.Contains("[THROTTLED]\r\n"))
+                                        {
+                                            if (DateTime.Now - lastThrottleTime >= new TimeSpan(0, 20, 0))
+                                            {
+                                                ProxyFunctions.Log(LogWriter, SessionId, ConnectionId.ToString(), "Connection speed throttled by the remote server.");
+                                                lastThrottleTime = DateTime.Now;
+                                            }
+                                        }
+
                                         int pos = 0;
                                         while (pos > -1)
                                         {

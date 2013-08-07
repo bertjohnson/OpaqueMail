@@ -313,6 +313,44 @@ namespace OpaqueMail
                         mimeParts.Add(new MimePart(Functions.ReturnBetween(contentType + ";", "name=", ";").Replace("\"", ""), contentType, "", "", contentTransferEncoding, body));
                     }
                 }
+                else
+                {
+                    // Hydrate the signature CMS object.
+                    SignedCms signedCms = new SignedCms();
+
+                    try
+                    {
+                        // Attempt to decode the signature block and verify the passed in signature.
+                        signedCms.Decode(Convert.FromBase64String(body));
+                        signedCms.CheckSignature(true);
+
+                        string mimeContents = Encoding.UTF8.GetString(signedCms.ContentInfo.Content);
+
+                        int mimeDivider = mimeContents.IndexOf("\r\n\r\n");
+                        string mimeHeaders;
+                        if (mimeDivider > -1)
+                            mimeHeaders = mimeContents.Substring(0, mimeDivider);
+                        else
+                            mimeHeaders = mimeContents;
+
+                        if (mimeHeaders.Length > 0)
+                        {
+                            // Extract the body portion of the current MIME part.
+                            string mimeBody = mimeContents.Substring(mimeDivider + 4);
+
+                            string mimeCharSet = "", mimeContentDisposition = "", mimeContentID = "", mimeContentType = "", mimeContentTransferEncoding = "", mimeFileName = "";
+                            ExtractMimeHeaders(mimeHeaders, out mimeContentType, out mimeCharSet, out mimeContentTransferEncoding, out mimeContentDisposition, out mimeFileName, out mimeContentID);
+
+                            List<MimePart> returnedMIMEParts = ExtractMIMEParts(mimeContentType, mimeContentTransferEncoding, mimeBody, processingFlags);
+                            foreach (MimePart returnedMIMEPart in returnedMIMEParts)
+                                mimeParts.Add(returnedMIMEPart);
+                        }
+                    }
+                    catch
+                    {
+                        // If an exception occured, the signature could not be verified.
+                    }
+                }
             }
             else
             {
@@ -387,7 +425,9 @@ namespace OpaqueMail
                 envelope.Decrypt();
 
                 string body = Encoding.UTF8.GetString(envelope.ContentInfo.Content);
-                string mimeHeaders = body.Substring(0, body.IndexOf("\r\n\r\n"));
+                int divider = body.IndexOf("\r\n\r\n");
+                string mimeHeaders = body.Substring(0, divider);
+                body = body.Substring(divider + 4);
 
                 // Divide the MIME part's headers into its components.
                 string mimeContentType = "", mimeCharSet = "", mimeContentTransferEncoding = "", mimeFileName = "", mimeContentDisposition = "", mimeContentID = "";

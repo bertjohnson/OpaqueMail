@@ -2059,17 +2059,6 @@ namespace OpaqueMail
                         {
                             // Handle successes.
                             case "OK":
-                                if (responseLine.EndsWith("[THROTTLED]"))
-                                {
-                                    if (DateTime.Now - LastThrottleTime >= new TimeSpan(0, 20, 0))
-                                    {
-                                        // Raise a throttling event if the server indicates it and we haven't raised the event in 20 minutes.
-                                        if (ImapClientThrottleEvent != null)
-                                            OnImapClientThrottleEvent();
-                                        LastThrottleTime = DateTime.Now;
-                                    }
-                                }
-
                                 string result = "";
                                 if (responseBuilder.Length > 0)
                                     result = responseBuilder.ToString();

@@ -51,10 +51,12 @@
       <!-- Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope. -->
       <SMIMETripleWrap>True</SMIMETripleWrap>
 
+      <!-- Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied. -->
+      <SmimeRemovePreviousOperations>True</SmimeRemovePreviousOperations>
+      
       <!-- Where log files should be stored, if any.  Leave blank to avoid logging. -->
       <!-- Date variables can be encased in angle braces.  For example, "Logs\SMTPProxy-{yyyy-MM-dd}.log". -->
-      <LogFile>Logs\SMTPProxy-{yyyy-MM-dd}.log</LogFile>
-    
+      <LogFile>Logs\SMTPProxy-{yyyy-MM-dd}.log</LogFile>    
     </Service1>
   </SMTP>
   <IMAP>
