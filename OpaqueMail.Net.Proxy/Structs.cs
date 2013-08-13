@@ -36,6 +36,8 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
+        /// <summary>The instance number of the proxy.</summary>
+        public int InstanceId;
 
         /// <summary>IMAP Proxy to start.</summary>
         public ImapProxy Proxy;
@@ -97,6 +99,8 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
+        /// <summary>The instance number of the proxy.</summary>
+        public int InstanceId;
 
         /// <summary>POP3 Proxy to start.</summary>
         public Pop3Proxy Proxy;
@@ -181,6 +185,11 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
+        /// <summary>The instance number of the proxy.</summary>
+        public int InstanceId;
+
+        /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
+        public bool SendCertificateReminders;
 
         /// <summary>SMTP Proxy to start.</summary>
         public SmtpProxy Proxy;
@@ -223,6 +232,9 @@ namespace OpaqueMail.Net.Proxy
         /// <summary>Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
         public bool SmimeTripleWrapped;
 
+        /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
+        public bool SendCertificateReminders;
+
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
     }
@@ -242,5 +254,8 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
+
+        /// <summary>IP address of client.</summary>
+        public string IPAddress;
     }
 }

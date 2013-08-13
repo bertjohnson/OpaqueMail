@@ -16,6 +16,10 @@ namespace OpaqueMail.Net.Proxy
 {
     public class SmtpProxy : ProxyBase
     {
+        #region Private Members
+        private Dictionary<X509Certificate2, DateTime> CertificateReminders = new Dictionary<X509Certificate2, DateTime>();
+        #endregion Private Members
+
         #region Public Methods
         /// <summary>
         /// Start an SMTP proxy instance.
@@ -29,7 +33,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, SmimeSettingsMode.BestEffort, true, true, true, true, "");
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, SmimeSettingsMode.BestEffort, true, true, true, true, true, "", 0);
         }
 
         /// <summary>
@@ -44,9 +48,10 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile)
+        /// <param name="instanceId">The instance number of the proxy.</param>
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile, int instanceId)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, SmimeSettingsMode.BestEffort, true, true, true, true, logFile);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, SmimeSettingsMode.BestEffort, true, true, true, true, true, logFile, instanceId);
         }
 
         /// <summary>
@@ -65,9 +70,10 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="smimeSigned">Whether the e-mail should be signed.  When true, signing is the first S/MIME operation</param>
         /// <param name="smimeTripleWrapped">Whether the e-mail should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
         /// <param name="smimeRemovePreviousOperations">Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations)
+        /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, smimeSettingsMode, smimeSigned, smimeEncryptedEnvelope, smimeTripleWrapped, smimeRemovePreviousOperations, "");
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, smimeSettingsMode, smimeSigned, smimeEncryptedEnvelope, smimeTripleWrapped, smimeRemovePreviousOperations, sendCertificateReminders, "", 0);
         }
 
         /// <summary>
@@ -86,9 +92,21 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="smimeSigned">Whether the e-mail should be signed.  When true, signing is the first S/MIME operation</param>
         /// <param name="smimeTripleWrapped">Whether the e-mail should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
         /// <param name="smimeRemovePreviousOperations">Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</param>
+        /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, string logFile)
+        /// <param name="instanceId">The instance number of the proxy.</param>
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders, string logFile, int instanceId)
         {
+            // Create the log writer.
+            string logFileName = "";
+            if (!string.IsNullOrEmpty(logFile))
+            {
+                logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
+                LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
+            }
+
+            ProxyFunctions.Log(LogWriter, SessionId, "Starting service.");
+
             // Attempt to start up to 3 times in case another service using the port is shutting down.
             int startAttempts = 0;
             while (startAttempts < 3)
@@ -104,22 +122,11 @@ namespace OpaqueMail.Net.Proxy
 
                 try
                 {
-                    Started = true;
                     X509Certificate serverCertificate = null;
 
                     // Generate a unique session ID for logging.
                     SessionId = Guid.NewGuid().ToString();
                     ConnectionId = 0;
-
-                    // Create the log writer.
-                    string logFileName = "";
-                    if (!string.IsNullOrEmpty(logFile))
-                    {
-                        logFileName = ProxyFunctions.GetLogFileName(logFile);
-                        LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
-
-                        ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
-                    }
 
                     // If local SSL is supported via STARTTLS, ensure we have a valid server certificate.
                     if (localEnableSsl)
@@ -149,14 +156,17 @@ namespace OpaqueMail.Net.Proxy
                     Listener = new TcpListener(localIPAddress, localPort);
                     Listener.Start();
 
+                    ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
                     ProxyFunctions.Log(LogWriter, SessionId, "Listening on address {" + localIPAddress.ToString() + "}, port {" + localPort + "}.");
+
+                    Started = true;
 
                     // Accept client requests, forking each into its own thread.
                     while (Started)
                     {
                         TcpClient client = Listener.AcceptTcpClient();
 
-                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile);
+                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
                         if (newLogFileName != logFileName)
                         {
                             LogWriter.Close();
@@ -183,6 +193,8 @@ namespace OpaqueMail.Net.Proxy
                         arguments.SmimeTripleWrapped = smimeTripleWrapped;
                         arguments.SmimeRemovePreviousOperations = smimeRemovePreviousOperations;
 
+                        arguments.SendCertificateReminders = sendCertificateReminders;
+
                         // Increment the connection counter;
                         arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
 
@@ -191,7 +203,6 @@ namespace OpaqueMail.Net.Proxy
                         processThread.Name = "OpaqueMail SMTP Proxy Connection";
                         processThread.Start(arguments);
                     }
-
                     return;
                 }
                 catch (Exception ex)
@@ -212,6 +223,8 @@ namespace OpaqueMail.Net.Proxy
 
             if (Listener != null)
                 Listener.Stop();
+
+            ProxyFunctions.Log(LogWriter, SessionId, "Service stopped.");
         }
 
         /// <summary>
@@ -305,8 +318,10 @@ namespace OpaqueMail.Net.Proxy
                                 arguments.Certificate = CertHelper.GetCertificateBySubjectName(certificateLocation, certificateValue);
                         }
 
+                        arguments.SendCertificateReminders = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SendCertificateReminders");
+
                         arguments.SmimeEncryptedEnvelope = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SMIMEEncrypt");
-                        arguments.SmimeRemovePreviousOperations = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SmimeRemovePreviousOperations");
+                        arguments.SmimeRemovePreviousOperations = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SMIMERemovePreviousOperations");
                         arguments.SmimeSigned = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SMIMESign");
                         arguments.SmimeTripleWrapped = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/SMTP/Service" + i + "/SMIMETripleWrap");
 
@@ -318,6 +333,7 @@ namespace OpaqueMail.Net.Proxy
                             arguments.SmimeSettingsMode = SmimeSettingsMode.RequireExactSettings;
 
                         arguments.LogFile = ProxyFunctions.GetXmlStringValue(navigator, "Settings/SMTP/Service" + i + "/LogFile");
+                        arguments.InstanceId = i;
 
                         // Remember the proxy in order to close it when the service stops.
                         arguments.Proxy = new SmtpProxy();
@@ -347,6 +363,8 @@ namespace OpaqueMail.Net.Proxy
             // Cast the passed-in parameters back to their original objects.
             SmtpProxyConnectionArguments arguments = (SmtpProxyConnectionArguments)parameters;
 
+            // The overall number of bytes transmitted on this connection.
+            ulong bytesTransmitted = 0;
             try
             {
                 TcpClient client = arguments.TcpClient;
@@ -413,7 +431,10 @@ namespace OpaqueMail.Net.Proxy
                     string command = "";
                     while (client.Connected)
                     {
-                        command += await Functions.ReadStreamStringAsync(clientStream, buffer, Constants.SMALLBUFFERSIZE);
+                        int bytesRead = await clientStream.ReadAsync(buffer, 0, Constants.SMALLBUFFERSIZE);
+                        bytesTransmitted += (ulong)bytesRead;
+
+                        command += Encoding.UTF8.GetString(buffer, 0, bytesRead);
 
                         if (command.EndsWith("\r\n"))
                         {
@@ -465,10 +486,55 @@ namespace OpaqueMail.Net.Proxy
                                             // Look up the S/MIME signing certificate for the current sender.  If it doesn't exist, create one.
                                             message.SmimeSigningCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, message.From.Address);
                                             if (message.SmimeSigningCertificate == null)
-                                                message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate(message.From.Address, message.From.Address, true, 4096, 10);
+                                                message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate("E=" + message.From.Address, message.From.Address, true, 4096, 10);
 
                                             // Send the message.
                                             await smtpClient.SendAsync(message.AsMailMessage());
+
+                                            // Check the signing certificate's expiration to determine if we should send a reminder.
+                                            if (arguments.SendCertificateReminders && message.SmimeSigningCertificate != null)
+                                            {
+                                                string expirationDateString = message.SmimeSigningCertificate.GetExpirationDateString();
+                                                TimeSpan expirationTime = DateTime.Parse(expirationDateString) - DateTime.Now;
+                                                if (expirationTime.TotalDays < 30)
+                                                {
+                                                    bool sendReminder = true;
+                                                    if (CertificateReminders.ContainsKey(message.SmimeSigningCertificate))
+                                                    {
+                                                        TimeSpan timeSinceLastReminder = DateTime.Now - CertificateReminders[message.SmimeSigningCertificate];
+                                                        if (timeSinceLastReminder.TotalHours < 24)
+                                                            sendReminder = false;
+                                                    }
+
+                                                    // Send the reminder message.
+                                                    if (sendReminder)
+                                                    {
+                                                        MailMessage reminderMessage = new MailMessage(message.From, message.From);
+                                                        reminderMessage.Subject = "OpaqueMail: S/MIME Certificate Expires " + expirationDateString;
+                                                        reminderMessage.Body = "Your OpaqueMail S/MIME Certificate will expire in " + ((int)expirationTime.TotalDays) + " days on " + expirationDateString + ".\r\n\r\n" +
+                                                            "Certificate Subject Name: " + message.SmimeSigningCertificate.Subject + "\r\n" +
+                                                            "Certificate Serial Number: " + message.SmimeSigningCertificate.SerialNumber + "\r\n" +
+                                                            "Certificate Issuer: " + message.SmimeSigningCertificate.Issuer + "\r\n\r\n" +
+                                                            "Please renew or enroll a new certificate to continue protecting your e-mail privacy.\r\n\r\n" +
+                                                            "This is an automated message sent from the OpaqueMail Proxy on " + Functions.GetLocalFQDN() + ".  " +
+                                                            "For more information, visit http://opaquemail.org/.";
+
+                                                        reminderMessage.SmimeEncryptedEnvelope = message.SmimeEncryptedEnvelope;
+                                                        reminderMessage.SmimeEncryptionOptionFlags = message.SmimeEncryptionOptionFlags;
+                                                        reminderMessage.SmimeSettingsMode = message.SmimeSettingsMode;
+                                                        reminderMessage.SmimeSigned = message.SmimeSigned;
+                                                        reminderMessage.SmimeSigningCertificate = message.SmimeSigningCertificate;
+                                                        reminderMessage.SmimeSigningOptionFlags = message.SmimeSigningOptionFlags;
+                                                        reminderMessage.SmimeTripleWrapped = message.SmimeTripleWrapped;
+
+                                                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Certificate with Serial Number {" + message.SmimeSigningCertificate.SerialNumber + "} expiring.  Sending reminder to {" + message.From.Address + "}.");
+
+                                                        await smtpClient.SendAsync(reminderMessage);
+
+                                                        CertificateReminders[message.SmimeSigningCertificate] = DateTime.Now;
+                                                    }
+                                                }
+                                            }
                                         }
 
                                         await Functions.SendStreamStringAsync(clientStream, buffer, "250 Forwarded\r\n");
@@ -667,7 +733,7 @@ namespace OpaqueMail.Net.Proxy
                 if (client != null)
                     client.Close();
 
-                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Closed connection from {" + ip + "}.");
+                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection from {" + ip + "} closed after transmitting {" + bytesTransmitted.ToString("N0") + "} bytes.");
             }
             catch (SocketException ex)
             {
@@ -688,7 +754,7 @@ namespace OpaqueMail.Net.Proxy
             SmtpProxyArguments arguments = (SmtpProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.SmimeSettingsMode, arguments.SmimeSigned, arguments.SmimeEncryptedEnvelope, arguments.SmimeTripleWrapped, arguments.SmimeRemovePreviousOperations, arguments.LogFile);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.SmimeSettingsMode, arguments.SmimeSigned, arguments.SmimeEncryptedEnvelope, arguments.SmimeTripleWrapped, arguments.SmimeRemovePreviousOperations, arguments.SendCertificateReminders, arguments.LogFile, arguments.InstanceId);
         }
         #endregion Private Methods
     }

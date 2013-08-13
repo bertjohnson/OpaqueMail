@@ -15,9 +15,16 @@ namespace OpaqueMail.Net.Proxy
         /// Process special characters in a log file name.
         /// </summary>
         /// <param name="fileName">Name of the log file.</param>
+        /// <param name="instanceId">The instance number of the proxy.</param>
         /// <returns>The final log file name, with full path, to be used.</returns>
-        public static string GetLogFileName(string fileName)
+        public static string GetLogFileName(string fileName, int instanceId)
         {
+            // Replace the {#} token with the proxy instance number.
+            if (instanceId == 1)
+                fileName = fileName.Replace("{#}", "");
+            else
+                fileName = fileName.Replace("{#}", instanceId.ToString());
+
             // If the log file location doesn't contain a directory, make it relative to where the service lives.
             if (fileName.Length < 2 || (fileName[1] != ':' && !fileName.StartsWith("\\")))
                 fileName = AppDomain.CurrentDomain.BaseDirectory + fileName;

@@ -29,7 +29,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote POP3 server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "");
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", 0);
         }
 
         /// <summary>
@@ -44,8 +44,19 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote POP3 server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote POP3 server.  When set, this overrides any credentials passed locally.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile)
+        /// <param name="instanceId">The instance number of the proxy.</param>
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile, int instanceId)
         {
+            // Create the log writer.
+            string logFileName = "";
+            if (!string.IsNullOrEmpty(logFile))
+            {
+                logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
+                LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
+            }
+
+            ProxyFunctions.Log(LogWriter, SessionId, "Starting service.");
+
             // Attempt to start up to 3 times in case another service using the port is shutting down.
             int startAttempts = 0;
             while (startAttempts < 3)
@@ -61,22 +72,11 @@ namespace OpaqueMail.Net.Proxy
 
                 try
                 {
-                    Started = true;
                     X509Certificate serverCertificate = null;
 
                     // Generate a unique session ID for logging.
                     SessionId = Guid.NewGuid().ToString();
                     ConnectionId = 0;
-
-                    // Create the log writer.
-                    string logFileName = "";
-                    if (!string.IsNullOrEmpty(logFile))
-                    {
-                        logFileName = ProxyFunctions.GetLogFileName(logFile);
-                        LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
-
-                        ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
-                    }
 
                     // If local SSL is supported via STARTTLS, ensure we have a valid server certificate.
                     if (localEnableSsl)
@@ -111,14 +111,17 @@ namespace OpaqueMail.Net.Proxy
                     Listener = new TcpListener(localIPAddress, localPort);
                     Listener.Start();
 
+                    ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
                     ProxyFunctions.Log(LogWriter, SessionId, "Listening on address {" + localIPAddress.ToString() + "}, port {" + localPort + "}.");
+
+                    Started = true;
 
                     // Accept client requests, forking each into its own thread.
                     while (Started)
                     {
                         TcpClient client = Listener.AcceptTcpClient();
 
-                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile);
+                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
                         if (newLogFileName != logFileName)
                         {
                             LogWriter.Close();
@@ -147,7 +150,6 @@ namespace OpaqueMail.Net.Proxy
                         processThread.Name = "OpaqueMail POP3 Proxy Connection";
                         processThread.Start(arguments);
                     }
-
                     return;
                 }
                 catch (Exception ex)
@@ -168,6 +170,8 @@ namespace OpaqueMail.Net.Proxy
 
             if (Listener != null)
                 Listener.Stop();
+
+            ProxyFunctions.Log(LogWriter, SessionId, "Service stopped.");
         }
 
         /// <summary>
@@ -262,6 +266,7 @@ namespace OpaqueMail.Net.Proxy
                         }
 
                         arguments.LogFile = ProxyFunctions.GetXmlStringValue(navigator, "Settings/POP3/Service" + i + "/LogFile");
+                        arguments.InstanceId = i;
 
                         // Remember the proxy in order to close it when the service stops.
                         arguments.Proxy = new Pop3Proxy();
@@ -360,6 +365,7 @@ namespace OpaqueMail.Net.Proxy
                 remoteServerToClientArguments.RemoteServerStream = clientStream;
                 remoteServerToClientArguments.IsClient = false;
                 remoteServerToClientArguments.ConnectionId = ConnectionId.ToString();
+                remoteServerToClientArguments.IPAddress = ip;
                 Thread remoteServerToClientThread = new Thread(new ParameterizedThreadStart(RelayData));
                 remoteServerToClientThread.Name = "OpaqueMail POP3 Proxy Server to Client";
                 remoteServerToClientThread.Start(remoteServerToClientArguments);
@@ -370,6 +376,7 @@ namespace OpaqueMail.Net.Proxy
                 clientToRemoteServerArguments.RemoteServerStream = remoteServerStream;
                 clientToRemoteServerArguments.IsClient = true;
                 clientToRemoteServerArguments.ConnectionId = ConnectionId.ToString();
+                clientToRemoteServerArguments.IPAddress = ip;
                 Thread clientToRemoteServerThread = new Thread(new ParameterizedThreadStart(RelayData));
                 remoteServerToClientThread.Name = "OpaqueMail POP3 Proxy Client to Server";
                 clientToRemoteServerThread.Start(clientToRemoteServerArguments);
@@ -483,8 +490,8 @@ namespace OpaqueMail.Net.Proxy
             finally
             {
                 // If sending to the local client, log the connection being closed.
-                if (arguments.IsClient)
-                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection closed after transmitting {" + bytesTransmitted + "} bytes.");
+                if (!arguments.IsClient)
+                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection from {" + arguments.IPAddress + "} closed after transmitting {" + bytesTransmitted.ToString("N0") + "} bytes.");
 
                 if (clientStream != null)
                     clientStream.Dispose();
@@ -543,7 +550,7 @@ namespace OpaqueMail.Net.Proxy
             Pop3ProxyArguments arguments = (Pop3ProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.LogFile);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.LogFile, arguments.InstanceId);
         }
         #endregion Private Methods
     }

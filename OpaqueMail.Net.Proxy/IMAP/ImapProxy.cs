@@ -29,7 +29,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote IMAP server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "");
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", 0);
         }
 
         /// <summary>
@@ -44,8 +44,19 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote IMAP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote IMAP server.  When set, this overrides any credentials passed locally.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile)
+        /// <param name="instanceId">The instance number of the proxy.</param>
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile, int instanceId)
         {
+            // Create the log writer.
+            string logFileName = "";
+            if (!string.IsNullOrEmpty(logFile))
+            {
+                logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
+                LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
+            }
+
+            ProxyFunctions.Log(LogWriter, SessionId, "Starting service.");
+
             // Attempt to start up to 3 times in case another service using the port is shutting down.
             int startAttempts = 0;
             while (startAttempts < 3)
@@ -61,22 +72,11 @@ namespace OpaqueMail.Net.Proxy
 
                 try
                 {
-                    Started = true;
                     X509Certificate serverCertificate = null;
 
                     // Generate a unique session ID for logging.
                     SessionId = Guid.NewGuid().ToString();
                     ConnectionId = 0;
-
-                    // Create the log writer.
-                    string logFileName = "";
-                    if (!string.IsNullOrEmpty(logFile))
-                    {
-                        logFileName = ProxyFunctions.GetLogFileName(logFile);
-                        LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
-
-                        ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
-                    }
 
                     // If local SSL is supported via STARTTLS, ensure we have a valid server certificate.
                     if (localEnableSsl)
@@ -98,26 +98,24 @@ namespace OpaqueMail.Net.Proxy
                             // Generate the certificate with a duration of 10 years, 4096-bits, and a key usage of server authentication.
                             serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, true, 4096, 10, oids);
 
-                            StringBuilder logBuilder = new StringBuilder();
-                            logBuilder.Append("Importing certificate with Serial Number {");
-                            foreach (byte snByte in serverCertificate.GetSerialNumber())
-                                logBuilder.Append(((int)snByte).ToString());
-                            logBuilder.Append("}.");
-                            ProxyFunctions.Log(LogWriter, SessionId, logBuilder.ToString());
+                            ProxyFunctions.Log(LogWriter, SessionId, "Certificate generated with Serial Number {" + serverCertificate.GetSerialNumberString() + "}.");
                         }
                     }
 
                     Listener = new TcpListener(localIPAddress, localPort);
                     Listener.Start();
 
+                    ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
                     ProxyFunctions.Log(LogWriter, SessionId, "Listening on address {" + localIPAddress.ToString() + "}, port {" + localPort + "}.");
+
+                    Started = true;
 
                     // Accept client requests, forking each into its own thread.
                     while (Started)
                     {
                         TcpClient client = Listener.AcceptTcpClient();
 
-                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile);
+                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
                         if (newLogFileName != logFileName)
                         {
                             LogWriter.Close();
@@ -145,7 +143,6 @@ namespace OpaqueMail.Net.Proxy
                         processThread.Name = "OpaqueMail IMAP Proxy Connection";
                         processThread.Start(arguments);
                     }
-
                     return;
                 }
                 catch (Exception ex)
@@ -166,6 +163,8 @@ namespace OpaqueMail.Net.Proxy
 
             if (Listener != null)
                 Listener.Stop();
+
+            ProxyFunctions.Log(LogWriter, SessionId, "Service stopped.");
         }
 
         /// <summary>
@@ -260,6 +259,7 @@ namespace OpaqueMail.Net.Proxy
                         }
 
                         arguments.LogFile = ProxyFunctions.GetXmlStringValue(navigator, "Settings/IMAP/Service" + i + "/LogFile");
+                        arguments.InstanceId = i;
 
                         // Remember the proxy in order to close it when the service stops.
                         arguments.Proxy = new ImapProxy();
@@ -363,6 +363,7 @@ namespace OpaqueMail.Net.Proxy
                 remoteServerToClientArguments.RemoteServerStream = clientStream;
                 remoteServerToClientArguments.IsClient = false;
                 remoteServerToClientArguments.ConnectionId = ConnectionId.ToString();
+                remoteServerToClientArguments.IPAddress = ip;
                 Thread remoteServerToClientThread = new Thread(new ParameterizedThreadStart(RelayData));
                 remoteServerToClientThread.Name = "OpaqueMail IMAP Proxy Server to Client";
                 remoteServerToClientThread.Start(remoteServerToClientArguments);
@@ -373,6 +374,7 @@ namespace OpaqueMail.Net.Proxy
                 clientToRemoteServerArguments.RemoteServerStream = remoteServerStream;
                 clientToRemoteServerArguments.IsClient = true;
                 clientToRemoteServerArguments.ConnectionId = ConnectionId.ToString();
+                clientToRemoteServerArguments.IPAddress = ip;
                 Thread clientToRemoteServerThread = new Thread(new ParameterizedThreadStart(RelayData));
                 clientToRemoteServerThread.Name = "OpaqueMail IMAP Proxy Client to Server";
                 clientToRemoteServerThread.Start(clientToRemoteServerArguments);
@@ -585,8 +587,8 @@ namespace OpaqueMail.Net.Proxy
             finally
             {
                 // If sending to the local client, log the connection being closed.
-                if (arguments.IsClient)
-                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection closed after transmitting {" + bytesTransmitted + "} bytes.");
+                if (!arguments.IsClient)
+                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection from {" + arguments.IPAddress + "} closed after transmitting {" + bytesTransmitted.ToString("N0") + "} bytes.");
 
                 if (clientStream != null)
                     clientStream.Dispose();
@@ -615,14 +617,8 @@ namespace OpaqueMail.Net.Proxy
                     // If the message contains a signing certificate that we haven't processed on this session, import it.
                     if (message.SmimeSigningCertificate != null && !SmimeCertificatesReceived.Contains(message.SmimeSigningCertificate))
                     {
-                        StringBuilder logBuilder = new StringBuilder();
-                        logBuilder.Append("Importing certificate with Serial Number {");
-                        foreach (byte snByte in message.SmimeSigningCertificate.GetSerialNumber())
-                            logBuilder.Append(((int)snByte).ToString());
-                        logBuilder.Append("}.");
-
                         // Import the certificate to the Local Machine store.
-                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, logBuilder.ToString());
+                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Importing certificate with Serial Number {" + message.SmimeSigningCertificate.SerialNumber + "}.");
                         CertHelper.InstallWindowsCertificate(message.SmimeSigningCertificate, StoreLocation.LocalMachine);
 
                         // Remember this ceriticate to avoid importing it again this session.
@@ -645,7 +641,7 @@ namespace OpaqueMail.Net.Proxy
             ImapProxyArguments arguments = (ImapProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.LogFile);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.LogFile, arguments.InstanceId);
         }
         #endregion Private Methods
     }

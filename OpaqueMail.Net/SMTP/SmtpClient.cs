@@ -620,7 +620,7 @@ namespace OpaqueMail
             SignedCms signedCms = new SignedCms(contentInfo, true);
 
             CmsSigner signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, message.SmimeSigningCertificate);
-            signer.IncludeOption = X509IncludeOption.EndCertOnly;
+            signer.IncludeOption = X509IncludeOption.WholeChain;
 
             // Sign the current time.
             if ((message.SmimeSigningOptionFlags & SmimeSigningOptionFlags.SignTime) > 0)
