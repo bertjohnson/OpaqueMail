@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("OpaqueMail.Net.ProxyService")]
-[assembly: AssemblyDescription("SMTP proxy with support for adding S/MIME message signing, encryption, and authentication for outbound messages.")]
+[assembly: AssemblyDescription("SMTP proxy to add or remove S/MIME message signing, encryption, and authentication for outbound messages.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Bert Johnson")]
 [assembly: AssemblyProduct("OpaqueMail")]
@@ -32,5 +32,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.4.0")]
-[assembly: AssemblyFileVersion("1.4.0.0")]
+[assembly: AssemblyVersion("1.4.1")]
+[assembly: AssemblyFileVersion("1.4.1.0")]

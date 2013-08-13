@@ -36,6 +36,9 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
+        /// <summary>Proxy logging level, determining how much information is logged.</summary>
+        public LogLevel LogLevel;
+
         /// <summary>The instance number of the proxy.</summary>
         public int InstanceId;
 
@@ -74,6 +77,20 @@ namespace OpaqueMail.Net.Proxy
     }
 
     /// <summary>
+    /// Proxy logging level, determining how much information is logged.
+    /// </summary>
+    public enum LogLevel
+    {
+        None = 0,
+        Critical = 1,
+        Error = 2,
+        Warning = 4,
+        Information = 8,
+        Verbose = 16,
+        Verbatim = 32
+    }
+
+    /// <summary>
     /// Arguments passed in when instantiating a new POP3 proxy instance.
     /// </summary>
     public struct Pop3ProxyArguments
@@ -99,6 +116,9 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
+        /// <summary>Proxy logging level, determining how much information is logged.</summary>
+        public LogLevel LogLevel;
+
         /// <summary>The instance number of the proxy.</summary>
         public int InstanceId;
 
@@ -185,6 +205,9 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
+        /// <summary>Proxy logging level, determining how much information is logged.</summary>
+        public LogLevel LogLevel;
+
         /// <summary>The instance number of the proxy.</summary>
         public int InstanceId;
 

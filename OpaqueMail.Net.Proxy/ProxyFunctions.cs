@@ -139,14 +139,17 @@ namespace OpaqueMail.Net.Proxy
         /// </summary>
         /// <param name="sessionId">The current session's unique ID.</param>
         /// <param name="message">The message to log.</param>
-        public static void Log(StreamWriter LogWriter, string sessionId, string message)
+        public static void Log(StreamWriter LogWriter, string sessionId, string message, LogLevel minimalLogLevel, LogLevel currentLogLevel)
         {
-            if (LogWriter != null)
+            if ((int)currentLogLevel >= (int)minimalLogLevel)
             {
-                lock (LogWriter)
+                if (LogWriter != null)
                 {
-                    LogWriter.WriteLine("[" + DateTime.Now + "]\t" + sessionId + "\t\t" + message);
-                    LogWriter.Flush();
+                    lock (LogWriter)
+                    {
+                        LogWriter.WriteLine("[" + DateTime.Now + "]\t" + sessionId + "\t\t" + message);
+                        LogWriter.Flush();
+                    }
                 }
             }
         }
@@ -157,14 +160,17 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="sessionId">The current session's unique ID.</param>
         /// <param name="connectionId">The current connection's unique ID.</param>
         /// <param name="message">The message to log.</param>
-        public static void Log(StreamWriter LogWriter, string sessionId, string connectionId, string message)
+        public static void Log(StreamWriter LogWriter, string sessionId, string connectionId, string message, LogLevel minimalLogLevel, LogLevel currentLogLevel)
         {
-            if (LogWriter != null)
+            if ((int)currentLogLevel >= (int)minimalLogLevel)
             {
-                lock (LogWriter)
+                if (LogWriter != null)
                 {
-                    LogWriter.WriteLine("[" + DateTime.Now + "]\t" + sessionId + "\t" + connectionId + "\t" + message);
-                    LogWriter.Flush();
+                    lock (LogWriter)
+                    {
+                        LogWriter.WriteLine("[" + DateTime.Now + "]\t" + sessionId + "\t" + connectionId + "\t" + message);
+                        LogWriter.Flush();
+                    }
                 }
             }
         }

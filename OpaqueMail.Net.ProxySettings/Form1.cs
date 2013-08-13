@@ -1,4 +1,5 @@
 ﻿using Microsoft.Win32;
+using OpaqueMail.Net.Proxy;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -484,6 +485,34 @@ namespace OpaqueMail.Net.ProxySettings
                             account.SmtpCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SerialNumber");
                             account.SmtpCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SubjectName");
                             account.SmtpLogFile = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LogFile");
+
+                            string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/SMTP/Service" + i + "/LogLevel");
+                            switch (logLevel.ToUpper())
+                            {
+                                case "NONE":
+                                    account.SmtpLogLevel = LogLevel.None;
+                                    break;
+                                case "CRITICAL":
+                                    account.SmtpLogLevel = LogLevel.Critical;
+                                    break;
+                                case "ERROR":
+                                    account.SmtpLogLevel = LogLevel.Error;
+                                    break;
+                                case "VERBATIM":
+                                    account.SmtpLogLevel = LogLevel.Verbatim;
+                                    break;
+                                case "VERBOSE":
+                                    account.SmtpLogLevel = LogLevel.Verbose;
+                                    break;
+                                case "WARNING":
+                                    account.SmtpLogLevel = LogLevel.Warning;
+                                    break;
+                                case "INFORMATION":
+                                default:
+                                    account.SmtpLogLevel = LogLevel.Information;
+                                    break;
+                            }
+
                             account.SendCertificateReminders = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SendCertificateReminders") ?? true;
                             account.SmimeEncrypt = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMEEncrypt") ?? true;
                             account.SmimeRemovePreviousOperations = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMERemovePreviousOperations") ?? true;
@@ -531,6 +560,33 @@ namespace OpaqueMail.Net.ProxySettings
                             account.ImapCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/Certificate/SubjectName");
                             account.ImapLogFile = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LogFile");
 
+                            string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/IMAP/Service" + i + "/LogLevel");
+                            switch (logLevel.ToUpper())
+                            {
+                                case "NONE":
+                                    account.ImapLogLevel = LogLevel.None;
+                                    break;
+                                case "CRITICAL":
+                                    account.ImapLogLevel = LogLevel.Critical;
+                                    break;
+                                case "ERROR":
+                                    account.ImapLogLevel = LogLevel.Error;
+                                    break;
+                                case "VERBATIM":
+                                    account.ImapLogLevel = LogLevel.Verbatim;
+                                    break;
+                                case "VERBOSE":
+                                    account.ImapLogLevel = LogLevel.Verbose;
+                                    break;
+                                case "WARNING":
+                                    account.ImapLogLevel = LogLevel.Warning;
+                                    break;
+                                case "INFORMATION":
+                                default:
+                                    account.ImapLogLevel = LogLevel.Information;
+                                    break;
+                            }
+
                             break;
                         }
                     }
@@ -570,6 +626,33 @@ namespace OpaqueMail.Net.ProxySettings
                             account.Pop3CertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/SerialNumber");
                             account.Pop3CertificateSubjectName = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/SubjectName");
                             account.Pop3LogFile = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LogFile");
+
+                            string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/POP3/Service" + i + "/LogLevel");
+                            switch (logLevel.ToUpper())
+                            {
+                                case "NONE":
+                                    account.Pop3LogLevel = LogLevel.None;
+                                    break;
+                                case "CRITICAL":
+                                    account.Pop3LogLevel = LogLevel.Critical;
+                                    break;
+                                case "ERROR":
+                                    account.Pop3LogLevel = LogLevel.Error;
+                                    break;
+                                case "VERBATIM":
+                                    account.Pop3LogLevel = LogLevel.Verbatim;
+                                    break;
+                                case "VERBOSE":
+                                    account.Pop3LogLevel = LogLevel.Verbose;
+                                    break;
+                                case "WARNING":
+                                    account.Pop3LogLevel = LogLevel.Warning;
+                                    break;
+                                case "INFORMATION":
+                                default:
+                                    account.Pop3LogLevel = LogLevel.Information;
+                                    break;
+                            }
 
                             break;
                         }
@@ -720,6 +803,9 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("Where log files should be stored, if any.  Leave blank to avoid logging.");
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\SMTPProxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.SmtpLogFile ?? "Logs\\SMTPProxy{#}-{yyyy-MM-dd}.log");
+                        
+                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim");
+                        streamWriter.WriteElementString("LogLevel", account.SmtpLogLevel.ToString());
 
                         if (account.RegistryKeys.Count > 0)
                         {
@@ -772,6 +858,9 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.ImapLogFile ?? "Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log");
 
+                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim");
+                        streamWriter.WriteElementString("LogLevel", account.ImapLogLevel.ToString());
+
                         if (account.RegistryKeys.Count > 0)
                         {
                             streamWriter.WriteComment("Outlook registry keys for accounts configured through the OpaqueMail Proxy settings app.");
@@ -822,6 +911,9 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("Where log files should be stored, if any.  Leave blank to avoid logging.");
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\POP3Proxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.Pop3LogFile ?? "Logs\\POP3Proxy{#}-{yyyy-MM-dd}.log");
+
+                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim");
+                        streamWriter.WriteElementString("LogLevel", account.Pop3LogLevel.ToString());
 
                         if (account.RegistryKeys.Count > 0)
                         {
@@ -1111,8 +1203,11 @@ namespace OpaqueMail.Net.ProxySettings
             public bool SmimeRemovePreviousOperations = true;
 
             public string ImapLogFile = "Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log";
+            public LogLevel ImapLogLevel = LogLevel.Verbose;
             public string Pop3LogFile = "Logs\\POP3Proxy{#}-{yyyy-MM-dd}.log";
+            public LogLevel Pop3LogLevel = LogLevel.Verbose;
             public string SmtpLogFile = "Logs\\SMTPProxy{#}-{yyyy-MM-dd}.log";
+            public LogLevel SmtpLogLevel = LogLevel.Verbose;
         }
     }
 }

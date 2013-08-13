@@ -57,7 +57,9 @@
       
       <!-- Where log files should be stored, if any.  Leave blank to avoid logging. -->
       <!-- Date and instance variables can be encased in angle braces.  For example, "Logs\SMTPProxy{#}-{yyyy-MM-dd}.log". -->
-      <LogFile>Logs\SMTPProxy{#}-{yyyy-MM-dd}.log</LogFile>    
+      <LogFile>Logs\SMTPProxy{#}-{yyyy-MM-dd}.log</LogFile>
+      <!-- Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim -->
+      <LogLevel>Verbose</LogLevel>
     </Service1>
   </SMTP>
   <IMAP>
@@ -86,6 +88,8 @@
       <!-- Where log files should be stored, if any.  Leave blank to avoid logging. -->
       <!-- Date and instance variables can be encased in angle braces.  For example, "Logs\IMAPProxy{#}-{yyyy-MM-dd}.log". -->
       <LogFile>Logs\IMAPProxy{#}-{yyyy-MM-dd}.log</LogFile>
+      <!-- Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim -->
+      <LogLevel>Verbose</LogLevel>
     </Service1>
   </IMAP>
   <POP3>
@@ -114,6 +118,8 @@
       <!-- Where log files should be stored, if any.  Leave blank to avoid logging. -->
       <!-- Date and instance variables can be encased in angle braces.  For example, "Logs\POP3Proxy{#}-{yyyy-MM-dd}.log". -->
       <LogFile>Logs\POP3Proxy{#}-{yyyy-MM-dd}.log</LogFile>
+      <!-- Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim -->
+      <LogLevel>Verbose</LogLevel>
     </Service1>
   </POP3>
 </Settings>

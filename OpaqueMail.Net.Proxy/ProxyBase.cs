@@ -15,6 +15,8 @@ namespace OpaqueMail.Net.Proxy
         #region Public Members
         /// <summary>Welcome message to be displayed when connecting.</summary>
         public string WelcomeMessage = "OpaqueMail Proxy";
+        /// <summary>Proxy logging level, determining how much information is logged.</summary>
+        public LogLevel LogLevel = LogLevel.None;
         #endregion Public Members
 
         #region Protected Members
@@ -40,7 +42,7 @@ namespace OpaqueMail.Net.Proxy
         /// </summary>
         public void ProcessContinuation()
         {
-            ProxyFunctions.Log(LogWriter, SessionId, "Service continuing after pause.");
+            ProxyFunctions.Log(LogWriter, SessionId, "Service continuing after pause.", Proxy.LogLevel.Information, LogLevel);
             Started = true;
         }
 
@@ -49,7 +51,7 @@ namespace OpaqueMail.Net.Proxy
         /// </summary>
         public void ProcessPause()
         {
-            ProxyFunctions.Log(LogWriter, SessionId, "Service pausing.");
+            ProxyFunctions.Log(LogWriter, SessionId, "Service pausing.", Proxy.LogLevel.Information, LogLevel);
             Started = false;
         }
 
@@ -64,29 +66,29 @@ namespace OpaqueMail.Net.Proxy
                 switch (powerStatus)
                 {
                     case 0:
-                        ProxyFunctions.Log(LogWriter, SessionId, "Computer has asked permission to enter the suspended state.");
+                        ProxyFunctions.Log(LogWriter, SessionId, "Computer has asked permission to enter the suspended state.", Proxy.LogLevel.Information, LogLevel);
                         break;
                     case 2:
-                        ProxyFunctions.Log(LogWriter, SessionId, "Computer was denied permission to enter the suspended state.");
+                        ProxyFunctions.Log(LogWriter, SessionId, "Computer was denied permission to enter the suspended state.", Proxy.LogLevel.Information, LogLevel);
                         break;
                     case 4:
-                        ProxyFunctions.Log(LogWriter, SessionId, "Computer is about to enter the suspended state.");
+                        ProxyFunctions.Log(LogWriter, SessionId, "Computer is about to enter the suspended state.", Proxy.LogLevel.Information, LogLevel);
                         break;
                     case 6:
-                        ProxyFunctions.Log(LogWriter, SessionId, "Computer has resumed operation after a critical suspension caused by a failing battery.");
+                        ProxyFunctions.Log(LogWriter, SessionId, "Computer has resumed operation after a critical suspension caused by a failing battery.", Proxy.LogLevel.Information, LogLevel);
                         break;
                     case 7:
-                        ProxyFunctions.Log(LogWriter, SessionId, "The computer has resumed operation after being suspsended.");
+                        ProxyFunctions.Log(LogWriter, SessionId, "The computer has resumed operation after being suspsended.", Proxy.LogLevel.Information, LogLevel);
                         break;
                     case 8:
-                        ProxyFunctions.Log(LogWriter, SessionId, "Computer's battery power is low.");
+                        ProxyFunctions.Log(LogWriter, SessionId, "Computer's battery power is low.", Proxy.LogLevel.Information, LogLevel);
                         break;
                     case 10:
                     case 11:
-                        ProxyFunctions.Log(LogWriter, SessionId, "The computer's power status has changed.");
+                        ProxyFunctions.Log(LogWriter, SessionId, "The computer's power status has changed.", Proxy.LogLevel.Information, LogLevel);
                         break;
                     case 18:
-                        ProxyFunctions.Log(LogWriter, SessionId, "The computer has resumed operation to handle an event.");
+                        ProxyFunctions.Log(LogWriter, SessionId, "The computer has resumed operation to handle an event.", Proxy.LogLevel.Information, LogLevel);
                         break;
                 }
             }

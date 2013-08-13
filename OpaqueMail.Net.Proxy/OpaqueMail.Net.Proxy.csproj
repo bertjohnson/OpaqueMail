@@ -45,7 +45,7 @@
     <Compile Include="SMTP\SmtpProxy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProxyFunctions.cs" />
-    <Compile Include="Structs.cs" />
+    <Compile Include="EnumsAndStructs.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpaqueMail.Net.CertHelper\OpaqueMail.Net.CertHelper.csproj">

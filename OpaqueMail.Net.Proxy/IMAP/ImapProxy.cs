@@ -29,7 +29,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote IMAP server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", 0);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", LogLevel.None, 0);
         }
 
         /// <summary>
@@ -44,8 +44,9 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote IMAP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote IMAP server.  When set, this overrides any credentials passed locally.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
+        /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile, int instanceId)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile, LogLevel logLevel, int instanceId)
         {
             // Create the log writer.
             string logFileName = "";
@@ -53,9 +54,10 @@ namespace OpaqueMail.Net.Proxy
             {
                 logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
                 LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
+                LogLevel = logLevel;
             }
 
-            ProxyFunctions.Log(LogWriter, SessionId, "Starting service.");
+            ProxyFunctions.Log(LogWriter, SessionId, "Starting service.", Proxy.LogLevel.Information, LogLevel);
 
             // Attempt to start up to 3 times in case another service using the port is shutting down.
             int startAttempts = 0;
@@ -66,7 +68,7 @@ namespace OpaqueMail.Net.Proxy
                 // If we've failed to start once, wait an extra 10 seconds.
                 if (startAttempts > 1)
                 {
-                    ProxyFunctions.Log(LogWriter, SessionId, "Attempting to start for the " + (startAttempts == 2 ? "2nd" : "3rd") + " time.");
+                    ProxyFunctions.Log(LogWriter, SessionId, "Attempting to start for the " + (startAttempts == 2 ? "2nd" : "3rd") + " time.", Proxy.LogLevel.Information, LogLevel);
                     Thread.Sleep(10000 * startAttempts);
                 }
 
@@ -90,7 +92,7 @@ namespace OpaqueMail.Net.Proxy
                         // If no certificate was found, generate a self-signed certificate.
                         if (serverCertificate == null)
                         {
-                            ProxyFunctions.Log(LogWriter, SessionId, "No signing certificate found, so generating new certificate.");
+                            ProxyFunctions.Log(LogWriter, SessionId, "No signing certificate found, so generating new certificate.", Proxy.LogLevel.Warning, LogLevel);
 
                             List<string> oids = new List<string>();
                             oids.Add("1.3.6.1.5.5.7.3.1");    // Server Authentication.
@@ -98,15 +100,15 @@ namespace OpaqueMail.Net.Proxy
                             // Generate the certificate with a duration of 10 years, 4096-bits, and a key usage of server authentication.
                             serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, true, 4096, 10, oids);
 
-                            ProxyFunctions.Log(LogWriter, SessionId, "Certificate generated with Serial Number {" + serverCertificate.GetSerialNumberString() + "}.");
+                            ProxyFunctions.Log(LogWriter, SessionId, "Certificate generated with Serial Number {" + serverCertificate.GetSerialNumberString() + "}.", Proxy.LogLevel.Information, LogLevel);
                         }
                     }
 
                     Listener = new TcpListener(localIPAddress, localPort);
                     Listener.Start();
 
-                    ProxyFunctions.Log(LogWriter, SessionId, "Service started.");
-                    ProxyFunctions.Log(LogWriter, SessionId, "Listening on address {" + localIPAddress.ToString() + "}, port {" + localPort + "}.");
+                    ProxyFunctions.Log(LogWriter, SessionId, "Service started.", Proxy.LogLevel.Information, LogLevel);
+                    ProxyFunctions.Log(LogWriter, SessionId, "Listening on address {" + localIPAddress.ToString() + "}, port {" + localPort + "}.", Proxy.LogLevel.Information, LogLevel);
 
                     Started = true;
 
@@ -147,7 +149,7 @@ namespace OpaqueMail.Net.Proxy
                 }
                 catch (Exception ex)
                 {
-                    ProxyFunctions.Log(LogWriter, SessionId, "Exception when starting proxy: " + ex.Message);
+                    ProxyFunctions.Log(LogWriter, SessionId, "Exception when starting proxy: " + ex.Message, Proxy.LogLevel.Critical, LogLevel);
                 }
             }
         }
@@ -157,14 +159,14 @@ namespace OpaqueMail.Net.Proxy
         /// </summary>
         public void Stop()
         {
-            ProxyFunctions.Log(LogWriter, SessionId, "Stopping service.");
+            ProxyFunctions.Log(LogWriter, SessionId, "Stopping service.", Proxy.LogLevel.Information, LogLevel);
 
             Started = false;
 
             if (Listener != null)
                 Listener.Stop();
 
-            ProxyFunctions.Log(LogWriter, SessionId, "Service stopped.");
+            ProxyFunctions.Log(LogWriter, SessionId, "Service stopped.", Proxy.LogLevel.Information, LogLevel);
         }
 
         /// <summary>
@@ -259,6 +261,34 @@ namespace OpaqueMail.Net.Proxy
                         }
 
                         arguments.LogFile = ProxyFunctions.GetXmlStringValue(navigator, "Settings/IMAP/Service" + i + "/LogFile");
+                        
+                        string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/IMAP/Service" + i + "/LogLevel");
+                        switch (logLevel.ToUpper())
+                        {
+                            case "NONE":
+                                arguments.LogLevel = LogLevel.None;
+                                break;
+                            case "CRITICAL":
+                                arguments.LogLevel = LogLevel.Critical;
+                                break;
+                            case "ERROR":
+                                arguments.LogLevel = LogLevel.Error;
+                                break;
+                            case "VERBATIM":
+                                arguments.LogLevel = LogLevel.Verbatim;
+                                break;
+                            case "VERBOSE":
+                                arguments.LogLevel = LogLevel.Verbose;
+                                break;
+                            case "WARNING":
+                                arguments.LogLevel = LogLevel.Warning;
+                                break;
+                            case "INFORMATION":
+                            default:
+                                arguments.LogLevel = LogLevel.Information;
+                                break;
+                        }
+
                         arguments.InstanceId = i;
 
                         // Remember the proxy in order to close it when the service stops.
@@ -323,7 +353,7 @@ namespace OpaqueMail.Net.Proxy
                 // Validate that the IP address is within an accepted range.
                 if (!ProxyFunctions.ValidateIP(arguments.AcceptedIPs, ip))
                 {
-                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection rejected from {" + ip + "} due to its IP address.");
+                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection rejected from {" + ip + "} due to its IP address.", Proxy.LogLevel.Warning, LogLevel);
 
                     Functions.SendStreamString(clientStream, new byte[Constants.SMALLBUFFERSIZE], "500 IP address [" + ip + "] rejected.\r\n");
 
@@ -335,12 +365,12 @@ namespace OpaqueMail.Net.Proxy
                     return;
                 }
 
-                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "New connection established from {" + ip + "}.");
+                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "New connection established from {" + ip + "}.", Proxy.LogLevel.Information, LogLevel);
 
                 // If supported, upgrade the session's security through a TLS handshake.
                 if (arguments.LocalEnableSsl)
                 {
-                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Starting local TLS/SSL protection for {" + ip + "}.");
+                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Starting local TLS/SSL protection for {" + ip + "}.", Proxy.LogLevel.Information, LogLevel);
                     clientStream = new SslStream(clientStream);
                     ((SslStream)clientStream).AuthenticateAsServer(arguments.Certificate);
                 }
@@ -352,7 +382,7 @@ namespace OpaqueMail.Net.Proxy
                 // If supported, upgrade the session's security through a TLS handshake.
                 if (arguments.RemoteServerEnableSsl)
                 {
-                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Starting remote TLS/SSL protection with {" + arguments.RemoteServerHostName + "}.");
+                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Starting remote TLS/SSL protection with {" + arguments.RemoteServerHostName + "}.", Proxy.LogLevel.Information, LogLevel);
                     remoteServerStream = new SslStream(remoteServerStream);
                     ((SslStream)remoteServerStream).AuthenticateAsClient(arguments.RemoteServerHostName);
                 }
@@ -381,11 +411,11 @@ namespace OpaqueMail.Net.Proxy
             }
             catch (SocketException ex)
             {
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception communicating with {" + arguments.RemoteServerHostName + "} on port {" + arguments.RemoteServerPort + "}: " + ex.Message);
+                ProxyFunctions.Log(LogWriter, SessionId, "Exception communicating with {" + arguments.RemoteServerHostName + "} on port {" + arguments.RemoteServerPort + "}: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
             catch (Exception ex)
             {
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception: " + ex.Message);
+                ProxyFunctions.Log(LogWriter, SessionId, "Exception: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
         }
 
@@ -437,6 +467,8 @@ namespace OpaqueMail.Net.Proxy
                                 // Cast the bytes received to a string.
                                 string stringRead = new string(buffer, 0, bytesRead);
 
+                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), (arguments.IsClient ? "C: " : "S: ") + stringRead, Proxy.LogLevel.Verbatim, LogLevel);
+
                                 // If this data comes from the client, log it.  Otherwise, process it.
                                 if (arguments.IsClient)
                                 {
@@ -457,7 +489,8 @@ namespace OpaqueMail.Net.Proxy
                                             else
                                                 LastCommandReceived = commandParts[1];
 
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "Command {" + LastCommandReceived + "} processed.");
+                                            if (LogLevel == Proxy.LogLevel.Information)
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "Command {" + LastCommandReceived + "} processed.", Proxy.LogLevel.Verbose, LogLevel);
 
                                             // If we're in an APPEND command, remember how many bytes we should receive.
                                             if (LastCommandReceived == "APPEND")
@@ -502,7 +535,7 @@ namespace OpaqueMail.Net.Proxy
                                         {
                                             if (DateTime.Now - lastThrottleTime >= new TimeSpan(0, 20, 0))
                                             {
-                                                ProxyFunctions.Log(LogWriter, SessionId, ConnectionId.ToString(), "Connection speed throttled by the remote server.");
+                                                ProxyFunctions.Log(LogWriter, SessionId, ConnectionId.ToString(), "Connection speed throttled by the remote server.", Proxy.LogLevel.Warning, LogLevel);
                                                 lastThrottleTime = DateTime.Now;
                                             }
                                         }
@@ -571,24 +604,24 @@ namespace OpaqueMail.Net.Proxy
                     }
                 }
             }
-            catch (IOException)
+/*            catch (IOException)
             {
                 // Ignore either stream being closed.
             }
             catch (ObjectDisposedException)
             {
                 // Ignore either stream being closed.
-            }
+            }*/
             catch (Exception ex)
             {
                 // Log other exceptions.
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception while transmitting data: " + ex.Message);
+                ProxyFunctions.Log(LogWriter, SessionId, "Exception while transmitting data: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
             finally
             {
                 // If sending to the local client, log the connection being closed.
                 if (!arguments.IsClient)
-                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection from {" + arguments.IPAddress + "} closed after transmitting {" + bytesTransmitted.ToString("N0") + "} bytes.");
+                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection from {" + arguments.IPAddress + "} closed after transmitting {" + bytesTransmitted.ToString("N0") + "} bytes.", Proxy.LogLevel.Information, LogLevel);
 
                 if (clientStream != null)
                     clientStream.Dispose();
@@ -618,7 +651,7 @@ namespace OpaqueMail.Net.Proxy
                     if (message.SmimeSigningCertificate != null && !SmimeCertificatesReceived.Contains(message.SmimeSigningCertificate))
                     {
                         // Import the certificate to the Local Machine store.
-                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Importing certificate with Serial Number {" + message.SmimeSigningCertificate.SerialNumber + "}.");
+                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Importing certificate with Serial Number {" + message.SmimeSigningCertificate.SerialNumber + "}.", Proxy.LogLevel.Information, LogLevel);
                         CertHelper.InstallWindowsCertificate(message.SmimeSigningCertificate, StoreLocation.LocalMachine);
 
                         // Remember this ceriticate to avoid importing it again this session.
@@ -627,7 +660,7 @@ namespace OpaqueMail.Net.Proxy
                 }
                 catch (Exception ex)
                 {
-                    ProxyFunctions.Log(LogWriter, SessionId, "Exception while processing message: " + ex.Message);
+                    ProxyFunctions.Log(LogWriter, SessionId, "Exception while processing message: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
                 }
             }
         }
@@ -641,7 +674,7 @@ namespace OpaqueMail.Net.Proxy
             ImapProxyArguments arguments = (ImapProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.LogFile, arguments.InstanceId);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.LogFile, arguments.LogLevel, arguments.InstanceId);
         }
         #endregion Private Methods
     }
