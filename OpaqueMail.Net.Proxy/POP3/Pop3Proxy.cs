@@ -336,13 +336,18 @@ namespace OpaqueMail.Net.Proxy
                 // If the IP address range filter contains the localhost entry 0.0.0.0, check if the client IP is a local address and update it to 0.0.0.0 if so.
                 if (arguments.AcceptedIPs.IndexOf("0.0.0.0") > -1)
                 {
-                    IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
-                    foreach (IPAddress hostIP in hostEntry.AddressList)
+                    if (ip == "127.0.0.1")
+                        ip = "0.0.0.0";
+                    else
                     {
-                        if (hostIP.ToString() == ip)
+                        IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
+                        foreach (IPAddress hostIP in hostEntry.AddressList)
                         {
-                            ip = "0.0.0.0";
-                            break;
+                            if (hostIP.ToString() == ip)
+                            {
+                                ip = "0.0.0.0";
+                                break;
+                            }
                         }
                     }
                 }
