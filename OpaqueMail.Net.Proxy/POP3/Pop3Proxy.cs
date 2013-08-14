@@ -47,7 +47,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile, LogLevel logLevel, int instanceId)
-        {
+        {            
             // Create the log writer.
             string logFileName = "";
             if (!string.IsNullOrEmpty(logFile))
@@ -55,6 +55,23 @@ namespace OpaqueMail.Net.Proxy
                 logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
                 LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
                 LogLevel = logLevel;
+            }
+
+            // Make sure the remote server isn't an infinite loop back to this server.
+            string fqdn = Functions.GetLocalFQDN();
+            if (remoteServerHostName.ToUpper() == fqdn.ToUpper() && remoteServerPort == localPort)
+            {
+                ProxyFunctions.Log(LogWriter, SessionId, "Cannot start service because the remote server host name {" + remoteServerHostName + "} and port {" + remoteServerPort.ToString() + "} is the same as this proxy, which would cause an infinite loop.", Proxy.LogLevel.Critical, LogLevel);
+                return;
+            }
+            IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (IPAddress hostIP in hostEntry.AddressList)
+            {
+                if (remoteServerHostName == hostIP.ToString() && remoteServerPort == localPort)
+                {
+                    ProxyFunctions.Log(LogWriter, SessionId, "Cannot start service because the remote server hostname {" + remoteServerHostName + "} and port {" + remoteServerPort.ToString() + "} is the same as this proxy, which would cause an infinite loop.", Proxy.LogLevel.Critical, LogLevel);
+                    return;
+                }
             }
 
             ProxyFunctions.Log(LogWriter, SessionId, "Starting service.", Proxy.LogLevel.Information, LogLevel);
@@ -83,7 +100,6 @@ namespace OpaqueMail.Net.Proxy
                     // If local SSL is supported via STARTTLS, ensure we have a valid server certificate.
                     if (localEnableSsl)
                     {
-                        string fqdn = Functions.GetLocalFQDN();
                         serverCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, fqdn);
                         // In case the service as running as the current user, check the Current User certificate store as well.
                         if (serverCertificate == null)

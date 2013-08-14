@@ -57,6 +57,23 @@ namespace OpaqueMail.Net.Proxy
                 LogLevel = logLevel;
             }
 
+            // Make sure the remote server isn't an infinite loop back to this server.
+            string fqdn = Functions.GetLocalFQDN();
+            if (remoteServerHostName.ToUpper() == fqdn.ToUpper() && remoteServerPort == localPort)
+            {
+                ProxyFunctions.Log(LogWriter, SessionId, "Cannot start service because the remote server host name {" + remoteServerHostName + "} and port {" + remoteServerPort.ToString() + "} is the same as this proxy, which would cause an infinite loop.", Proxy.LogLevel.Critical, LogLevel);
+                return;
+            }
+            IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (IPAddress hostIP in hostEntry.AddressList)
+            {
+                if (remoteServerHostName == hostIP.ToString() && remoteServerPort == localPort)
+                {
+                    ProxyFunctions.Log(LogWriter, SessionId, "Cannot start service because the remote server hostname {" + remoteServerHostName + "} and port {" + remoteServerPort.ToString() + "} is the same as this proxy, which would cause an infinite loop.", Proxy.LogLevel.Critical, LogLevel);
+                    return;
+                }
+            }
+
             ProxyFunctions.Log(LogWriter, SessionId, "Starting service.", Proxy.LogLevel.Information, LogLevel);
 
             // Attempt to start up to 3 times in case another service using the port is shutting down.
@@ -83,7 +100,6 @@ namespace OpaqueMail.Net.Proxy
                     // If local SSL is supported via STARTTLS, ensure we have a valid server certificate.
                     if (localEnableSsl)
                     {
-                        string fqdn = Functions.GetLocalFQDN();
                         serverCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, fqdn);
                         // In case the service as running as the current user, check the Current User certificate store as well.
                         if (serverCertificate == null)
