@@ -8,7 +8,10 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.ServiceProcess;
 using System.Text;
@@ -27,6 +30,8 @@ namespace OpaqueMail.Net.ProxySettings
         Dictionary<string, string> OutlookVersions = new Dictionary<string, string>();
         /// <summary>The path where settings should be saved and loaded.</summary>
         private string SettingsFileName = "";
+        /// <summary>Timer to check the service status.</summary>
+        private System.Threading.Timer StatusTimer;
         #endregion Private Members
 
         #region Constructors
@@ -76,26 +81,54 @@ namespace OpaqueMail.Net.ProxySettings
 
             SettingsFileName = (AppDomain.CurrentDomain.BaseDirectory + "\\OpaqueMail.Proxy.xml").Replace("\\\\", "\\");
 
-            // Handle settings file linking.
-            int settingsFilePosition = AboutLabel.Text.IndexOf("[SETTINGSFILE]", StringComparison.Ordinal);
-
             AboutLabel.Links.Clear();
-            AboutLabel.Text = AboutLabel.Text.Replace("[SETTINGSFILE]", SettingsFileName);
             AboutLabel.Links.Add(AboutLabel.Text.IndexOf("S/MIME"), 6, "https://en.wikipedia.org/wiki/S/MIME");
-            AboutLabel.Links.Add(settingsFilePosition, SettingsFileName.Length, SettingsFileName);
             AboutLabel.LinkClicked += Label_LinkClicked;
+
+            GettingStartedLabel.Links.Clear();
+            int settingsFileIndex = GettingStartedLabel.Text.IndexOf("[SETTINGSFILE]");
+            GettingStartedLabel.Text = GettingStartedLabel.Text.Replace("[SETTINGSFILE]", SettingsFileName);
+            GettingStartedLabel.Links.Add(settingsFileIndex, SettingsFileName.Length, SettingsFileName);
+            GettingStartedLabel.Links.Add(GettingStartedLabel.Text.IndexOf("http://opaquemail.org/"), 22, "http://opaquemail.org/");
+            GettingStartedLabel.LinkClicked += Label_LinkClicked;
 
             CertificateLabel.Links.Clear();
             CertificateLabel.Links.Add(CertificateLabel.Text.IndexOf("Comodo"), 6, "http://www.instantssl.com/ssl-certificate-products/free-email-certificate.html");
             CertificateLabel.Links.Add(CertificateLabel.Text.IndexOf("StartCom"), 8, "https://cert.startcom.org/");
             CertificateLabel.LinkClicked += Label_LinkClicked;
 
+            AccountsLabel.Links.Clear();
+            AccountsLabel.Links.Add(AboutLabel.Text.IndexOf("http://opaquemail.org/"), 22, "http://opaquemail.org/");
+            AccountsLabel.LinkClicked += Label_LinkClicked;
+
             this.SaveSettingsButton.Click += new System.EventHandler(this.SaveSettingsButton_Click);
 
             // Load the e-mail accounts list and certificate choices.
             PopulateAccounts();
 
+            SmimeOperations.SelectedIndex = 3;
+            SmimeOperations.SelectedIndexChanged += SmimeOperations_SelectedIndexChanged;
+
             SmimeSettingsMode.SelectedIndex = 0;
+
+            string ip = "192.168.*";
+            IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (IPAddress hostIP in hostEntry.AddressList)
+            {
+                string[] ipParts = hostIP.ToString().Split('.');
+                if (ipParts.Length > 2)
+                {
+                    ip = ipParts[0] + "." + ipParts[1] + ".*";
+                    break;
+                }
+            }
+            NetworkAccess.Items[1] = ((string)NetworkAccess.Items[1]).Replace("192.168.*", ip);
+
+            NetworkAccess.SelectedIndex = 0;
+
+            UpdateServiceStatus(null);
+
+            StatusTimer = new System.Threading.Timer(new TimerCallback(UpdateServiceStatus), null, 15000, 15000);
         }
 
         /// <summary>
@@ -124,6 +157,77 @@ namespace OpaqueMail.Net.ProxySettings
                 else
                     nextPortToTry++;
             }
+        }
+
+        /// <summary>
+        /// Retrieve an Outlook registry setting.
+        /// </summary>
+        /// <param name="key">The registry key to read within.</param>
+        /// <param name="name">The name of the value to read.</param>
+        private string GetOutlookRegistryValue(RegistryKey key, string name)
+        {
+            object value = key.GetValue(name);
+            if (value is byte[])
+                return Encoding.Unicode.GetString((byte[])value).Replace("\0", "");
+            if (value != null)
+                return value.ToString();
+            else
+                return null;
+        }
+
+        /// <summary>
+        /// Return a boolean value from an XML document.
+        /// </summary>
+        /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
+        /// <param name="xpathExpression">The XPath expression to evaluate.</param>
+        private static bool? GetXmlBoolValue(XPathNavigator navigator, string xpathExpression)
+        {
+            XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
+            if (valueNavigator != null)
+            {
+                if (!string.IsNullOrEmpty(valueNavigator.Value))
+                {
+                    bool value;
+                    bool.TryParse(valueNavigator.Value, out value);
+                    return value;
+                }
+                else
+                    return null;
+            }
+            else
+                return null;
+        }
+
+        /// <summary>
+        /// Return an integer value from an XML document.
+        /// </summary>
+        /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
+        /// <param name="xpathExpression">The XPath expression to evaluate.</param>
+        private static int? GetXmlIntValue(XPathNavigator navigator, string xpathExpression)
+        {
+            XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
+            if (valueNavigator != null)
+            {
+                int value;
+                int.TryParse(valueNavigator.Value, out value);
+                return value;
+            }
+            else
+                return null;
+        }
+
+        /// <summary>
+        /// Return a string value from an XML document.
+        /// </summary>
+        /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
+        /// <param name="xpathExpression">The XPath expression to evaluate.</param>
+        private static string GetXmlStringValue(XPathNavigator navigator, string xpathExpression)
+        {
+            XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
+            if (valueNavigator != null)
+                return valueNavigator.Value;
+            else
+                return null;
         }
 
         /// <summary>
@@ -338,74 +442,27 @@ namespace OpaqueMail.Net.ProxySettings
         }
 
         /// <summary>
-        /// Retrieve an Outlook registry setting.
+        /// Save an embedded resource file to the file system.
         /// </summary>
-        /// <param name="key">The registry key to read within.</param>
-        /// <param name="name">The name of the value to read.</param>
-        private string GetOutlookRegistryValue(RegistryKey key, string name)
+        /// <param name="resourceFileName">Identifier of the embedded resource.</param>
+        /// <param name="resourcePath">Full path to the embedded resource.</param>
+        /// <param name="filePath">File system location to save the file.</param>
+        private async void SaveResourceFile(string resourceFileName, string resourcePath, string filePath)
         {
-            object value = key.GetValue(name);
-            if (value is byte[])
-                return Encoding.Unicode.GetString((byte[])value).Replace("\0", "");
-            if (value != null)
-                return value.ToString();
-            else
-                return null;
-        }
-
-        /// <summary>
-        /// Return a boolean value from an XML document.
-        /// </summary>
-        /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
-        /// <param name="xpathExpression">The XPath expression to evaluate.</param>
-        private static bool? GetXmlBoolValue(XPathNavigator navigator, string xpathExpression)
-        {
-            XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
-            if (valueNavigator != null)
+            if (!File.Exists(filePath + "\\" + resourceFileName))
             {
-                if (!string.IsNullOrEmpty(valueNavigator.Value))
+                using (StreamReader resourceReader = new StreamReader(Assembly.GetAssembly(GetType()).GetManifestResourceStream(resourcePath + "." + resourceFileName)))
                 {
-                    bool value;
-                    bool.TryParse(valueNavigator.Value, out value);
-                    return value;
+                    using (StreamWriter fileWriter = new StreamWriter(filePath + "\\" + resourceFileName))
+                    {
+                        char[] buffer = new char[Constants.SMALLBUFFERSIZE];
+
+                        int bytesRead;
+                        while ((bytesRead = await resourceReader.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                            await fileWriter.WriteAsync(buffer, 0, bytesRead);
+                    }
                 }
-                else
-                    return null;
             }
-            else
-                return null;
-        }
-
-        /// <summary>
-        /// Return an integer value from an XML document.
-        /// </summary>
-        /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
-        /// <param name="xpathExpression">The XPath expression to evaluate.</param>
-        private static int? GetXmlIntValue(XPathNavigator navigator, string xpathExpression)
-        {
-            XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
-            if (valueNavigator != null)
-            {
-                int value;
-                int.TryParse(valueNavigator.Value, out value);
-                return value;
-            }
-            else
-                return null;
-        }
-
-        /// <summary>
-        /// Return a string value from an XML document.
-        /// </summary>
-        /// <param name="navigator">An XPathNavigator within the current XmlDocument.</param>
-        /// <param name="xpathExpression">The XPath expression to evaluate.</param>
-        private static string GetXmlStringValue(XPathNavigator navigator, string xpathExpression)
-        {
-            XPathNavigator valueNavigator = navigator.SelectSingleNode(xpathExpression);
-            if (valueNavigator != null)
-                return valueNavigator.Value;
-            else
-                return null;
         }
 
         /// <summary>
@@ -458,6 +515,7 @@ namespace OpaqueMail.Net.ProxySettings
                     account.RemoteSmtpEnableSsl = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerEnableSSL") ?? true;
                     account.RemoteSmtpUsername = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerUsername");
                     account.RemoteSmtpPassword = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPassword");
+                    account.RemoteSmtpFrom = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerFrom");
                     account.SmtpAcceptedIPs = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/AcceptedIPs");
                     account.SmtpCertificateLocation = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
                     account.SmtpCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SerialNumber");
@@ -822,7 +880,7 @@ namespace OpaqueMail.Net.ProxySettings
 
             HashSet<int> portsReserved = new HashSet<int>();
             int nextPortToTry = 1000;
-            
+
             foreach (DataGridViewRow row in AccountGrid.Rows)
             {
                 if ((bool)row.Cells[2].Value == true)
@@ -886,6 +944,24 @@ namespace OpaqueMail.Net.ProxySettings
             streamWriterSettings.NewLineChars = "\r\n";
             streamWriterSettings.NewLineHandling = NewLineHandling.Replace;
 
+            // Determine default accepted IPs.
+            string defaultAcceptedIPs = "0.0.0.0";
+            if (NetworkAccess.SelectedIndex == 1)
+            {
+                IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
+                foreach (IPAddress hostIP in hostEntry.AddressList)
+                {
+                    string[] ipParts = hostIP.ToString().Split('.');
+                    if (ipParts.Length > 2)
+                    {
+                        defaultAcceptedIPs = ipParts[0] + "." + ipParts[1] + ".*";
+                        break;
+                    }
+                }
+            }
+            else if (NetworkAccess.SelectedIndex == 2)
+                defaultAcceptedIPs = "*";
+
             using (XmlWriter streamWriter = XmlWriter.Create(SettingsFileName, streamWriterSettings))
             {
                 streamWriter.WriteStartDocument();
@@ -907,7 +983,7 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("IP addresses to accept connections from.  Delete or set value to \"*\" to accept connections from any IP.");
                         streamWriter.WriteComment("Individual IPs can be specified, separated by commas, or ranges can be specified.  The \"*\" wildcard character is supported.");
                         streamWriter.WriteComment("By default, connections are only accepted from the localhost.");
-                        streamWriter.WriteElementString("AcceptedIPs", account.ImapAcceptedIPs ?? "0.0.0.0");
+                        streamWriter.WriteElementString("AcceptedIPs", account.ImapAcceptedIPs ?? defaultAcceptedIPs);
 
                         streamWriter.WriteComment("Local IP address to listen on.  \"Any\" means listen on all IPs.");
                         streamWriter.WriteElementString("LocalIPAddress", account.LocalSmtpIPAddress ?? "Any");
@@ -922,12 +998,14 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteElementString("RemoteServerPort", account.RemoteSmtpPort > 0 ? account.RemoteSmtpPort.ToString() : "587");
                         streamWriter.WriteComment("Whether the remote SMTP server supports TLS/SSL protection.");
                         streamWriter.WriteElementString("RemoteServerEnableSSL", account.RemoteSmtpEnableSsl.ToString());
-                        
+
                         streamWriter.WriteComment("(Optional) Username used when authenticating to the remote SMTP server.  When supplied, it will override any values sent from the client.");
                         streamWriter.WriteElementString("RemoteServerUsername", account.RemoteSmtpUsername);
                         streamWriter.WriteComment("(Optional) Password used when authenticating to the remote SMTP server.  When supplied, it will override any values sent from the client.");
                         streamWriter.WriteElementString("RemoteServerPassword", account.RemoteSmtpPassword);
-                        
+                        streamWriter.WriteComment("(Optional) \"From\" address for all sent messages.  When supplied, it will override any values sent from the client.");
+                        streamWriter.WriteElementString("RemoteServerFrom", account.RemoteSmtpFrom);
+
                         streamWriter.WriteStartElement("Certificate");
                         streamWriter.WriteComment("Where certificates should be stored and retrieved from by default.  \"LocalMachine\" or \"CurrentUser\" only.");
                         streamWriter.WriteElementString("Location", account.SmtpCertificateLocation ?? "LocalMachine");
@@ -936,29 +1014,29 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("(Optional) The subject name of an X509 certificate to be used for server identification.  If left blank, one will be autogenerated.");
                         streamWriter.WriteElementString("SubjectName", account.SmtpCertificateSubjectName);
                         streamWriter.WriteEndElement();
-                        
+
                         streamWriter.WriteComment("Send e-mail reminders when a signing certificate is due to expire within 30 days.");
                         streamWriter.WriteElementString("SendCertificateReminders", account.SendCertificateReminders.ToString());
-                        
+
                         streamWriter.WriteComment("Whether all outgoing messages require the S/MIME settings specified below.");
                         streamWriter.WriteComment("When set to \"RequireExactSettings\", any messages that can't be signed or encrypted will be dropped, unsent.");
                         streamWriter.WriteComment("When set to \"BestEffort\", OpaqueMail Proxy will attempt to sign and/or encrypt messages but still forward any that can't be.");
                         streamWriter.WriteElementString("SMIMESettingsMode", SmimeSettingsMode.SelectedIndex > 0 ? "RequireExactSettings" : "BestEffort");
-                        
+
                         streamWriter.WriteComment("Whether to sign the e-mail.  When true, signing is the first S/MIME operation.");
-                        streamWriter.WriteElementString("SMIMESign", account.SmimeSign.ToString());
+                        streamWriter.WriteElementString("SMIMESign", SmimeOperations.SelectedIndex > 0 ? "True" : "False");
                         streamWriter.WriteComment("Whether to encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.");
-                        streamWriter.WriteElementString("SMIMEEncrypt", account.SmimeEncrypt.ToString());
+                        streamWriter.WriteElementString("SMIMEEncrypt", SmimeOperations.SelectedIndex > 1 ? "True" : "False");
                         streamWriter.WriteComment("Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.");
-                        streamWriter.WriteElementString("SMIMETripleWrap", account.SmimeTripleWrap.ToString());
-                        
+                        streamWriter.WriteElementString("SMIMETripleWrap", SmimeOperations.SelectedIndex > 2 ? "True" : "False");
+
                         streamWriter.WriteComment("Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.");
                         streamWriter.WriteElementString("SMIMERemovePreviousOperations", account.SmimeRemovePreviousOperations.ToString());
-                        
+
                         streamWriter.WriteComment("Where log files should be stored, if any.  Leave blank to avoid logging.");
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\SMTPProxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.SmtpLogFile ?? "Logs\\SMTPProxy{#}-{yyyy-MM-dd}.log");
-                        
+
                         streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Raw");
                         streamWriter.WriteElementString("LogLevel", account.SmtpLogLevel.ToString());
 
@@ -1003,22 +1081,22 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("IP addresses to accept connections from.  Delete or set value to \"*\" to accept connections from any IP.");
                         streamWriter.WriteComment("Individual IPs can be specified, separated by commas, or ranges can be specified.  The \"*\" wildcard character is supported.");
                         streamWriter.WriteComment("By default, connections are only accepted from the localhost.");
-                        streamWriter.WriteElementString("AcceptedIPs", account.ImapAcceptedIPs ?? "0.0.0.0");
-                        
+                        streamWriter.WriteElementString("AcceptedIPs", account.ImapAcceptedIPs ?? defaultAcceptedIPs);
+
                         streamWriter.WriteComment("Local IP address to listen on.  \"Any\" means listen on all IPs.");
                         streamWriter.WriteElementString("LocalIPAddress", account.LocalImapIPAddress ?? "Any");
                         streamWriter.WriteComment("Local port to listen on.");
                         streamWriter.WriteElementString("LocalPort", account.LocalImapPort > 0 ? account.LocalImapPort.ToString() : "993");
                         streamWriter.WriteComment("Whether local connections support TLS/SSL protection.");
                         streamWriter.WriteElementString("LocalEnableSSL", account.LocalImapEnableSsl.ToString());
-                        
+
                         streamWriter.WriteComment("Remote IMAP server hostname to connect to.  Common values: imap.gmail.com, imap.mail.yahoo.com");
                         streamWriter.WriteElementString("RemoteServerHostName", account.RemoteImapServer ?? "Any");
                         streamWriter.WriteComment("Remote IMAP server port to connect to.  993 is recommended, but 143 may be required.");
                         streamWriter.WriteElementString("RemoteServerPort", account.RemoteImapPort > 0 ? account.RemoteImapPort.ToString() : "993");
                         streamWriter.WriteComment("Whether the remote IMAP server supports TLS/SSL protection.");
                         streamWriter.WriteElementString("RemoteServerEnableSSL", account.RemoteImapEnableSsl.ToString());
-                       
+
                         streamWriter.WriteComment("Where log files should be stored, if any.  Leave blank to avoid logging.");
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.ImapLogFile ?? "Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log");
@@ -1067,22 +1145,22 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("IP addresses to accept connections from.  Delete or set value to \"*\" to accept connections from any IP.");
                         streamWriter.WriteComment("Individual IPs can be specified, separated by commas, or ranges can be specified.  The \"*\" wildcard character is supported.");
                         streamWriter.WriteComment("By default, connections are only accepted from the localhost.");
-                        streamWriter.WriteElementString("AcceptedIPs", account.Pop3AcceptedIPs ?? "0.0.0.0");
-                        
+                        streamWriter.WriteElementString("AcceptedIPs", account.Pop3AcceptedIPs ?? defaultAcceptedIPs);
+
                         streamWriter.WriteComment("Local IP address to listen on.  \"Any\" means listen on all IPs.");
                         streamWriter.WriteElementString("LocalIPAddress", account.LocalPop3IPAddress ?? "Any");
                         streamWriter.WriteComment("Local port to listen on.");
                         streamWriter.WriteElementString("LocalPort", account.LocalPop3Port > 0 ? account.LocalPop3Port.ToString() : "995");
                         streamWriter.WriteComment("Whether local connections support TLS/SSL protection.");
                         streamWriter.WriteElementString("LocalEnableSSL", account.LocalPop3EnableSsl.ToString());
-                        
+
                         streamWriter.WriteComment("Remote POP3 server hostname to connect to.  Common values: pop.gmail.com, pop3.live.com, pop.mail.yahoo.com");
                         streamWriter.WriteElementString("RemoteServerHostName", account.RemotePop3Server ?? "Any");
                         streamWriter.WriteComment("Remote POP3 server port to connect to.  995 is recommended, but 110 may be required.");
                         streamWriter.WriteElementString("RemoteServerPort", account.RemotePop3Port > 0 ? account.RemotePop3Port.ToString() : "995");
                         streamWriter.WriteComment("Whether the remote POP3 server supports TLS/SSL protection.");
                         streamWriter.WriteElementString("RemoteServerEnableSSL", account.RemotePop3EnableSsl.ToString());
-                        
+
                         streamWriter.WriteComment("Where log files should be stored, if any.  Leave blank to avoid logging.");
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\POP3Proxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.Pop3LogFile ?? "Logs\\POP3Proxy{#}-{yyyy-MM-dd}.log");
@@ -1119,11 +1197,61 @@ namespace OpaqueMail.Net.ProxySettings
                 streamWriter.WriteEndElement();
             }
 
-            // Sixth, restart the OpaqueMail service.
+            // Sixth, address loopback firewall settings.
+            if (UpdateFirewall.Checked)
+            {
+                // Enable the back connection hostname to avoid loopback checks.
+                using (RegistryKey key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0", true))
+                {
+                    object loopbackObject = key.GetValue("BackConnectionHostNames");
+                    if (loopbackObject != null)
+                    {
+                        string[] loopbackValue = (string[])loopbackObject;
+
+                        bool loopbackFound = false;
+                        string[] newLoopbackValue = new string[loopbackValue.Length + 1];
+                        for (int i = 0; i < loopbackValue.Length; i++)
+                        {
+                            if (loopbackValue[i].ToUpper() == fqdn.ToUpper())
+                            {
+                                loopbackFound = true;
+                                break;
+                            }
+                            newLoopbackValue[i] = loopbackValue[i];
+                        }
+
+                        if (!loopbackFound)
+                        {
+                            newLoopbackValue[newLoopbackValue.Length - 1] = Functions.GetLocalFQDN();
+                            key.SetValue("BackConnectionHostNames", newLoopbackValue);
+
+                            StopService("IISAdmin");
+                            StartService("IISAdmin");
+                        }
+                    }
+                    else
+                    {
+                        key.SetValue("BackConnectionHostNames", new string[] { fqdn });
+
+                        StopService("IISAdmin");
+                        StartService("IISAdmin");
+                    }
+                }
+
+                // Open up Windows 8 Mail loopback.
+                try
+                {
+                    Windows8MailHelper windows8MailLoopbackHelper = new Windows8MailHelper();
+                    windows8MailLoopbackHelper.EnableWindows8MailLoopback();
+                }
+                catch { }
+            }
+
+            // Seventh, restart the OpaqueMail service.
             InstallService();
             StartService();
 
-            // Seventh, rewrite the Outlook registry values.
+            // Eighth, rewrite the Outlook registry values.
             foreach (string outlookVersion in OutlookVersions.Keys)
             {
                 using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Office\" + outlookVersion + @"\Outlook\Profiles\Outlook\9375CFF0413111d3B88A00104B2A6676", false))
@@ -1215,7 +1343,7 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Eighth, rewrite the Thunderbird registry values.
+            // Ninth, rewrite the Thunderbird registry values.
             if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
             {
                 foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
@@ -1281,6 +1409,21 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
+            // Tenth, save Outlook signatures.
+            if (UpdateOutlookSignature.Checked)
+            {
+                List<string> finalOutlookKeyLocations = new List<string>();
+                foreach (ProxyAccount account in accounts)
+                {
+                    if (account.Matched)
+                    {
+                        foreach (string keyLocation in account.OutlookRegistryKeys)
+                            finalOutlookKeyLocations.Add(keyLocation);
+                    }
+                }
+                SetOutlookSignatures(finalOutlookKeyLocations);
+
+            }
             // Finally, prompt to restart Outlook or Thunderbird.
             Process[] processes = Process.GetProcessesByName("OUTLOOK");
             if (processes.Length > 0)
@@ -1324,17 +1467,65 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
+            UpdateServiceStatus(null);
+
             MessageBox.Show("OpaqueMail Proxy has been successfully configured and the Windows Service is now running.\r\n\r\nYou may close this program and the proxy will continue to run in the background.", "Success.", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         /// <summary>
         /// Confirm the Windows service exists.
         /// </summary>
-        /// <param name="name">Name of the WIndows service</param>
-        private bool ServiceExists(string name)
+        /// <param name="serviceName">Name of the WIndows service</param>
+        private bool ServiceExists(string serviceName)
         {
             ServiceController[] services = ServiceController.GetServices();
-            return services.FirstOrDefault(s => s.ServiceName == name) != null;
+            return services.FirstOrDefault(s => s.ServiceName == serviceName) != null;
+        }
+
+        /// <summary>
+        /// Update Outlook signatures to reference OpaqueMail.
+        /// </summary>
+        /// <param name="registryKeys">List of registry entries for Outlook accounts to update.</param>
+        private void SetOutlookSignatures(List<string> registryKeyLocations)
+        {
+            string microsoftFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Microsoft";
+            if (Directory.Exists(microsoftFolder))
+            {
+                if (!Directory.Exists(microsoftFolder + "\\Signatures"))
+                    Directory.CreateDirectory(microsoftFolder + "\\Signatures");
+                if (!Directory.Exists(microsoftFolder + "\\Signatures\\OpaqueMail_files"))
+                    Directory.CreateDirectory(microsoftFolder + "\\Signatures\\OpaqueMail_files");
+
+                SaveResourceFile("OpaqueMail.htm", "OpaqueMail.Net.ProxySettings.Signature.Resources", microsoftFolder + "\\Signatures");
+                SaveResourceFile("OpaqueMail.rtf", "OpaqueMail.Net.ProxySettings.Signature.Resources", microsoftFolder + "\\Signatures");
+                SaveResourceFile("OpaqueMail.txt", "OpaqueMail.Net.ProxySettings.Signature.Resources", microsoftFolder + "\\Signatures");
+                SaveResourceFile("colorschememapping.xml", "OpaqueMail.Net.ProxySettings.Signature.Resources", microsoftFolder + "\\Signatures\\OpaqueMail_files");
+                SaveResourceFile("filelist.xml", "OpaqueMail.Net.ProxySettings.Signature.Resources", microsoftFolder + "\\Signatures\\OpaqueMail_files");
+                SaveResourceFile("themedata.thmx", "OpaqueMail.Net.ProxySettings.Signature.Resources", microsoftFolder + "\\Signatures\\OpaqueMail_files");
+
+                foreach (string keyLocation in registryKeyLocations)
+                {
+                    using (RegistryKey key = Registry.CurrentUser.OpenSubKey(keyLocation.Replace("HKEY_CURRENT_USER\\", ""), true))
+                    {
+                        if (key != null)
+                        {
+                            string signatureValue = GetOutlookRegistryValue(key, "New Signature");
+
+                            // If there's no signature for this account, set it to OpaqueMail.
+                            if (string.IsNullOrEmpty(signatureValue))
+                                key.SetValue("New Signature", Encoding.Unicode.GetBytes("OpaqueMail\0"));
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handle S/MIME operation option changes.
+        /// </summary>
+        private void SmimeOperations_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            SmimeSettingsMode.Enabled = SmimeOperations.SelectedIndex > 0;
         }
 
         /// <summary>
@@ -1342,9 +1533,18 @@ namespace OpaqueMail.Net.ProxySettings
         /// </summary>
         private void StartService()
         {
-            if (ServiceExists("OpaqueMailProxy"))
+            StartService("OpaqueMailProxy");
+        }
+
+        /// <summary>
+        /// Start a Windows service.
+        /// </summary>
+        /// <param name="serviceName">Name of the service to start.</param>
+        private void StartService(string serviceName)
+        {
+            if (ServiceExists(serviceName))
             {
-                ServiceController serviceContoller = new ServiceController("OpaqueMailProxy");
+                ServiceController serviceContoller = new ServiceController(serviceName);
                 if (serviceContoller.Status != ServiceControllerStatus.Running && serviceContoller.Status != ServiceControllerStatus.StartPending)
                     serviceContoller.Start();
             }
@@ -1355,9 +1555,18 @@ namespace OpaqueMail.Net.ProxySettings
         /// </summary>
         private void StopService()
         {
-            if (ServiceExists("OpaqueMailProxy"))
+            StopService("OpaqueMailProxy");
+        }
+
+        /// <summary>
+        /// Stop a Windows service.
+        /// </summary>
+        /// <param name="serviceName">Name of the service to start.</param>
+        private void StopService(string serviceName)
+        {
+            if (ServiceExists(serviceName))
             {
-                ServiceController serviceContoller = new ServiceController("OpaqueMailProxy");
+                ServiceController serviceContoller = new ServiceController(serviceName);
                 if (serviceContoller.Status != ServiceControllerStatus.Stopped && serviceContoller.Status != ServiceControllerStatus.StopPending)
                     serviceContoller.Stop();
             }
@@ -1372,6 +1581,44 @@ namespace OpaqueMail.Net.ProxySettings
             {
                 ProxyServiceInstaller installer = new ProxyServiceInstaller();
                 installer.Install(true, new string[] { });
+            }
+        }
+
+        /// <summary>
+        /// Update the service status message.
+        /// </summary>
+        private void UpdateServiceStatus(object o)
+        {
+            if (ServiceExists("OpaqueMailProxy"))
+            {
+                ServiceController serviceContoller = new ServiceController("OpaqueMailProxy");
+                switch (serviceContoller.Status)
+                {
+                    case ServiceControllerStatus.ContinuePending:
+                    case ServiceControllerStatus.Running:
+                        ServiceStatusLabel.Text = "OpaqueMailProxy service running successfully.";
+                        ServiceStatusLabel.ForeColor = Color.DarkGreen;
+                        break;
+                    case ServiceControllerStatus.Paused:
+                    case ServiceControllerStatus.PausePending:
+                        ServiceStatusLabel.Text = "OpaqueMailProxy service paused.";
+                        ServiceStatusLabel.ForeColor = Color.Black;
+                        break;
+                    case ServiceControllerStatus.StartPending:
+                        ServiceStatusLabel.Text = "OpaqueMailProxy service starting.";
+                        ServiceStatusLabel.ForeColor = Color.Black;
+                        break;
+                    case ServiceControllerStatus.Stopped:
+                    case ServiceControllerStatus.StopPending:
+                        ServiceStatusLabel.Text = "OpaqueMailProxy service stopped.";
+                        ServiceStatusLabel.ForeColor = Color.Black;
+                        break;
+                }
+            }
+            else
+            {
+                ServiceStatusLabel.Text = "OpaqueMailProxy service not installed.";
+                ServiceStatusLabel.ForeColor = Color.DarkRed;
             }
         }
         #endregion Private Methods
@@ -1405,9 +1652,9 @@ namespace OpaqueMail.Net.ProxySettings
             public List<string> ThunderbirdKeys = new List<string>();
             public List<string> Usernames = new List<string>();
 
-            public string ImapAcceptedIPs = "0.0.0.0";
-            public string Pop3AcceptedIPs = "0.0.0.0";
-            public string SmtpAcceptedIPs = "0.0.0.0";
+            public string ImapAcceptedIPs;
+            public string Pop3AcceptedIPs;
+            public string SmtpAcceptedIPs;
 
             public bool LocalImapEnableSsl = true;
             public int LocalImapPort = 993;
@@ -1434,6 +1681,7 @@ namespace OpaqueMail.Net.ProxySettings
             public string RemoteSmtpServer = "";
             public string RemoteSmtpUsername;
             public string RemoteSmtpPassword;
+            public string RemoteSmtpFrom;
 
             public string ImapCertificateLocation;
             public string ImapCertificateSerialNumber;

@@ -33,7 +33,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, SmimeSettingsMode.BestEffort, true, true, true, true, true, "", LogLevel.None, 0);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", SmimeSettingsMode.BestEffort, true, true, true, true, true, "", LogLevel.None, 0);
         }
 
         /// <summary>
@@ -47,13 +47,14 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerPort">Remote server port to connect to.</param>
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</param>
+        /// <param name="remoteServerFrom">(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile, LogLevel logLevel, int instanceId)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string remoteServerFrom, string logFile, LogLevel logLevel, int instanceId)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, SmimeSettingsMode.BestEffort, true, true, true, true, true, logFile, logLevel, instanceId);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, remoteServerFrom, SmimeSettingsMode.BestEffort, true, true, true, true, true, logFile, logLevel, instanceId);
         }
 
         /// <summary>
@@ -67,15 +68,16 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerPort">Remote server port to connect to.</param>
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</param>
+        /// <param name="remoteServerFrom">(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
         /// <param name="smimeSettingsMode">Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</param>
         /// <param name="smimeEncryptedEnvelope">Whether the e-mail's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
         /// <param name="smimeSigned">Whether the e-mail should be signed.  When true, signing is the first S/MIME operation</param>
         /// <param name="smimeTripleWrapped">Whether the e-mail should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
         /// <param name="smimeRemovePreviousOperations">Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</param>
         /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string remoteServerFrom, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, smimeSettingsMode, smimeSigned, smimeEncryptedEnvelope, smimeTripleWrapped, smimeRemovePreviousOperations, sendCertificateReminders, "", LogLevel.None, 0);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, remoteServerFrom, smimeSettingsMode, smimeSigned, smimeEncryptedEnvelope, smimeTripleWrapped, smimeRemovePreviousOperations, sendCertificateReminders, "", LogLevel.None, 0);
         }
 
         /// <summary>
@@ -89,6 +91,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerPort">Remote server port to connect to.</param>
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</param>
+        /// <param name="remoteServerFrom">(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
         /// <param name="smimeSettingsMode">Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</param>
         /// <param name="smimeEncryptedEnvelope">Whether the e-mail's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
         /// <param name="smimeSigned">Whether the e-mail should be signed.  When true, signing is the first S/MIME operation</param>
@@ -98,14 +101,16 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders, string logFile, LogLevel logLevel, int instanceId)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string remoteServerFrom, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders, string logFile, LogLevel logLevel, int instanceId)
         {
             // Create the log writer.
             string logFileName = "";
             if (!string.IsNullOrEmpty(logFile))
             {
-                logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
+                logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId, localIPAddress.ToString(), remoteServerHostName, localPort, remoteServerPort);
                 LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
+                LogWriter.AutoFlush = true;
+
                 LogLevel = logLevel;
             }
 
@@ -186,7 +191,7 @@ namespace OpaqueMail.Net.Proxy
                     {
                         TcpClient client = Listener.AcceptTcpClient();
 
-                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
+                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId, localIPAddress.ToString(), remoteServerHostName, localPort, remoteServerPort);
                         if (newLogFileName != logFileName)
                         {
                             LogWriter.Close();
@@ -206,6 +211,7 @@ namespace OpaqueMail.Net.Proxy
                         arguments.RemoteServerPort = remoteServerPort;
                         arguments.RemoteServerEnableSsl = remoteServerEnableSsl;
                         arguments.RemoteServerCredential = remoteServerCredential;
+                        arguments.RemoteServerFrom = remoteServerFrom;
 
                         arguments.SmimeSettingsMode = smimeSettingsMode;
                         arguments.SmimeSigned = smimeSigned;
@@ -322,6 +328,8 @@ namespace OpaqueMail.Net.Proxy
                             arguments.RemoteServerCredential.Password = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPassword");
                         }
 
+                        arguments.RemoteServerFrom = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerFrom");
+
                         string certificateLocationValue = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
                         StoreLocation certificateLocation = StoreLocation.LocalMachine;
                         if (certificateLocationValue.ToUpper() == "CURRENTUSER")
@@ -418,6 +426,9 @@ namespace OpaqueMail.Net.Proxy
             Stream clientStream = null;
             StreamReader clientStreamReader = null;
             StreamWriter clientStreamWriter = null;
+
+            string ip = "";
+
             try
             {
                 client = arguments.TcpClient;
@@ -427,7 +438,6 @@ namespace OpaqueMail.Net.Proxy
                 NetworkCredential credential = arguments.RemoteServerCredential;
                 string fromAddress = "";
                 string identity = "";
-                string ip = "";
                 List<string> toList = new List<string>();
                 bool sending = false, inPlainAuth = false, inLoginAuth = false;
 
@@ -502,8 +512,6 @@ namespace OpaqueMail.Net.Proxy
                         {
                             bytesTransmitted += (ulong)bytesRead;
 
-                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "C: " + new string(buffer, 0, bytesRead), Proxy.LogLevel.Raw, LogLevel);
-
                             command += new string(buffer, 0, bytesRead);
 
                             if (command.EndsWith("\r\n"))
@@ -521,6 +529,9 @@ namespace OpaqueMail.Net.Proxy
                                         {
                                             ReadOnlyMailMessage message = new ReadOnlyMailMessage(command.Substring(0, command.Length - 5), ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody);
 
+                                            if (!string.IsNullOrEmpty(arguments.RemoteServerFrom))
+                                                message.From = Functions.FromMailAddressString(arguments.RemoteServerFrom)[0];
+
                                             // If the received message is already signed or encrypted and we don't want to remove previous S/MIME operations, forward it as-is.
                                             string contentType = message.ContentType;
                                             if ((contentType.StartsWith("application/pkcs7-mime") || contentType.StartsWith("application/x-pkcs7-mime") || contentType.StartsWith("application/x-pkcs7-signature")) && !arguments.SmimeRemovePreviousOperations)
@@ -533,10 +544,9 @@ namespace OpaqueMail.Net.Proxy
                                             {
                                                 messageFrom = message.From.Address;
                                                 messageSubject = message.Subject;
-                                                messageSize = message.Size.ToString();
+                                                messageSize = message.Size.ToString("N0");
 
-                                                if (LogLevel == Proxy.LogLevel.Verbose)
-                                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Forwarding message from {" + message.From.Address + "} with subject {" + message.Subject + "} and size of {" + message.Size + "}.", Proxy.LogLevel.Verbose, LogLevel);
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Forwarding message from {" + message.From.Address + "} with subject {" + message.Subject + "} and size of {" + message.Size.ToString("N0") + "}.", Proxy.LogLevel.Verbose, LogLevel);
 
                                                 foreach (string toListAddress in toList)
                                                 {
@@ -559,6 +569,8 @@ namespace OpaqueMail.Net.Proxy
                                                 message.SmimeSigningCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, message.From.Address);
                                                 if (message.SmimeSigningCertificate == null)
                                                     message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate("E=" + message.From.Address, message.From.Address, true, 4096, 10);
+
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "C: " + Functions.ReplaceBetween(message.RawHeaders, "From: ", "\r\n", Functions.ToMailAddressString(message.From)) + "\r\n\r\n" + message.RawBody, Proxy.LogLevel.Raw, LogLevel);
 
                                                 // Send the message.
                                                 await smtpClient.SendAsync(message.AsMailMessage());
@@ -612,8 +624,7 @@ namespace OpaqueMail.Net.Proxy
                                             await Functions.SendStreamStringAsync(clientStreamWriter, "250 Forwarded\r\n");
                                             ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 Forwarded", Proxy.LogLevel.Raw, LogLevel);
 
-                                            if (LogLevel == Proxy.LogLevel.Verbose)
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Message from {" + message.From.Address + "} with subject {" + message.Subject + "} and size of {" + message.Size + "} successfully forwarded.", Proxy.LogLevel.Verbose, LogLevel);
+                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Message from {" + message.From.Address + "} with subject {" + message.Subject + "} and size of {" + message.Size.ToString("N0") + "} successfully forwarded.", Proxy.LogLevel.Verbose, LogLevel);
                                         }
                                         catch (Exception ex)
                                         {
@@ -621,231 +632,235 @@ namespace OpaqueMail.Net.Proxy
                                             Functions.SendStreamString(clientStreamWriter, "500 Error occurred when forwarding\r\n");
                                             ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 500 Error occurred when forwarding", Proxy.LogLevel.Raw, LogLevel);
 
-                                            if (LogLevel == Proxy.LogLevel.Verbose)
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Error when forwarding message from {" + messageFrom + "} with subject {" + messageSubject + "} and size of {" + messageSize + "}.  Exception: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Error when forwarding message from {" + messageFrom + "} with subject {" + messageSubject + "} and size of {" + messageSize + "}.  Exception: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
                                         }
                                         command = "";
                                     }
                                 }
-                                // Handle continuations of current "AUTH PLAIN" commands.
-                                else if (inPlainAuth)
+                                else
                                 {
-                                    inPlainAuth = false;
-                                    // Split up an AUTH PLAIN handshake into its components.
-                                    string authString = Encoding.UTF8.GetString(Convert.FromBase64String(command));
-                                    string[] authStringParts = authString.Split(new char[] { '\0' }, 3);
-                                    if (authStringParts.Length > 2 && arguments.RemoteServerCredential == null)
-                                        smtpClient.Credentials = new NetworkCredential(authStringParts[1], authStringParts[2]);
+                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "C: " + new string(buffer, 0, bytesRead), Proxy.LogLevel.Raw, LogLevel);
 
-                                    await Functions.SendStreamStringAsync(clientStreamWriter, "235 OK\r\n");
-                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 235 OK", Proxy.LogLevel.Raw, LogLevel);
-
-                                    command = "";
-                                }
-                                // Handle continuations of current "AUTH LOGIN" commands.
-                                else if (inLoginAuth)
-                                {
-                                    if (smtpClient.Credentials == null)
+                                    // Handle continuations of current "AUTH PLAIN" commands.
+                                    if (inPlainAuth)
                                     {
-                                        // Handle the username being received for the first time.
-                                        smtpClient.Credentials = new NetworkCredential();
-                                        ((NetworkCredential)smtpClient.Credentials).UserName = Functions.FromBase64(command.Substring(0, command.Length - 2));
-
-                                        await Functions.SendStreamStringAsync(clientStreamWriter, "334 UGFzc3dvcmQ6\r\n");
-                                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 334 UGFzc3dvcmQ6", Proxy.LogLevel.Raw, LogLevel);
-                                    }
-                                    else
-                                    {
-                                        // Handle the password.
-                                        inLoginAuth = false;
-                                        ((NetworkCredential)smtpClient.Credentials).Password = Functions.FromBase64(command.Substring(0, command.Length - 2));
+                                        inPlainAuth = false;
+                                        // Split up an AUTH PLAIN handshake into its components.
+                                        string authString = Encoding.UTF8.GetString(Convert.FromBase64String(command));
+                                        string[] authStringParts = authString.Split(new char[] { '\0' }, 3);
+                                        if (authStringParts.Length > 2 && arguments.RemoteServerCredential == null)
+                                            smtpClient.Credentials = new NetworkCredential(authStringParts[1], authStringParts[2]);
 
                                         await Functions.SendStreamStringAsync(clientStreamWriter, "235 OK\r\n");
                                         ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 235 OK", Proxy.LogLevel.Raw, LogLevel);
+
+                                        command = "";
                                     }
-                                    command = "";
-                                }
-                                else
-                                {
-                                    // Otherwise, look at the verb of the incoming command.
-                                    string[] commandParts = command.Substring(0, command.Length - 2).Replace("\r", "").Split(new char[] { ' ' }, 2);
-
-                                    if (LogLevel == Proxy.LogLevel.Verbose)
-                                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Command {" + commandParts[0] + "} received.", Proxy.LogLevel.Verbose, LogLevel);
-
-                                    switch (commandParts[0].ToUpper())
+                                    // Handle continuations of current "AUTH LOGIN" commands.
+                                    else if (inLoginAuth)
                                     {
-                                        case "AUTH":
-                                            // Support authentication.
-                                            if (commandParts.Length > 1)
-                                            {
-                                                commandParts = command.Substring(0, command.Length - 2).Replace("\r", "").Split(new char[] { ' ' });
-                                                switch (commandParts[1].ToUpper())
-                                                {
-                                                    case "PLAIN":
-                                                        // Prepare to handle a continuation command.
-                                                        inPlainAuth = true;
-                                                        await Functions.SendStreamStringAsync(clientStreamWriter, "334 Proceed\r\n");
-                                                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 334 Proceed", Proxy.LogLevel.Raw, LogLevel);
+                                        if (smtpClient.Credentials == null)
+                                        {
+                                            // Handle the username being received for the first time.
+                                            smtpClient.Credentials = new NetworkCredential();
+                                            ((NetworkCredential)smtpClient.Credentials).UserName = Functions.FromBase64(command.Substring(0, command.Length - 2));
 
-                                                        break;
-                                                    case "LOGIN":
-                                                        inLoginAuth = true;
-                                                        if (commandParts.Length > 2)
-                                                        {
-                                                            // Parse the username and request a password.
-                                                            smtpClient.Credentials = new NetworkCredential();
-                                                            ((NetworkCredential)smtpClient.Credentials).UserName = Functions.FromBase64(commandParts[2]);
-
-                                                            await Functions.SendStreamStringAsync(clientStreamWriter, "334 UGFzc3dvcmQ6\r\n");
-                                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 334 UGFzc3dvcmQ6", Proxy.LogLevel.Raw, LogLevel);
-                                                        }
-                                                        else
-                                                        {
-                                                            // Request a username only.
-                                                            await Functions.SendStreamStringAsync(clientStreamWriter, "334 VXNlcm5hbWU6\r\n");
-                                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 334 VXNlcm5hbWU6", Proxy.LogLevel.Raw, LogLevel);
-                                                        }
-                                                        break;
-                                                    default:
-                                                        // Split up an AUTH PLAIN handshake into its components.
-                                                        string authString = Encoding.UTF8.GetString(Convert.FromBase64String(commandParts[1].Substring(6)));
-                                                        string[] authStringParts = authString.Split(new char[] { '\0' }, 3);
-                                                        if (authStringParts.Length > 2 && arguments.RemoteServerCredential == null)
-                                                            smtpClient.Credentials = new NetworkCredential(authStringParts[1], authStringParts[2]);
-
-                                                        await Functions.SendStreamStringAsync(clientStreamWriter, "235 OK\r\n");
-                                                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 235 OK", Proxy.LogLevel.Raw, LogLevel);
-                                                        break;
-                                                }
-                                            }
-                                            else
-                                            {
-                                                await Functions.SendStreamStringAsync(clientStreamWriter, "500 Unknown verb\r\n");
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 500 Unknown verb", Proxy.LogLevel.Raw, LogLevel);
-                                            }
-                                            break;
-                                        case "DATA":
-                                            // Prepare to handle continuation data.
-                                            sending = true;
-                                            command = command.Substring(6);
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "354 Send message content; end with <CRLF>.<CRLF>\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 354 Send message content; end with <CRLF>.<CRLF>", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        case "EHLO":
-                                            // Proceed with the login and send a list of supported commands.
-                                            if (commandParts.Length > 1)
-                                                identity = commandParts[1] + " ";
-                                            if (arguments.LocalEnableSsl)
-                                            {
-                                                await Functions.SendStreamStringAsync(clientStreamWriter, "250-Hello " + identity + "[" + ip + "], please proceed\r\n250-AUTH LOGIN PLAIN\r\n250-RSET\r\n250 STARTTLS\r\n");
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250-Hello " + identity + "[" + ip + "], please proceed\r\n250-AUTH LOGIN PLAIN\r\n250-RSET\r\n250 STARTTLS", Proxy.LogLevel.Raw, LogLevel);
-                                            }
-                                            else
-                                            {
-                                                await Functions.SendStreamStringAsync(clientStreamWriter, "250-Hello " + identity + "[" + ip + "], please proceed\r\n250-AUTH LOGIN PLAIN\r\n250 RSET\r\n");
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250-Hello " + identity + "[" + ip + "], please proceed\r\n250-AUTH LOGIN PLAIN\r\n250 RSET", Proxy.LogLevel.Raw, LogLevel);
-                                            }
-                                            break;
-                                        case "HELO":
-                                            // Proceed with the login.
-                                            if (commandParts.Length > 1)
-                                                identity = commandParts[1];
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "250 Hello " + identity + " [" + ip + "], please proceed\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: Hello " + identity + " [" + ip + "], please proceed", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        case "MAIL":
-                                        case "SAML":
-                                        case "SEND":
-                                        case "SOML":
-                                            // Accept the from address.
-                                            if (commandParts.Length > 1 && commandParts[1].Length > 5)
-                                                fromAddress = commandParts[1].Substring(5);
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "250 OK\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 OK", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        case "NOOP":
-                                            // Prolong the current session.
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "250 Still here\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 Still here", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        case "PASS":
-                                            // Support authentication.
-                                            if (commandParts.Length > 1 && arguments.RemoteServerCredential == null)
-                                                ((NetworkCredential)smtpClient.Credentials).Password = commandParts[1];
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "235 OK\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 235 OK", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        case "QUIT":
-                                            // Wait one second then force the current connection closed.
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "221 Bye\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 221 Bye", Proxy.LogLevel.Raw, LogLevel);
-
-                                            Thread.Sleep(1000);
-
-                                            if (clientStream != null)
-                                                clientStream.Dispose();
-                                            if (client != null)
-                                                client.Close();
-                                            break;
-                                        case "RCPT":
-                                            // Acknolwedge recipients.
-                                            if (commandParts.Length > 1 && commandParts[1].Length > 6)
-                                                toList.Add(commandParts[1].Substring(5, commandParts[1].Length - 6));
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "250 OK\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 OK", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        case "RSET":
-                                            // Reset the current message arguments.
-                                            fromAddress = "";
-                                            toList.Clear();
-
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "250 OK\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 OK", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        case "STARTTLS":
-                                            // If supported, upgrade the session's security through a TLS handshake.
-                                            if (arguments.LocalEnableSsl)
-                                            {
-                                                await Functions.SendStreamStringAsync(clientStreamWriter, "220 Go ahead\r\n");
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 220 Go ahead", Proxy.LogLevel.Raw, LogLevel);
-
-                                                if (!(clientStream is SslStream))
-                                                {
-                                                    clientStream = new SslStream(clientStream);
-                                                    ((SslStream)clientStream).AuthenticateAsServer(arguments.Certificate);
-
-                                                    clientStreamReader = new StreamReader(clientStream);
-                                                    clientStreamWriter = new StreamWriter(clientStream);
-                                                    clientStreamWriter.AutoFlush = true;
-                                                }
-                                            }
-                                            else
-                                            {
-                                                await Functions.SendStreamStringAsync(clientStreamWriter, "500 Unknown verb\r\n");
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 500 Unknown verb", Proxy.LogLevel.Raw, LogLevel);
-                                            }
-                                            break;
-                                        case "USER":
-                                            // Support authentication.
-                                            if (commandParts.Length > 1 && arguments.RemoteServerCredential == null)
-                                                ((NetworkCredential)smtpClient.Credentials).UserName = commandParts[1];
+                                            await Functions.SendStreamStringAsync(clientStreamWriter, "334 UGFzc3dvcmQ6\r\n");
+                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 334 UGFzc3dvcmQ6", Proxy.LogLevel.Raw, LogLevel);
+                                        }
+                                        else
+                                        {
+                                            // Handle the password.
+                                            inLoginAuth = false;
+                                            ((NetworkCredential)smtpClient.Credentials).Password = Functions.FromBase64(command.Substring(0, command.Length - 2));
 
                                             await Functions.SendStreamStringAsync(clientStreamWriter, "235 OK\r\n");
                                             ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 235 OK", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        case "VRFY":
-                                            // Notify that we can't verify addresses.
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "252 I'm just a proxy\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 252 I'm just a proxy", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
-                                        default:
-                                            await Functions.SendStreamStringAsync(clientStreamWriter, "500 Unknown verb\r\n");
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 500 Unknown verb", Proxy.LogLevel.Raw, LogLevel);
-                                            break;
+                                        }
+                                        command = "";
                                     }
+                                    else
+                                    {
+                                        // Otherwise, look at the verb of the incoming command.
+                                        string[] commandParts = command.Substring(0, command.Length - 2).Replace("\r", "").Split(new char[] { ' ' }, 2);
 
-                                    command = "";
+                                        if (LogLevel == Proxy.LogLevel.Verbose)
+                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Command {" + commandParts[0] + "} received.", Proxy.LogLevel.Verbose, LogLevel);
+
+                                        switch (commandParts[0].ToUpper())
+                                        {
+                                            case "AUTH":
+                                                // Support authentication.
+                                                if (commandParts.Length > 1)
+                                                {
+                                                    commandParts = command.Substring(0, command.Length - 2).Replace("\r", "").Split(new char[] { ' ' });
+                                                    switch (commandParts[1].ToUpper())
+                                                    {
+                                                        case "PLAIN":
+                                                            // Prepare to handle a continuation command.
+                                                            inPlainAuth = true;
+                                                            await Functions.SendStreamStringAsync(clientStreamWriter, "334 Proceed\r\n");
+                                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 334 Proceed", Proxy.LogLevel.Raw, LogLevel);
+
+                                                            break;
+                                                        case "LOGIN":
+                                                            inLoginAuth = true;
+                                                            if (commandParts.Length > 2)
+                                                            {
+                                                                // Parse the username and request a password.
+                                                                smtpClient.Credentials = new NetworkCredential();
+                                                                ((NetworkCredential)smtpClient.Credentials).UserName = Functions.FromBase64(commandParts[2]);
+
+                                                                await Functions.SendStreamStringAsync(clientStreamWriter, "334 UGFzc3dvcmQ6\r\n");
+                                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 334 UGFzc3dvcmQ6", Proxy.LogLevel.Raw, LogLevel);
+                                                            }
+                                                            else
+                                                            {
+                                                                // Request a username only.
+                                                                await Functions.SendStreamStringAsync(clientStreamWriter, "334 VXNlcm5hbWU6\r\n");
+                                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 334 VXNlcm5hbWU6", Proxy.LogLevel.Raw, LogLevel);
+                                                            }
+                                                            break;
+                                                        default:
+                                                            // Split up an AUTH PLAIN handshake into its components.
+                                                            string authString = Encoding.UTF8.GetString(Convert.FromBase64String(commandParts[1].Substring(6)));
+                                                            string[] authStringParts = authString.Split(new char[] { '\0' }, 3);
+                                                            if (authStringParts.Length > 2 && arguments.RemoteServerCredential == null)
+                                                                smtpClient.Credentials = new NetworkCredential(authStringParts[1], authStringParts[2]);
+
+                                                            await Functions.SendStreamStringAsync(clientStreamWriter, "235 OK\r\n");
+                                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 235 OK", Proxy.LogLevel.Raw, LogLevel);
+                                                            break;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    await Functions.SendStreamStringAsync(clientStreamWriter, "500 Unknown verb\r\n");
+                                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 500 Unknown verb", Proxy.LogLevel.Raw, LogLevel);
+                                                }
+                                                break;
+                                            case "DATA":
+                                                // Prepare to handle continuation data.
+                                                sending = true;
+                                                command = command.Substring(6);
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "354 Send message content; end with <CRLF>.<CRLF>\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 354 Send message content; end with <CRLF>.<CRLF>", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            case "EHLO":
+                                                // Proceed with the login and send a list of supported commands.
+                                                if (commandParts.Length > 1)
+                                                    identity = commandParts[1] + " ";
+                                                if (arguments.LocalEnableSsl)
+                                                {
+                                                    await Functions.SendStreamStringAsync(clientStreamWriter, "250-Hello " + identity + "[" + ip + "], please proceed\r\n250-AUTH LOGIN PLAIN\r\n250-RSET\r\n250 STARTTLS\r\n");
+                                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250-Hello " + identity + "[" + ip + "], please proceed\r\n250-AUTH LOGIN PLAIN\r\n250-RSET\r\n250 STARTTLS", Proxy.LogLevel.Raw, LogLevel);
+                                                }
+                                                else
+                                                {
+                                                    await Functions.SendStreamStringAsync(clientStreamWriter, "250-Hello " + identity + "[" + ip + "], please proceed\r\n250-AUTH LOGIN PLAIN\r\n250 RSET\r\n");
+                                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250-Hello " + identity + "[" + ip + "], please proceed\r\n250-AUTH LOGIN PLAIN\r\n250 RSET", Proxy.LogLevel.Raw, LogLevel);
+                                                }
+                                                break;
+                                            case "HELO":
+                                                // Proceed with the login.
+                                                if (commandParts.Length > 1)
+                                                    identity = commandParts[1];
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "250 Hello " + identity + " [" + ip + "], please proceed\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: Hello " + identity + " [" + ip + "], please proceed", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            case "MAIL":
+                                            case "SAML":
+                                            case "SEND":
+                                            case "SOML":
+                                                // Accept the from address.
+                                                if (commandParts.Length > 1 && commandParts[1].Length > 5)
+                                                    fromAddress = commandParts[1].Substring(5);
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "250 OK\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 OK", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            case "NOOP":
+                                                // Prolong the current session.
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "250 Still here\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 Still here", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            case "PASS":
+                                                // Support authentication.
+                                                if (commandParts.Length > 1 && arguments.RemoteServerCredential == null)
+                                                    ((NetworkCredential)smtpClient.Credentials).Password = commandParts[1];
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "235 OK\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 235 OK", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            case "QUIT":
+                                                // Wait one second then force the current connection closed.
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "221 Bye\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 221 Bye", Proxy.LogLevel.Raw, LogLevel);
+
+                                                Thread.Sleep(1000);
+
+                                                if (clientStream != null)
+                                                    clientStream.Dispose();
+                                                if (client != null)
+                                                    client.Close();
+                                                break;
+                                            case "RCPT":
+                                                // Acknolwedge recipients.
+                                                if (commandParts.Length > 1 && commandParts[1].Length > 6)
+                                                    toList.Add(commandParts[1].Substring(5, commandParts[1].Length - 6));
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "250 OK\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 OK", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            case "RSET":
+                                                // Reset the current message arguments.
+                                                fromAddress = "";
+                                                toList.Clear();
+
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "250 OK\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 250 OK", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            case "STARTTLS":
+                                                // If supported, upgrade the session's security through a TLS handshake.
+                                                if (arguments.LocalEnableSsl)
+                                                {
+                                                    await Functions.SendStreamStringAsync(clientStreamWriter, "220 Go ahead\r\n");
+                                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 220 Go ahead", Proxy.LogLevel.Raw, LogLevel);
+
+                                                    if (!(clientStream is SslStream))
+                                                    {
+                                                        clientStream = new SslStream(clientStream);
+                                                        ((SslStream)clientStream).AuthenticateAsServer(arguments.Certificate);
+
+                                                        clientStreamReader = new StreamReader(clientStream);
+                                                        clientStreamWriter = new StreamWriter(clientStream);
+                                                        clientStreamWriter.AutoFlush = true;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    await Functions.SendStreamStringAsync(clientStreamWriter, "500 Unknown verb\r\n");
+                                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 500 Unknown verb", Proxy.LogLevel.Raw, LogLevel);
+                                                }
+                                                break;
+                                            case "USER":
+                                                // Support authentication.
+                                                if (commandParts.Length > 1 && arguments.RemoteServerCredential == null)
+                                                    ((NetworkCredential)smtpClient.Credentials).UserName = commandParts[1];
+
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "235 OK\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 235 OK", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            case "VRFY":
+                                                // Notify that we can't verify addresses.
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "252 I'm just a proxy\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 252 I'm just a proxy", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                            default:
+                                                await Functions.SendStreamStringAsync(clientStreamWriter, "500 Unknown verb\r\n");
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "S: 500 Unknown verb", Proxy.LogLevel.Raw, LogLevel);
+                                                break;
+                                        }
+
+                                        command = "";
+                                    }
                                 }
                             }
                         }
@@ -853,8 +868,10 @@ namespace OpaqueMail.Net.Proxy
                             stillReceiving = false;
                     }
                 }
-
-                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection from {" + ip + "} closed after transmitting {" + bytesTransmitted.ToString("N0") + "} bytes.", Proxy.LogLevel.Information, LogLevel);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore either stream being closed.
             }
             catch (SocketException ex)
             {
@@ -866,6 +883,8 @@ namespace OpaqueMail.Net.Proxy
             }
             finally
             {
+                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Connection from {" + ip + "} closed after transmitting {" + bytesTransmitted.ToString("N0") + "} bytes.", Proxy.LogLevel.Information, LogLevel);
+
                 // Clean up after any unexpectedly closed connections.
                 if (clientStreamWriter != null)
                     clientStreamWriter.Dispose();
@@ -887,7 +906,7 @@ namespace OpaqueMail.Net.Proxy
             SmtpProxyArguments arguments = (SmtpProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.SmimeSettingsMode, arguments.SmimeSigned, arguments.SmimeEncryptedEnvelope, arguments.SmimeTripleWrapped, arguments.SmimeRemovePreviousOperations, arguments.SendCertificateReminders, arguments.LogFile, arguments.LogLevel, arguments.InstanceId);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.RemoteServerFrom, arguments.SmimeSettingsMode, arguments.SmimeSigned, arguments.SmimeEncryptedEnvelope, arguments.SmimeTripleWrapped, arguments.SmimeRemovePreviousOperations, arguments.SendCertificateReminders, arguments.LogFile, arguments.LogLevel, arguments.InstanceId);
         }
         #endregion Private Methods
     }

@@ -52,8 +52,10 @@ namespace OpaqueMail.Net.Proxy
             string logFileName = "";
             if (!string.IsNullOrEmpty(logFile))
             {
-                logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
+                logFileName = ProxyFunctions.GetLogFileName(logFile, instanceId, localIPAddress.ToString(), remoteServerHostName, localPort, remoteServerPort);
                 LogWriter = new StreamWriter(logFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
+                LogWriter.AutoFlush = true;
+
                 LogLevel = logLevel;
             }
 
@@ -134,7 +136,7 @@ namespace OpaqueMail.Net.Proxy
                     {
                         TcpClient client = Listener.AcceptTcpClient();
 
-                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId);
+                        string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId, localIPAddress.ToString(), remoteServerHostName, localPort, remoteServerPort);
                         if (newLogFileName != logFileName)
                         {
                             LogWriter.Close();
@@ -474,7 +476,6 @@ namespace OpaqueMail.Net.Proxy
 
                             if (bytesRead > 0)
                             {
-                                await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
                                 bytesTransmitted += (ulong)bytesRead;
 
                                 // Cast the bytes received to a string.

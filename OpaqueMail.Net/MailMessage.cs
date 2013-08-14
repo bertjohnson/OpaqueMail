@@ -124,7 +124,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="buffer">Buffer used during various S/MIME operations.</param>
         /// <param name="SmimeBoundaryName">Text delimiting S/MIME message parts.</param>
-        public async Task<byte[]> MIMEEncode(byte[] buffer, string SmimeBoundaryName, string SmimeAlternativeViewBoundaryName)
+        public async Task<byte[]> MIMEEncode(string SmimeBoundaryName, string SmimeAlternativeViewBoundaryName)
         {
             // Write out body of the message.
             StringBuilder MIMEBuilder = new StringBuilder(Constants.SMALLSBSIZE);
@@ -207,10 +207,9 @@ namespace OpaqueMail
             Encoder bodyEncoder = bodyEncoding.GetEncoder();
 
             // Encode and return the message.
-            string MIMEMessage = MIMEBuilder.ToString();
-            int byteCount = bodyEncoder.GetBytes(MIMEMessage.ToCharArray(), 0, MIMEMessage.Length, buffer, 0, true);
-            byte[] MIMEMessageBytes = new byte[byteCount];
-            Buffer.BlockCopy(buffer, 0, MIMEMessageBytes, 0, byteCount);
+            char[] chars = MIMEBuilder.ToString().ToCharArray();
+            byte[] MIMEMessageBytes = new byte[bodyEncoder.GetByteCount(chars, 0, chars.Length, false)];
+            int byteCount = bodyEncoder.GetBytes(chars, 0, chars.Length, MIMEMessageBytes, 0, true);
 
             return MIMEMessageBytes;
         }

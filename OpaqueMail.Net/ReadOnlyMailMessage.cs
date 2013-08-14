@@ -150,6 +150,8 @@ namespace OpaqueMail
                     switch (headerType)
                     {
                         case "cc":
+                            if (ccText.Length > 0)
+                                ccText += "; ";
                             ccText = headerValue;
                             break;
                         case "content-transfer-encoding":
@@ -252,7 +254,9 @@ namespace OpaqueMail
                             subjectText = headerValue;
                             break;
                         case "to":
-                            toText = headerValue;
+                            if (toText.Length > 0)
+                                toText += "; ";
+                            toText += headerValue;
                             break;
                         case "x-priority":
                             switch (headerValue.ToUpper())

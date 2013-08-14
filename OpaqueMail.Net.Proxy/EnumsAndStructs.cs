@@ -192,6 +192,8 @@ namespace OpaqueMail.Net.Proxy
         public bool RemoteServerEnableSsl;
         /// <summary>(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential RemoteServerCredential;
+        /// <summary>(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        public string RemoteServerFrom;
 
         /// <summary>Encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
         public bool SmimeEncryptedEnvelope;
@@ -244,6 +246,8 @@ namespace OpaqueMail.Net.Proxy
         public bool RemoteServerEnableSsl;
         /// <summary>(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential RemoteServerCredential;
+        /// <summary>(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        public string RemoteServerFrom;
 
         /// <summary>Encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
         public bool SmimeEncryptedEnvelope;

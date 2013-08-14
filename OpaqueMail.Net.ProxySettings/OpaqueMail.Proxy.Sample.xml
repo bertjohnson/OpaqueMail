@@ -27,7 +27,9 @@
       <RemoteServerUsername></RemoteServerUsername>
       <!-- (Optional) Password used when authenticating to the remote SMTP server.  When supplied, it will override any values sent from the client. -->
       <RemoteServerPassword></RemoteServerPassword>
-      
+      <!-- (Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client. -->
+      <RemoteServerFrom></RemoteServerFrom>
+
       <Certificate>
         <!-- Where certificates should be stored and retrieved from by default.  "LocalMachine" or "CurrentUser" only. -->
         <Location>LocalMachine</Location>

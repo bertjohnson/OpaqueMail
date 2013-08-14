@@ -672,7 +672,7 @@ namespace OpaqueMail
         /// <returns>Any text read from the stream connection.</returns>
         public static string ReadStreamString(Stream stream, byte[] buffer)
         {
-            int bytesRead = stream.Read(buffer, 0, Constants.LARGEBUFFERSIZE);
+            int bytesRead = stream.Read(buffer, 0, buffer.Length);
             return Encoding.UTF8.GetString(buffer, 0, bytesRead);
         }
 
@@ -684,7 +684,7 @@ namespace OpaqueMail
         /// <returns>Any text read from the stream connection.</returns>
         public static string ReadStreamString(StreamReader streamReader, char[] buffer)
         {
-            int bytesRead = streamReader.Read(buffer, 0, Constants.LARGEBUFFERSIZE);
+            int bytesRead = streamReader.Read(buffer, 0, buffer.Length);
             return new string(buffer, 0, bytesRead);
         }
 
@@ -721,7 +721,7 @@ namespace OpaqueMail
         /// <returns>Any text read from the stream connection.</returns>
         public async static Task<string> ReadStreamStringAsync(Stream stream, byte[] buffer)
         {
-            int bytesRead = await stream.ReadAsync(buffer, 0, Constants.LARGEBUFFERSIZE);
+            int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
             return Encoding.UTF8.GetString(buffer, 0, bytesRead);
         }
 
@@ -733,7 +733,7 @@ namespace OpaqueMail
         /// <returns>Any text read from the stream connection.</returns>
         public async static Task<string> ReadStreamStringAsync(StreamReader streamReader, char[] buffer)
         {
-            int bytesRead = await streamReader.ReadAsync(buffer, 0, Constants.LARGEBUFFERSIZE);
+            int bytesRead = await streamReader.ReadAsync(buffer, 0, buffer.Length);
             return new string(buffer, 0, bytesRead);
         }
 
@@ -1158,7 +1158,7 @@ namespace OpaqueMail
             if (address != null)
             {
                 if (!string.IsNullOrEmpty(address.DisplayName))
-                    return address.DisplayName + " <" + address.Address + ">";
+                    return "\"" + address.DisplayName + "\" <" + address.Address + ">";
                 else
                     return address.Address;
             }

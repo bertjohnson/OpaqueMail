@@ -17,13 +17,19 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="fileName">Name of the log file.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
         /// <returns>The final log file name, with full path, to be used.</returns>
-        public static string GetLogFileName(string fileName, int instanceId)
+        public static string GetLogFileName(string fileName, int instanceId, string localIpAddress, string remoteServerHostName, int localPort, int remotePort)
         {
             // Replace the {#} token with the proxy instance number.
             if (instanceId == 1)
                 fileName = fileName.Replace("{#}", "");
             else
                 fileName = fileName.Replace("{#}", instanceId.ToString());
+
+            // Replace server and port {} tokens.
+            fileName = fileName.Replace("{localIpAddress}", localIpAddress);
+            fileName = fileName.Replace("{remoteServerHostName}", remoteServerHostName);
+            fileName = fileName.Replace("{localPort}", localPort.ToString());
+            fileName = fileName.Replace("{remotePort}", remotePort.ToString());
 
             // If the log file location doesn't contain a directory, make it relative to where the service lives.
             if (fileName.Length < 2 || (fileName[1] != ':' && !fileName.StartsWith("\\")))

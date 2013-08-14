@@ -58,6 +58,7 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="Windows8Mail.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Form1.resx">
@@ -83,6 +84,8 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <EmbeddedResource Include="Signature.Resources\OpaqueMail.rtf" />
+    <EmbeddedResource Include="Signature.Resources\themedata.thmx" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -108,10 +111,15 @@
   <ItemGroup>
     <None Include="OpaqueMail.Proxy.Sample.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
     </None>
   </ItemGroup>
   <ItemGroup>
     <Content Include="OpaqueMail32.ico" />
+    <EmbeddedResource Include="Signature.Resources\colorschememapping.xml" />
+    <EmbeddedResource Include="Signature.Resources\filelist.xml" />
+    <EmbeddedResource Include="Signature.Resources\OpaqueMail.htm" />
+    <EmbeddedResource Include="Signature.Resources\OpaqueMail.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

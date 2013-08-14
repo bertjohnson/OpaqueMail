@@ -401,7 +401,9 @@ namespace OpaqueMail
 
             // If a read-only mail message is passed in with its raw headers and body, save a few steps by sending that directly.
             if (message is ReadOnlyMailMessage)
+            {
                 await Functions.SendStreamStringAsync(SmtpStream, buffer, ((ReadOnlyMailMessage)message).RawHeaders + "\r\n" + ((ReadOnlyMailMessage)message).RawBody + "\r\n.\r\n");
+            }
             else
             {
                 rawHeaders.Append(Functions.SpanHeaderLines("Subject: " + Functions.EncodeMailHeader(message.Subject)) + "\r\n");
@@ -518,7 +520,7 @@ namespace OpaqueMail
             }
 
             // Generate a multipart/mixed message containing the e-mail's body, alternate views, and attachments.
-            byte[] MIMEMessageBytes = await message.MIMEEncode(buffer, SmimeBoundaryName, SmimeAlternativeViewBoundaryName);
+            byte[] MIMEMessageBytes = await message.MIMEEncode(SmimeBoundaryName, SmimeAlternativeViewBoundaryName);
             message.Headers["Content-Type"] = "multipart/mixed; boundary=\"" + SmimeBoundaryName + "\"";
             message.Headers["Content-Transfer-Encoding"] = "7bit";
 
