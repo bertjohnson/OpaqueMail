@@ -26,7 +26,7 @@ Simplifies e-mail protection for Outlook, Thunderbird, and other Windows mail cl
 
 Can be used to secure and authenticate mail programs that connect to SMTP servers anonymously (e.g. SharePoint).
 
-Runs as a Windows service.  Inbound and outbound IPs, ports, and TLS / SSL settings are all configurable via XML.
+Runs as a Windows service.  Inbound and outbound IPs, ports, logging, and TLS / SSL settings are all configurable via XML.
 
 Licensed according to the MIT License (http://mit-license.org/).
 

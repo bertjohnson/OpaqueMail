@@ -274,8 +274,8 @@ namespace OpaqueMail.Net.Proxy
                             case "ERROR":
                                 arguments.LogLevel = LogLevel.Error;
                                 break;
-                            case "VERBATIM":
-                                arguments.LogLevel = LogLevel.Verbatim;
+                            case "RAW":
+                                arguments.LogLevel = LogLevel.Raw;
                                 break;
                             case "VERBOSE":
                                 arguments.LogLevel = LogLevel.Verbose;
@@ -405,6 +405,7 @@ namespace OpaqueMail.Net.Proxy
                 clientToRemoteServerArguments.IsClient = true;
                 clientToRemoteServerArguments.ConnectionId = ConnectionId.ToString();
                 clientToRemoteServerArguments.IPAddress = ip;
+                clientToRemoteServerArguments.Credential = arguments.RemoteServerCredential;
                 Thread clientToRemoteServerThread = new Thread(new ParameterizedThreadStart(RelayData));
                 clientToRemoteServerThread.Name = "OpaqueMail IMAP Proxy Client to Server";
                 clientToRemoteServerThread.Start(clientToRemoteServerArguments);
@@ -461,17 +462,15 @@ namespace OpaqueMail.Net.Proxy
 
                             if (bytesRead > 0)
                             {
-                                await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
-                                bytesTransmitted += (ulong)bytesRead;
-
                                 // Cast the bytes received to a string.
                                 string stringRead = new string(buffer, 0, bytesRead);
-
-                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), (arguments.IsClient ? "C: " : "S: ") + stringRead, Proxy.LogLevel.Verbatim, LogLevel);
+                                bytesTransmitted += (ulong)bytesRead;
 
                                 // If this data comes from the client, log it.  Otherwise, process it.
                                 if (arguments.IsClient)
                                 {
+                                    bool messageRelayed = false;
+
                                     string[] commandParts = stringRead.Split(new char[] { ' ' }, 4);
                                     if (commandParts.Length > 2)
                                     {
@@ -484,12 +483,22 @@ namespace OpaqueMail.Net.Proxy
                                         }
                                         else
                                         {
+                                            // Optionally replace credentials with those from our settings file.
+                                            if (arguments.Credential != null && commandParts[1] == "LOGIN" && commandParts.Length == 4)
+                                            {
+                                                await remoteServerStreamWriter.WriteAsync(commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password + "\r\n");
+
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password, Proxy.LogLevel.Raw, LogLevel);
+
+                                                messageRelayed = true;
+                                            }
+
                                             if (commandParts[1] == "UID")
                                                 LastCommandReceived = commandParts[1] + " " + commandParts[2];
                                             else
                                                 LastCommandReceived = commandParts[1];
 
-                                            if (LogLevel == Proxy.LogLevel.Information)
+                                            if (LogLevel == Proxy.LogLevel.Verbose)
                                                 ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "Command {" + LastCommandReceived + "} processed.", Proxy.LogLevel.Verbose, LogLevel);
 
                                             // If we're in an APPEND command, remember how many bytes we should receive.
@@ -501,9 +510,20 @@ namespace OpaqueMail.Net.Proxy
                                             }
                                         }
                                     }
+
+                                    if (!messageRelayed)
+                                    {
+                                        await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
+
+                                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
+                                    }
                                 }
                                 else
                                 {
+                                    await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
+
+                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "S: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
+
                                     // If we're currently receiving a message, check to see if it's completed.
                                     if (inMessage)
                                     {
@@ -607,11 +627,11 @@ namespace OpaqueMail.Net.Proxy
 /*            catch (IOException)
             {
                 // Ignore either stream being closed.
-            }
+            }*/
             catch (ObjectDisposedException)
             {
                 // Ignore either stream being closed.
-            }*/
+            }
             catch (Exception ex)
             {
                 // Log other exceptions.

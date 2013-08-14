@@ -81,13 +81,14 @@ namespace OpaqueMail.Net.Proxy
     /// </summary>
     public enum LogLevel
     {
-        None = 0,
-        Critical = 1,
-        Error = 2,
-        Warning = 4,
-        Information = 8,
-        Verbose = 16,
-        Verbatim = 32
+        None = 0,           // No logging.
+        Critical = 1,       // Only critical errors, such as the inability to start a proxy.
+        Error = 2,          // All errors, including unexpected disconnections.
+        Warning = 4,        // Errors and warnings, such as rejected IPs.
+        Information = 8,    // Errors, warnings, and other information, such as starting and stopping messages.
+        Verbose = 16,       // All of the above, plus individual commands.
+        Raw = 32            // All of the above, plus the raw client and server bytes.
+                                // Warning: sensitive information such as credentials will be saved with Raw logging.
     }
 
     /// <summary>
@@ -280,5 +281,8 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>IP address of client.</summary>
         public string IPAddress;
+
+        /// <summary>(Optional) Credentials to be used for all connections to the remote server.  When set, this overrides any credentials passed locally.</summary>
+        public NetworkCredential Credential;
     }
 }

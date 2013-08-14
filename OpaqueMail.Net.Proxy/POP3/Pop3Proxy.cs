@@ -276,8 +276,8 @@ namespace OpaqueMail.Net.Proxy
                             case "ERROR":
                                 arguments.LogLevel = LogLevel.Error;
                                 break;
-                            case "VERBATIM":
-                                arguments.LogLevel = LogLevel.Verbatim;
+                            case "RAW":
+                                arguments.LogLevel = LogLevel.Raw;
                                 break;
                             case "VERBOSE":
                                 arguments.LogLevel = LogLevel.Verbose;
@@ -402,6 +402,7 @@ namespace OpaqueMail.Net.Proxy
                 clientToRemoteServerArguments.IsClient = true;
                 clientToRemoteServerArguments.ConnectionId = ConnectionId.ToString();
                 clientToRemoteServerArguments.IPAddress = ip;
+                clientToRemoteServerArguments.Credential = arguments.RemoteServerCredential;
                 Thread clientToRemoteServerThread = new Thread(new ParameterizedThreadStart(RelayData));
                 clientToRemoteServerThread.Name = "OpaqueMail POP3 Proxy Client to Server";
                 clientToRemoteServerThread.Start(clientToRemoteServerArguments);
@@ -458,20 +459,52 @@ namespace OpaqueMail.Net.Proxy
                                 // Cast the bytes received to a string.
                                 string stringRead = new string(buffer, 0, bytesRead);
 
-                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), (arguments.IsClient ? "C: " : "S: ") + stringRead, Proxy.LogLevel.Verbatim, LogLevel);
-
                                 messageBuilder.Append(stringRead);
 
                                 // If this data comes from the client, log it.  Otherwise, process it.
                                 if (arguments.IsClient)
                                 {
+                                    bool messageRelayed = false;
+
                                     string[] commandParts = stringRead.Substring(0, stringRead.Length - 2).Split(new char[] { ' ' }, 2);
 
-                                    if (LogLevel == Proxy.LogLevel.Information)
+                                    // Optionally replace credentials with those from our settings file.
+                                    if (arguments.Credential != null && commandParts.Length == 2)
+                                    {
+                                        if (commandParts[0] == "USER")
+                                        {
+                                            await remoteServerStreamWriter.WriteAsync("USER " + arguments.Credential.UserName + "\r\n");
+
+                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: USER " + arguments.Credential.UserName, Proxy.LogLevel.Raw, LogLevel);
+
+                                            messageRelayed = true;
+                                        }
+                                        else if (commandParts[0] == "PASS")
+                                        {
+                                            await remoteServerStreamWriter.WriteAsync("PASS" + arguments.Credential.Password + "\r\n");
+
+                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: PASS " + arguments.Credential.Password, Proxy.LogLevel.Raw, LogLevel);
+
+                                            messageRelayed = true;
+                                        }
+                                    }
+
+                                    if (LogLevel == Proxy.LogLevel.Verbose)
                                         ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "Command {" + commandParts[0] + "} processed.", Proxy.LogLevel.Verbose, LogLevel);
+
+                                    if (!messageRelayed)
+                                    {
+                                        await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
+
+                                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
+                                    }
                                 }
                                 else
                                 {
+                                    await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
+
+                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "S: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
+
                                     // If we see a period between two linebreaks, treat it as the end of a message.
                                     int endPos = stringRead.IndexOf("\r\n.\r\n");
                                     if (endPos > -1)
@@ -507,11 +540,11 @@ namespace OpaqueMail.Net.Proxy
 /*            catch (IOException)
             {
                 // Ignore either stream being closed.
-            }
+            }*/
             catch (ObjectDisposedException)
             {
                 // Ignore either stream being closed.
-            }*/
+            }
             catch (Exception ex)
             {
                 // Log other exceptions.

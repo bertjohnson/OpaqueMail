@@ -933,6 +933,26 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Replace the string between the first two instances of specified start and end strings.
+        /// </summary>
+        /// <param name="haystack">Container string to search within.</param>
+        /// <param name="start">First string boundary.</param>
+        /// <param name="end">Second string boundary.</param>
+        /// <param name="value">String to replace the substring with.</param>
+        /// <returns>The haystack with value replacing any text between the specified start and end strings.</returns>
+        public static string ReplaceBetween(string haystack, string start, string end, string value)
+        {
+            int pos = haystack.IndexOf(start, StringComparison.Ordinal);
+            if (pos > -1)
+            {
+                int pos2 = haystack.IndexOf(end, pos + start.Length, StringComparison.Ordinal);
+                if (pos2 > -1)
+                    return haystack.Substring(0, pos + start.Length) + value + haystack.Substring(pos2);
+            }
+            return haystack;
+        }
+
+        /// <summary>
         /// Returns the string between the first two instances of specified start and end strings.
         /// </summary>
         /// <param name="haystack">Container string to search within.</param>

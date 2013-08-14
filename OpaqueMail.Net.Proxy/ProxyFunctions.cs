@@ -147,7 +147,7 @@ namespace OpaqueMail.Net.Proxy
                 {
                     lock (LogWriter)
                     {
-                        LogWriter.WriteLine("[" + DateTime.Now + "]\t" + sessionId + "\t\t" + message);
+                        LogWriter.Write("[" + DateTime.Now + "]\t" + sessionId + "\t\t" + minimalLogLevel.ToString().ToUpper() + "\t" + message + (message.EndsWith("\r\n") ? "" : "\r\n"));
                         LogWriter.Flush();
                     }
                 }
@@ -168,7 +168,7 @@ namespace OpaqueMail.Net.Proxy
                 {
                     lock (LogWriter)
                     {
-                        LogWriter.WriteLine("[" + DateTime.Now + "]\t" + sessionId + "\t" + connectionId + "\t" + message);
+                        LogWriter.Write("[" + DateTime.Now + "]\t" + sessionId + "\t" + connectionId + "\t" + minimalLogLevel.ToString().ToUpper() + "\t" + message + (message.EndsWith("\r\n") ? "" : "\r\n"));
                         LogWriter.Flush();
                     }
                 }

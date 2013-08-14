@@ -41,6 +41,8 @@
             this.ProtectedColumn = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.CertificateColumn = new System.Windows.Forms.DataGridViewComboBoxColumn();
             this.RegistryKeyColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.SmimeSettingsLabel = new System.Windows.Forms.Label();
+            this.SmimeSettingsMode = new System.Windows.Forms.ComboBox();
             this.AboutGroupBox.SuspendLayout();
             this.AccountGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.AccountGrid)).BeginInit();
@@ -70,6 +72,8 @@
             // 
             // AccountGroupBox
             // 
+            this.AccountGroupBox.Controls.Add(this.SmimeSettingsMode);
+            this.AccountGroupBox.Controls.Add(this.SmimeSettingsLabel);
             this.AccountGroupBox.Controls.Add(this.SaveSettingsButton);
             this.AccountGroupBox.Controls.Add(this.AccountGrid);
             this.AccountGroupBox.Location = new System.Drawing.Point(6, 104);
@@ -165,6 +169,27 @@
             this.RegistryKeyColumn.Name = "RegistryKeyColumn";
             this.RegistryKeyColumn.Visible = false;
             // 
+            // SmimeSettingsLabel
+            // 
+            this.SmimeSettingsLabel.AutoSize = true;
+            this.SmimeSettingsLabel.Location = new System.Drawing.Point(6, 161);
+            this.SmimeSettingsLabel.Name = "SmimeSettingsLabel";
+            this.SmimeSettingsLabel.Size = new System.Drawing.Size(132, 13);
+            this.SmimeSettingsLabel.TabIndex = 5;
+            this.SmimeSettingsLabel.Text = "S/MIME protection mode: ";
+            // 
+            // SmimeSettingsMode
+            // 
+            this.SmimeSettingsMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.SmimeSettingsMode.FormattingEnabled = true;
+            this.SmimeSettingsMode.Items.AddRange(new object[] {
+            "Best effort: try to encrypt, but allow unencrypted mail",
+            "Encrypted only"});
+            this.SmimeSettingsMode.Location = new System.Drawing.Point(144, 157);
+            this.SmimeSettingsMode.Name = "SmimeSettingsMode";
+            this.SmimeSettingsMode.Size = new System.Drawing.Size(272, 21);
+            this.SmimeSettingsMode.TabIndex = 6;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -184,6 +209,7 @@
             this.Load += new System.EventHandler(this.Form1_Load);
             this.AboutGroupBox.ResumeLayout(false);
             this.AccountGroupBox.ResumeLayout(false);
+            this.AccountGroupBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.AccountGrid)).EndInit();
             this.CertificateGroupBox.ResumeLayout(false);
             this.ResumeLayout(false);
@@ -204,5 +230,7 @@
         private System.Windows.Forms.DataGridViewCheckBoxColumn ProtectedColumn;
         private System.Windows.Forms.DataGridViewComboBoxColumn CertificateColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn RegistryKeyColumn;
+        private System.Windows.Forms.Label SmimeSettingsLabel;
+        private System.Windows.Forms.ComboBox SmimeSettingsMode;
     }
 }

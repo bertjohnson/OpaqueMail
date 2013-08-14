@@ -94,6 +94,8 @@ namespace OpaqueMail.Net.ProxySettings
 
             // Load the e-mail accounts list and certificate choices.
             PopulateAccounts();
+
+            SmimeSettingsMode.SelectedIndex = 0;
         }
 
         /// <summary>
@@ -178,9 +180,10 @@ namespace OpaqueMail.Net.ProxySettings
             CertificateColumn.DisplayMember = "Name";
             CertificateColumn.ValueMember = "Value";
 
-            // Check which registry keys have proxies associated.
+            // Check which Outlook registry keys and Thunderbird configs have proxies associated.
             XPathDocument document;
-            HashSet<string> registryKeys = new HashSet<string>();
+            HashSet<string> outlookRegistryKeys = new HashSet<string>();
+            HashSet<string> thunderbirdKeys = new HashSet<string>();
             try
             {
                 document = new XPathDocument(SettingsFileName);
@@ -189,17 +192,26 @@ namespace OpaqueMail.Net.ProxySettings
                 int smtpServiceCount = GetXmlIntValue(navigator, "/Settings/SMTP/ServiceCount") ?? 0;
                 for (int i = 1; i <= smtpServiceCount; i++)
                 {
-                    int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/RegistryKeyCount") ?? 0;
+                    int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/OutlookRegistryKeyCount") ?? 0;
                     for (int j = 1; j <= registryKeyCount; j++)
                     {
-                        string registryKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RegistryKey" + j);
+                        string registryKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/OutlookRegistryKey" + j);
                         if (!string.IsNullOrEmpty(registryKey))
-                            registryKeys.Add(registryKey);
+                            outlookRegistryKeys.Add(registryKey);
+                    }
+
+                    int? thunderbirdKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/ThunderbirdKeyCount") ?? 0;
+                    for (int j = 1; j <= thunderbirdKeyCount; j++)
+                    {
+                        string thunderbirdKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/ThunderbirdKey" + j);
+                        if (!string.IsNullOrEmpty(thunderbirdKey))
+                            thunderbirdKeys.Add(thunderbirdKey);
                     }
                 }
             }
             catch { }
 
+            // Correlate Outlook registry keys with accounts.
             AccountGrid.Rows.Clear();
             bool activeProxy = false;
             foreach (string outlookVersion in OutlookVersions.Keys)
@@ -249,12 +261,71 @@ namespace OpaqueMail.Net.ProxySettings
                                             }
                                         }
 
-                                        if (!activeProxy && registryKeys.Contains(subKey.Name))
+                                        if (!activeProxy && outlookRegistryKeys.Contains(subKey.Name))
                                             activeProxy = true;
 
-                                        AccountGrid.Rows.Add(OutlookVersions[outlookVersion], accountName, registryKeys.Contains(subKey.Name), matchingCert, subKey.Name);
+                                        AccountGrid.Rows.Add(OutlookVersions[outlookVersion], accountName, outlookRegistryKeys.Contains(subKey.Name), matchingCert, subKey.Name);
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Correlate Thunderbird config keys with accounts.
+            activeProxy = false;
+            if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
+            {
+                foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
+                {
+                    if (File.Exists(directory + "\\prefs.js"))
+                    {
+                        string prefsFile = File.ReadAllText(directory + "\\prefs.js");
+
+                        int keyCount;
+                        int.TryParse(Functions.ReturnBetween(prefsFile, "user_pref(\"mail.account.lastKey\", ", ")"), out keyCount);
+                        for (int i = 1; i <= keyCount; i++)
+                        {
+                            string smtpServer = Functions.ReturnBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".hostname\", \"", "\"");
+                            string accountName = Functions.ReturnBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".username\", \"", "\"");
+
+                            if (!string.IsNullOrEmpty(smtpServer) && !string.IsNullOrEmpty(accountName))
+                            {
+                                string thunderbirdKey = directory + "~" + i.ToString();
+
+                                string matchingCert = "self-signed";
+
+                                // Check if there's a matching certificate.
+                                foreach (X509Certificate2 cert in certs)
+                                {
+                                    string canonicalCertSubject = "";
+                                    if (cert.Subject.StartsWith("E="))
+                                    {
+                                        canonicalCertSubject = cert.Subject.Substring(2).ToUpper();
+                                        int certSubjectComma = canonicalCertSubject.IndexOf(",");
+                                        if (certSubjectComma > -1)
+                                            canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
+
+                                        if (accountName.ToUpper() == canonicalCertSubject)
+                                            matchingCert = cert.SerialNumber;
+                                    }
+                                    else if (cert.Subject.StartsWith("CN="))
+                                    {
+                                        canonicalCertSubject = cert.Subject.Substring(3).ToUpper();
+                                        int certSubjectComma = canonicalCertSubject.IndexOf(",");
+                                        if (certSubjectComma > -1)
+                                            canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
+
+                                        if (accountName.ToUpper() == canonicalCertSubject)
+                                            matchingCert = cert.SerialNumber;
+                                    }
+                                }
+
+                                if (!activeProxy && thunderbirdKeys.Contains(thunderbirdKey))
+                                    activeProxy = true;
+
+                                AccountGrid.Rows.Add("Thunderbird", accountName, thunderbirdKeys.Contains(thunderbirdKey), matchingCert, thunderbirdKey);
                             }
                         }
                     }
@@ -365,8 +436,259 @@ namespace OpaqueMail.Net.ProxySettings
                     serviceContoller.Stop();
             }
 
-            // First, gather existing Outlook account settings from the registry.
             List<ProxyAccount> accounts = new List<ProxyAccount>();
+
+            // First, account for any settings in the existing XML file.
+            string fqdn = Functions.GetLocalFQDN();
+
+            int smtpServiceCount = 0, imapServiceCount = 0, pop3ServiceCount = 0;
+            if (document != null)
+            {
+                XPathNavigator navigator = document.CreateNavigator();
+
+                smtpServiceCount = GetXmlIntValue(navigator, "/Settings/SMTP/ServiceCount") ?? 0;
+                for (int i = 1; i <= smtpServiceCount; i++)
+                {
+                    ProxyAccount account = new ProxyAccount();
+                    account.LocalSmtpIPAddress = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LocalIPAddress") ?? "";
+                    account.LocalSmtpPort = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/LocalPort") ?? 587;
+                    account.LocalSmtpEnableSsl = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/LocalEnableSsl") ?? true;
+                    account.RemoteSmtpServer = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerHostName");
+                    account.RemoteSmtpPort = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPort") ?? 587;
+                    account.RemoteSmtpEnableSsl = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerEnableSSL") ?? true;
+                    account.RemoteSmtpUsername = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerUsername");
+                    account.RemoteSmtpPassword = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPassword");
+                    account.SmtpAcceptedIPs = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/AcceptedIPs");
+                    account.SmtpCertificateLocation = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
+                    account.SmtpCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SerialNumber");
+                    account.SmtpCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SubjectName");
+                    account.SmtpLogFile = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LogFile");
+
+                    string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/SMTP/Service" + i + "/LogLevel");
+                    switch (logLevel.ToUpper())
+                    {
+                        case "NONE":
+                            account.SmtpLogLevel = LogLevel.None;
+                            break;
+                        case "CRITICAL":
+                            account.SmtpLogLevel = LogLevel.Critical;
+                            break;
+                        case "ERROR":
+                            account.SmtpLogLevel = LogLevel.Error;
+                            break;
+                        case "RAW":
+                            account.SmtpLogLevel = LogLevel.Raw;
+                            break;
+                        case "VERBOSE":
+                            account.SmtpLogLevel = LogLevel.Verbose;
+                            break;
+                        case "WARNING":
+                            account.SmtpLogLevel = LogLevel.Warning;
+                            break;
+                        case "INFORMATION":
+                        default:
+                            account.SmtpLogLevel = LogLevel.Information;
+                            break;
+                    }
+
+                    account.SendCertificateReminders = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SendCertificateReminders") ?? true;
+                    account.SmimeEncrypt = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMEEncrypt") ?? true;
+                    account.SmimeRemovePreviousOperations = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMERemovePreviousOperations") ?? true;
+                    account.SmimeSign = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMESign") ?? true;
+                    account.SmimeTripleWrap = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMETripleWrap") ?? true;
+
+                    int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/OutlookRegistryKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string registryKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/OutlookRegistryKey" + j);
+                        if (!account.OutlookRegistryKeys.Contains(registryKey))
+                            account.OutlookRegistryKeys.Add(registryKey);
+                    }
+
+                    int? thunderbirdKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/ThunderbirdKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string thunderbirdKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/ThunderbirdKey" + j);
+                        if (!string.IsNullOrEmpty(thunderbirdKey) && !account.ThunderbirdKeys.Contains(thunderbirdKey))
+                            account.ThunderbirdKeys.Add(thunderbirdKey);
+                    }
+
+                    accounts.Add(account);
+                }
+
+                imapServiceCount = GetXmlIntValue(navigator, "/Settings/IMAP/ServiceCount") ?? 0;
+                for (int i = 1; i <= imapServiceCount; i++)
+                {
+                    ProxyAccount account = new ProxyAccount();
+                    bool accountMatched = false;
+
+                    // Check if a matching Outlook account already exists.
+                    int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/OutlookRegistryKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string registryKey = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/OutlookRegistryKey" + j);
+                        if (!account.OutlookRegistryKeys.Contains(registryKey))
+                            account.OutlookRegistryKeys.Add(registryKey);
+
+                        foreach (ProxyAccount existingAccount in accounts)
+                        {
+                            if (existingAccount.OutlookRegistryKeys.Contains(registryKey) && !accountMatched)
+                            {
+                                account = existingAccount;
+                                j = 0;
+                                accountMatched = true;
+                            }
+                        }
+                    }
+
+                    // Check if a matching Thunderbird account already exists.
+                    int? thunderbirdKeyCount = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/ThunderbirdKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string thunderbirdKey = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/ThunderbirdKey" + j);
+                        if (!string.IsNullOrEmpty(thunderbirdKey) && !account.ThunderbirdKeys.Contains(thunderbirdKey))
+                            account.ThunderbirdKeys.Add(thunderbirdKey);
+
+                        foreach (ProxyAccount existingAccount in accounts)
+                        {
+                            if (existingAccount.ThunderbirdKeys.Contains(thunderbirdKey) && !accountMatched)
+                            {
+                                account = existingAccount;
+                                j = 0;
+                                accountMatched = true;
+                            }
+                        }
+                    }
+
+                    account.LocalImapIPAddress = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LocalIPAddress") ?? "";
+                    account.LocalImapPort = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/LocalPort") ?? 587;
+                    account.LocalImapEnableSsl = GetXmlBoolValue(navigator, "/Settings/IMAP/Service" + i + "/LocalEnableSsl") ?? true;
+
+                    account.RemoteImapServer = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerHostName");
+                    account.RemoteImapPort = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerPort") ?? 993;
+                    account.RemoteImapEnableSsl = GetXmlBoolValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerEnableSSL") ?? true;
+                    account.ImapAcceptedIPs = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/AcceptedIPs");
+                    account.ImapCertificateLocation = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/Certificate/Location");
+                    account.ImapCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/Certificate/SerialNumber");
+                    account.ImapCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/Certificate/SubjectName");
+                    account.ImapLogFile = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LogFile");
+
+                    string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/IMAP/Service" + i + "/LogLevel");
+                    switch (logLevel.ToUpper())
+                    {
+                        case "NONE":
+                            account.ImapLogLevel = LogLevel.None;
+                            break;
+                        case "CRITICAL":
+                            account.ImapLogLevel = LogLevel.Critical;
+                            break;
+                        case "ERROR":
+                            account.ImapLogLevel = LogLevel.Error;
+                            break;
+                        case "RAW":
+                            account.ImapLogLevel = LogLevel.Raw;
+                            break;
+                        case "VERBOSE":
+                            account.ImapLogLevel = LogLevel.Verbose;
+                            break;
+                        case "WARNING":
+                            account.ImapLogLevel = LogLevel.Warning;
+                            break;
+                        case "INFORMATION":
+                        default:
+                            account.ImapLogLevel = LogLevel.Information;
+                            break;
+                    }
+                }
+
+                // Handle POP3 settings third.
+                pop3ServiceCount = GetXmlIntValue(navigator, "/Settings/POP3/ServiceCount") ?? 0;
+                for (int i = 1; i <= pop3ServiceCount; i++)
+                {
+                    ProxyAccount account = new ProxyAccount();
+                    bool accountMatched = false;
+
+                    // Check if a matching Outlook account already exists.
+                    int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/OutlookRegistryKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string registryKey = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/OutlookRegistryKey" + j);
+                        if (!account.OutlookRegistryKeys.Contains(registryKey))
+                            account.OutlookRegistryKeys.Add(registryKey);
+
+                        foreach (ProxyAccount existingAccount in accounts)
+                        {
+                            if (existingAccount.OutlookRegistryKeys.Contains(registryKey) && !accountMatched)
+                            {
+                                account = existingAccount;
+                                j = 0;
+                                accountMatched = true;
+                            }
+                        }
+                    }
+
+                    // Check if a matching Thunderbird account already exists.
+                    int? thunderbirdKeyCount = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/ThunderbirdKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string thunderbirdKey = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/ThunderbirdKey" + j);
+                        if (!string.IsNullOrEmpty(thunderbirdKey) && !account.ThunderbirdKeys.Contains(thunderbirdKey))
+                            account.ThunderbirdKeys.Add(thunderbirdKey);
+
+                        foreach (ProxyAccount existingAccount in accounts)
+                        {
+                            if (existingAccount.ThunderbirdKeys.Contains(thunderbirdKey) && !accountMatched)
+                            {
+                                account = existingAccount;
+                                j = 0;
+                                accountMatched = true;
+                            }
+                        }
+                    }
+
+                    account.LocalPop3IPAddress = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LocalIPAddress") ?? "";
+                    account.LocalPop3Port = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/LocalPort") ?? 995;
+                    account.LocalPop3EnableSsl = GetXmlBoolValue(navigator, "/Settings/POP3/Service" + i + "/LocalEnableSsl") ?? true;
+
+                    account.RemotePop3Server = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerHostName");
+                    account.RemotePop3Port = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerPort") ?? 995;
+                    account.RemotePop3EnableSsl = GetXmlBoolValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerEnableSSL") ?? true;
+                    account.Pop3AcceptedIPs = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/AcceptedIPs");
+                    account.Pop3CertificateLocation = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/Location");
+                    account.Pop3CertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/SerialNumber");
+                    account.Pop3CertificateSubjectName = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/SubjectName");
+                    account.Pop3LogFile = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LogFile");
+
+                    string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/POP3/Service" + i + "/LogLevel");
+                    switch (logLevel.ToUpper())
+                    {
+                        case "NONE":
+                            account.Pop3LogLevel = LogLevel.None;
+                            break;
+                        case "CRITICAL":
+                            account.Pop3LogLevel = LogLevel.Critical;
+                            break;
+                        case "ERROR":
+                            account.Pop3LogLevel = LogLevel.Error;
+                            break;
+                        case "RAW":
+                            account.Pop3LogLevel = LogLevel.Raw;
+                            break;
+                        case "VERBOSE":
+                            account.Pop3LogLevel = LogLevel.Verbose;
+                            break;
+                        case "WARNING":
+                            account.Pop3LogLevel = LogLevel.Warning;
+                            break;
+                        case "INFORMATION":
+                        default:
+                            account.Pop3LogLevel = LogLevel.Information;
+                            break;
+                    }
+                }
+            }
+
+            // Second, gather existing Outlook account settings from the registry.
             foreach (string outlookVersion in OutlookVersions.Keys)
             {
                 using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Office\" + outlookVersion + @"\Outlook\Profiles\Outlook\9375CFF0413111d3B88A00104B2A6676", false))
@@ -380,58 +702,45 @@ namespace OpaqueMail.Net.ProxySettings
                             {
                                 using (RegistryKey subKey = key.OpenSubKey(subkeyName, false))
                                 {
-                                    ProxyAccount account = new ProxyAccount();
-                                    account.ClientType = "Outlook";
-                                    account.ClientVersion = outlookVersion;
-
-                                    account.RemoteImapEnableSsl = GetOutlookRegistryValue(subKey, "IMAP Use SSL") == "1";
-                                    int.TryParse(GetOutlookRegistryValue(subKey, "IMAP Port"), out account.RemoteImapPort);
-                                    account.RemoteImapServer = GetOutlookRegistryValue(subKey, "IMAP Server") ?? "";
-
-                                    account.RemotePop3EnableSsl = GetOutlookRegistryValue(subKey, "POP3 Use SSL") == "1";
-                                    int.TryParse(GetOutlookRegistryValue(subKey, "POP3 Port"), out account.RemotePop3Port);
-                                    account.RemotePop3Server = GetOutlookRegistryValue(subKey, "POP3 Server") ?? "";
-
-                                    account.RemoteSmtpEnableSsl = GetOutlookRegistryValue(subKey, "SMTP Use SSL") == "1";
-                                    int.TryParse(GetOutlookRegistryValue(subKey, "SMTP Port"), out account.RemoteSmtpPort);
-                                    account.RemoteSmtpServer = GetOutlookRegistryValue(subKey, "SMTP Server") ?? "";
-
-                                    // Only proceed if a server is found.
-                                    if (!string.IsNullOrEmpty(account.RemoteImapServer) || !string.IsNullOrEmpty(account.RemotePop3Server) || !string.IsNullOrEmpty(account.RemoteSmtpServer))
+                                    bool matched = false;
+                                    foreach (ProxyAccount existingAccount in accounts)
                                     {
-                                        string username = GetOutlookRegistryValue(subKey, "IMAP User");
-                                        if (string.IsNullOrEmpty(username))
-                                            username = GetOutlookRegistryValue(subKey, "POP3 User");
+                                        if (existingAccount.OutlookRegistryKeys.Contains(subKey.Name))
+                                            matched = true;
+                                    }
 
-                                        if (!string.IsNullOrEmpty(username))
+                                    if (!matched)
+                                    {
+                                        ProxyAccount account = new ProxyAccount();
+                                        account.ClientType = "Outlook";
+                                        account.ClientVersion = outlookVersion;
+
+                                        account.RemoteImapEnableSsl = GetOutlookRegistryValue(subKey, "IMAP Use SSL") == "1";
+                                        int.TryParse(GetOutlookRegistryValue(subKey, "IMAP Port"), out account.RemoteImapPort);
+                                        account.RemoteImapServer = GetOutlookRegistryValue(subKey, "IMAP Server") ?? "";
+
+                                        account.RemotePop3EnableSsl = GetOutlookRegistryValue(subKey, "POP3 Use SSL") == "1";
+                                        int.TryParse(GetOutlookRegistryValue(subKey, "POP3 Port"), out account.RemotePop3Port);
+                                        account.RemotePop3Server = GetOutlookRegistryValue(subKey, "POP3 Server") ?? "";
+
+                                        account.RemoteSmtpEnableSsl = GetOutlookRegistryValue(subKey, "SMTP Use SSL") == "1";
+                                        int.TryParse(GetOutlookRegistryValue(subKey, "SMTP Port"), out account.RemoteSmtpPort);
+                                        account.RemoteSmtpServer = GetOutlookRegistryValue(subKey, "SMTP Server") ?? "";
+
+                                        // Only proceed if a server is found.
+                                        if (!string.IsNullOrEmpty(account.RemoteImapServer) || !string.IsNullOrEmpty(account.RemotePop3Server) || !string.IsNullOrEmpty(account.RemoteSmtpServer))
                                         {
-                                            account.Usernames.Add(username);
-                                            account.RegistryKeys.Add(subKey.Name);
+                                            string username = GetOutlookRegistryValue(subKey, "IMAP User");
+                                            if (string.IsNullOrEmpty(username))
+                                                username = GetOutlookRegistryValue(subKey, "POP3 User");
 
-                                            // Ensure an account with the same settings hasn't already been found.
-                                            bool found = false;
-                                            foreach (ProxyAccount existingAccount in accounts)
+                                            if (!string.IsNullOrEmpty(username))
                                             {
-                                                if (account.RemoteImapEnableSsl == existingAccount.RemoteImapEnableSsl &&
-                                                    account.RemoteImapPort == existingAccount.RemoteImapPort &&
-                                                    account.RemoteImapServer == existingAccount.RemoteImapServer &&
-                                                    account.RemotePop3EnableSsl == existingAccount.RemotePop3EnableSsl &&
-                                                    account.RemotePop3Port == existingAccount.RemotePop3Port &&
-                                                    account.RemotePop3Server == existingAccount.RemotePop3Server &&
-                                                    account.RemoteSmtpEnableSsl == existingAccount.RemoteSmtpEnableSsl &&
-                                                    account.RemoteSmtpPort == existingAccount.RemoteSmtpPort &&
-                                                    account.RemoteSmtpServer == existingAccount.RemoteSmtpServer)
-                                                {
-                                                    found = true;
-                                                    existingAccount.Usernames.Add(username);
-                                                    existingAccount.RegistryKeys.Add(subKey.Name);
+                                                account.Usernames.Add(username);
+                                                account.OutlookRegistryKeys.Add(subKey.Name);
 
-                                                    break;
-                                                }
-                                            }
-
-                                            if (!found)
                                                 accounts.Add(account);
+                                            }
                                         }
                                     }
                                 }
@@ -441,232 +750,78 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Second, account for any settings in the existing XML file.
-            string fqdn = Functions.GetLocalFQDN();
-
-            int smtpServiceCount = 0, imapServiceCount = 0, pop3ServiceCount = 0;
-            if (document != null)
+            // Third, gather existing Thunderbird account settings.
+            if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
             {
-                XPathNavigator navigator = document.CreateNavigator();
-
-                // Handle SMTP settings first.
-                foreach (ProxyAccount account in accounts)
+                foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
                 {
-                    smtpServiceCount = GetXmlIntValue(navigator, "/Settings/SMTP/ServiceCount") ?? 0;
-
-                    for (int i = 1; i <= smtpServiceCount; i++)
+                    if (File.Exists(directory + "\\prefs.js"))
                     {
-                        string localSmtpServer = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LocalIPAddress") ?? "";
-                        int localSmtpPort = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/LocalPort") ?? 587;
-                        bool localSmtpEnableSsl = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/LocalEnableSsl") ?? true;
+                        string prefsFile = File.ReadAllText(directory + "\\prefs.js");
 
-                        bool registryMatched = false;
-                        int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/RegistryKeyCount") ?? 0;
-                        for (int j = 1; j <= registryKeyCount; j++)
+                        int keyCount;
+                        int.TryParse(Functions.ReturnBetween(prefsFile, "user_pref(\"mail.account.lastKey\", ", ")"), out keyCount);
+                        for (int i = 1; i <= keyCount; i++)
                         {
-                            string registryKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RegistryKey" + j);
-                            if (account.RegistryKeys.Contains(registryKey))
-                            {
-                                registryMatched = true;
-                                break;
-                            }
-                        }
+                            string thunderbirdKey = directory + "~" + i.ToString();
 
-                        // If the account matches one we've previously configured, copy the previous settings.
-                        if (registryMatched || (account.RemoteSmtpServer.ToUpper() == fqdn.ToUpper() && account.RemoteSmtpPort == localSmtpPort && account.RemoteSmtpEnableSsl == localSmtpEnableSsl))
-                        {
-                            account.RemoteSmtpServer = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerHostName");
-                            account.RemoteSmtpPort = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPort") ?? 587;
-                            account.RemoteSmtpEnableSsl = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerEnableSSL") ?? true;
-                            account.RemoteSmtpUsername = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerUsername");
-                            account.RemoteSmtpPassword = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPassword");
-                            account.SmtpAcceptedIPs = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/AcceptedIPs");
-                            account.SmtpCertificateLocation = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
-                            account.SmtpCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SerialNumber");
-                            account.SmtpCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SubjectName");
-                            account.SmtpLogFile = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LogFile");
-
-                            string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/SMTP/Service" + i + "/LogLevel");
-                            switch (logLevel.ToUpper())
+                            bool matched = false;
+                            foreach (ProxyAccount existingAccount in accounts)
                             {
-                                case "NONE":
-                                    account.SmtpLogLevel = LogLevel.None;
-                                    break;
-                                case "CRITICAL":
-                                    account.SmtpLogLevel = LogLevel.Critical;
-                                    break;
-                                case "ERROR":
-                                    account.SmtpLogLevel = LogLevel.Error;
-                                    break;
-                                case "VERBATIM":
-                                    account.SmtpLogLevel = LogLevel.Verbatim;
-                                    break;
-                                case "VERBOSE":
-                                    account.SmtpLogLevel = LogLevel.Verbose;
-                                    break;
-                                case "WARNING":
-                                    account.SmtpLogLevel = LogLevel.Warning;
-                                    break;
-                                case "INFORMATION":
-                                default:
-                                    account.SmtpLogLevel = LogLevel.Information;
-                                    break;
+                                if (existingAccount.ThunderbirdKeys.Contains(thunderbirdKey))
+                                    matched = true;
                             }
 
-                            account.SendCertificateReminders = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SendCertificateReminders") ?? true;
-                            account.SmimeEncrypt = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMEEncrypt") ?? true;
-                            account.SmimeRemovePreviousOperations = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMERemovePreviousOperations") ?? true;
-                            account.SmimeSettingsModeValue = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMESettingsMode") ?? "BestEffort";
-                            account.SmimeSign = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMESign") ?? true;
-                            account.SmimeTripleWrap = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMETripleWrap") ?? true;
-
-                            break;
-                        }
-                    }
-                }
-
-                // Handle IMAP settings second.
-                foreach (ProxyAccount account in accounts)
-                {
-                    imapServiceCount = GetXmlIntValue(navigator, "/Settings/IMAP/ServiceCount") ?? 0;
-                
-                    for (int i = 1; i <= imapServiceCount; i++)
-                    {
-                        string localImapServer = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LocalIPAddress") ?? "";
-                        int localImapPort = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/LocalPort") ?? 587;
-                        bool localImapEnableSsl = GetXmlBoolValue(navigator, "/Settings/IMAP/Service" + i + "/LocalEnableSsl") ?? true;
-
-                        bool registryMatched = false;
-                        int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/RegistryKeyCount") ?? 0;
-                        for (int j = 1; j <= registryKeyCount; j++)
-                        {
-                            string registryKey = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/RegistryKey" + j);
-                            if (account.RegistryKeys.Contains(registryKey))
+                            if (!matched)
                             {
-                                registryMatched = true;
-                                break;
+                                ProxyAccount account = new ProxyAccount();
+                                account.ClientType = "Thunderbird";
+
+                                int sslValue = 0;
+                                int.TryParse(Functions.ReturnBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".try_ssl\", ", ")"), out sslValue);
+                                account.RemoteSmtpEnableSsl = sslValue > 0;
+                                int.TryParse(Functions.ReturnBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".port\", ", ")"), out account.RemoteSmtpPort);
+                                account.RemoteSmtpServer = Functions.ReturnBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".hostname\", \"", "\"") ?? "";
+
+                                if (Functions.ReturnBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".type\", \"", "\"") == "pop3")
+                                {
+                                    int.TryParse(Functions.ReturnBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".port\", ", ")"), out account.RemotePop3Port);
+                                    account.RemotePop3EnableSsl = (account.RemotePop3Port == 995);
+                                    account.RemotePop3Server = Functions.ReturnBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".hostname\", \"", "\"") ?? "";
+                                }
+                                else
+                                {
+                                    int.TryParse(Functions.ReturnBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".port\", ", ")"), out account.RemoteImapPort);
+                                    account.RemoteImapEnableSsl = (account.RemoteImapPort == 993);
+                                    account.RemoteImapServer = Functions.ReturnBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".hostname\", \"", "\"") ?? "";
+                                }
+
+                                // Only proceed if a server is found.
+                                if (!string.IsNullOrEmpty(account.RemoteImapServer) || !string.IsNullOrEmpty(account.RemotePop3Server) || !string.IsNullOrEmpty(account.RemoteSmtpServer))
+                                {
+                                    string username = Functions.ReturnBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".username\", \"", "\"");
+
+                                    if (!string.IsNullOrEmpty(username))
+                                    {
+                                        account.Usernames.Add(username);
+                                        account.ThunderbirdKeys.Add(thunderbirdKey);
+
+                                        accounts.Add(account);
+                                    }
+                                }
                             }
-                        }
-
-                        // If the account matches one we've previously configured, copy the previous settings.
-                        if (registryMatched || (account.RemoteImapServer.ToUpper() == fqdn.ToUpper() && account.RemoteImapPort == localImapPort && account.RemoteImapEnableSsl == localImapEnableSsl))
-                        {
-                            account.RemoteImapServer = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerHostName");
-                            account.RemoteImapPort = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerPort") ?? 993;
-                            account.RemoteImapEnableSsl = GetXmlBoolValue(navigator, "/Settings/IMAP/Service" + i + "/RemoteServerEnableSSL") ?? true;
-                            account.ImapAcceptedIPs = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/AcceptedIPs");
-                            account.ImapCertificateLocation = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/Certificate/Location");
-                            account.ImapCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/Certificate/SerialNumber");
-                            account.ImapCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/Certificate/SubjectName");
-                            account.ImapLogFile = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LogFile");
-
-                            string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/IMAP/Service" + i + "/LogLevel");
-                            switch (logLevel.ToUpper())
-                            {
-                                case "NONE":
-                                    account.ImapLogLevel = LogLevel.None;
-                                    break;
-                                case "CRITICAL":
-                                    account.ImapLogLevel = LogLevel.Critical;
-                                    break;
-                                case "ERROR":
-                                    account.ImapLogLevel = LogLevel.Error;
-                                    break;
-                                case "VERBATIM":
-                                    account.ImapLogLevel = LogLevel.Verbatim;
-                                    break;
-                                case "VERBOSE":
-                                    account.ImapLogLevel = LogLevel.Verbose;
-                                    break;
-                                case "WARNING":
-                                    account.ImapLogLevel = LogLevel.Warning;
-                                    break;
-                                case "INFORMATION":
-                                default:
-                                    account.ImapLogLevel = LogLevel.Information;
-                                    break;
-                            }
-
-                            break;
-                        }
-                    }
-                }
-
-                // Handle POP3 settings third.
-                foreach (ProxyAccount account in accounts)
-                {
-                    pop3ServiceCount = GetXmlIntValue(navigator, "/Settings/POP3/ServiceCount") ?? 0;
-
-                    for (int i = 1; i <= pop3ServiceCount; i++)
-                    {
-                        string localPop3Server = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LocalIPAddress") ?? "";
-                        int localPop3Port = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/LocalPort") ?? 995;
-                        bool localPop3EnableSsl = GetXmlBoolValue(navigator, "/Settings/POP3/Service" + i + "/LocalEnableSsl") ?? true;
-
-                        bool registryMatched = false;
-                        int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/RegistryKeyCount") ?? 0;
-                        for (int j = 1; j <= registryKeyCount; j++)
-                        {
-                            string registryKey = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/RegistryKey" + j);
-                            if (account.RegistryKeys.Contains(registryKey))
-                            {
-                                registryMatched = true;
-                                break;
-                            }
-                        }
-
-                        // If the account matches one we've previously configured, copy the previous settings.
-                        if (registryMatched || (account.RemotePop3Server.ToUpper() == fqdn.ToUpper() && account.RemotePop3Port == localPop3Port && account.RemotePop3EnableSsl == localPop3EnableSsl))
-                        {
-                            account.RemotePop3Server = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerHostName");
-                            account.RemotePop3Port = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerPort") ?? 995;
-                            account.RemotePop3EnableSsl = GetXmlBoolValue(navigator, "/Settings/POP3/Service" + i + "/RemoteServerEnableSSL") ?? true;
-                            account.Pop3AcceptedIPs = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/AcceptedIPs");
-                            account.Pop3CertificateLocation = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/Location");
-                            account.Pop3CertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/SerialNumber");
-                            account.Pop3CertificateSubjectName = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/SubjectName");
-                            account.Pop3LogFile = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LogFile");
-
-                            string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/POP3/Service" + i + "/LogLevel");
-                            switch (logLevel.ToUpper())
-                            {
-                                case "NONE":
-                                    account.Pop3LogLevel = LogLevel.None;
-                                    break;
-                                case "CRITICAL":
-                                    account.Pop3LogLevel = LogLevel.Critical;
-                                    break;
-                                case "ERROR":
-                                    account.Pop3LogLevel = LogLevel.Error;
-                                    break;
-                                case "VERBATIM":
-                                    account.Pop3LogLevel = LogLevel.Verbatim;
-                                    break;
-                                case "VERBOSE":
-                                    account.Pop3LogLevel = LogLevel.Verbose;
-                                    break;
-                                case "WARNING":
-                                    account.Pop3LogLevel = LogLevel.Warning;
-                                    break;
-                                case "INFORMATION":
-                                default:
-                                    account.Pop3LogLevel = LogLevel.Information;
-                                    break;
-                            }
-
-                            break;
                         }
                     }
                 }
             }
 
-            // Third, check which accounts the user chooses to encrypt.
+            // Fourth, check which accounts the user chooses to encrypt.
             smtpServiceCount = 0;
             imapServiceCount = 0;
             pop3ServiceCount = 0;
 
             HashSet<int> portsReserved = new HashSet<int>();
-            int nextPortToTry = 10000;
+            int nextPortToTry = 1000;
             
             foreach (DataGridViewRow row in AccountGrid.Rows)
             {
@@ -674,7 +829,7 @@ namespace OpaqueMail.Net.ProxySettings
                 {
                     foreach (ProxyAccount account in accounts)
                     {
-                        if (account.RegistryKeys.Contains((string)row.Cells[4].Value) && !account.Matched)
+                        if ((account.OutlookRegistryKeys.Contains((string)row.Cells[4].Value) || account.ThunderbirdKeys.Contains((string)row.Cells[4].Value)) && !account.Matched)
                         {
                             account.Matched = true;
 
@@ -724,7 +879,7 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Fourth, write out the XML setting values.
+            // Fifth, write out the XML setting values.
             XmlWriterSettings streamWriterSettings = new XmlWriterSettings();
             streamWriterSettings.Indent = true;
             streamWriterSettings.IndentChars = "  ";
@@ -788,7 +943,7 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("Whether all outgoing messages require the S/MIME settings specified below.");
                         streamWriter.WriteComment("When set to \"RequireExactSettings\", any messages that can't be signed or encrypted will be dropped, unsent.");
                         streamWriter.WriteComment("When set to \"BestEffort\", OpaqueMail Proxy will attempt to sign and/or encrypt messages but still forward any that can't be.");
-                        streamWriter.WriteElementString("SMIMESettingsMode", account.SmimeSettingsModeValue ?? "BestEffort");
+                        streamWriter.WriteElementString("SMIMESettingsMode", SmimeSettingsMode.SelectedIndex > 0 ? "RequireExactSettings" : "BestEffort");
                         
                         streamWriter.WriteComment("Whether to sign the e-mail.  When true, signing is the first S/MIME operation.");
                         streamWriter.WriteElementString("SMIMESign", account.SmimeSign.ToString());
@@ -804,17 +959,27 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\SMTPProxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.SmtpLogFile ?? "Logs\\SMTPProxy{#}-{yyyy-MM-dd}.log");
                         
-                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim");
+                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Raw");
                         streamWriter.WriteElementString("LogLevel", account.SmtpLogLevel.ToString());
 
-                        if (account.RegistryKeys.Count > 0)
+                        if (account.OutlookRegistryKeys.Count > 0)
                         {
                             streamWriter.WriteComment("Outlook registry keys for accounts configured through the OpaqueMail Proxy settings app.");
-                            streamWriter.WriteElementString("RegistryKeyCount", account.RegistryKeys.Count.ToString());
+                            streamWriter.WriteElementString("OutlookRegistryKeyCount", account.OutlookRegistryKeys.Count.ToString());
 
                             int registryKeyId = 0;
-                            foreach (string registryKey in account.RegistryKeys)
-                                streamWriter.WriteElementString("RegistryKey" + (++registryKeyId).ToString(), registryKey);
+                            foreach (string registryKey in account.OutlookRegistryKeys)
+                                streamWriter.WriteElementString("OutlookRegistryKey" + (++registryKeyId).ToString(), registryKey);
+                        }
+
+                        if (account.ThunderbirdKeys.Count > 0)
+                        {
+                            streamWriter.WriteComment("Thunderbird keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteElementString("ThunderbirdKeyCount", account.ThunderbirdKeys.Count.ToString());
+
+                            int thunderbirdKeyId = 0;
+                            foreach (string thunderbirdKey in account.ThunderbirdKeys)
+                                streamWriter.WriteElementString("ThunderbirdKey" + (++thunderbirdKeyId).ToString(), thunderbirdKey);
                         }
 
                         streamWriter.WriteEndElement();
@@ -858,17 +1023,27 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.ImapLogFile ?? "Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log");
 
-                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim");
+                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Raw");
                         streamWriter.WriteElementString("LogLevel", account.ImapLogLevel.ToString());
 
-                        if (account.RegistryKeys.Count > 0)
+                        if (account.OutlookRegistryKeys.Count > 0)
                         {
                             streamWriter.WriteComment("Outlook registry keys for accounts configured through the OpaqueMail Proxy settings app.");
-                            streamWriter.WriteElementString("RegistryKeyCount", account.RegistryKeys.Count.ToString());
+                            streamWriter.WriteElementString("OutlookRegistryKeyCount", account.OutlookRegistryKeys.Count.ToString());
 
                             int registryKeyId = 0;
-                            foreach (string registryKey in account.RegistryKeys)
-                                streamWriter.WriteElementString("RegistryKey" + (++registryKeyId).ToString(), registryKey);
+                            foreach (string registryKey in account.OutlookRegistryKeys)
+                                streamWriter.WriteElementString("OutlookRegistryKey" + (++registryKeyId).ToString(), registryKey);
+                        }
+
+                        if (account.ThunderbirdKeys.Count > 0)
+                        {
+                            streamWriter.WriteComment("Thunderbird keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteElementString("ThunderbirdKeyCount", account.ThunderbirdKeys.Count.ToString());
+
+                            int thunderbirdKeyId = 0;
+                            foreach (string thunderbirdKey in account.ThunderbirdKeys)
+                                streamWriter.WriteElementString("ThunderbirdKey" + (++thunderbirdKeyId).ToString(), thunderbirdKey);
                         }
 
                         streamWriter.WriteEndElement();
@@ -912,17 +1087,27 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\POP3Proxy{#}-{yyyy-MM-dd}.log\".");
                         streamWriter.WriteElementString("LogFile", account.Pop3LogFile ?? "Logs\\POP3Proxy{#}-{yyyy-MM-dd}.log");
 
-                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Verbatim");
+                        streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Raw");
                         streamWriter.WriteElementString("LogLevel", account.Pop3LogLevel.ToString());
 
-                        if (account.RegistryKeys.Count > 0)
+                        if (account.OutlookRegistryKeys.Count > 0)
                         {
                             streamWriter.WriteComment("Outlook registry keys for accounts configured through the OpaqueMail Proxy settings app.");
-                            streamWriter.WriteElementString("RegistryKeyCount", account.RegistryKeys.Count.ToString());
+                            streamWriter.WriteElementString("OutlookRegistryKeyCount", account.OutlookRegistryKeys.Count.ToString());
 
                             int registryKeyId = 0;
-                            foreach (string registryKey in account.RegistryKeys)
-                                streamWriter.WriteElementString("RegistryKey" + (++registryKeyId).ToString(), registryKey);
+                            foreach (string registryKey in account.OutlookRegistryKeys)
+                                streamWriter.WriteElementString("OutlookRegistryKey" + (++registryKeyId).ToString(), registryKey);
+                        }
+
+                        if (account.ThunderbirdKeys.Count > 0)
+                        {
+                            streamWriter.WriteComment("Thunderbird keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteElementString("ThunderbirdKeyCount", account.ThunderbirdKeys.Count.ToString());
+
+                            int thunderbirdKeyId = 0;
+                            foreach (string thunderbirdKey in account.ThunderbirdKeys)
+                                streamWriter.WriteElementString("ThunderbirdKey" + (++thunderbirdKeyId).ToString(), thunderbirdKey);
                         }
 
                         streamWriter.WriteEndElement();
@@ -934,11 +1119,11 @@ namespace OpaqueMail.Net.ProxySettings
                 streamWriter.WriteEndElement();
             }
 
-            // Fifth, restart the OpaqueMail service.
+            // Sixth, restart the OpaqueMail service.
             InstallService();
             StartService();
 
-            // Sixth, rewrite the Outlook registry values.
+            // Seventh, rewrite the Outlook registry values.
             foreach (string outlookVersion in OutlookVersions.Keys)
             {
                 using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Office\" + outlookVersion + @"\Outlook\Profiles\Outlook\9375CFF0413111d3B88A00104B2A6676", false))
@@ -955,15 +1140,10 @@ namespace OpaqueMail.Net.ProxySettings
                                     string smtpServer = GetOutlookRegistryValue(subKey, "SMTP Server");
                                     if (!string.IsNullOrEmpty(smtpServer))
                                     {
-                                        int smtpPort;
-                                        int.TryParse(GetOutlookRegistryValue(subKey, "SMTP Port"), out smtpPort);
-                                        bool smtpEnableSSL;
-                                        smtpEnableSSL = GetOutlookRegistryValue(subKey, "SMTP Use SSL") == "1";
-
                                         foreach (ProxyAccount account in accounts)
                                         {
                                             // If matched, set to use the local proxy.  If not matched and we previously used the local proxy, switch back to the original value.
-                                            if (account.RegistryKeys.Contains(subKey.Name))
+                                            if (account.OutlookRegistryKeys.Contains(subKey.Name))
                                             {
                                                 if (account.Matched)
                                                 {
@@ -984,15 +1164,10 @@ namespace OpaqueMail.Net.ProxySettings
                                     string imapServer = GetOutlookRegistryValue(subKey, "IMAP Server");
                                     if (!string.IsNullOrEmpty(imapServer))
                                     {
-                                        int imapPort;
-                                        int.TryParse(GetOutlookRegistryValue(subKey, "IMAP Port"), out imapPort);
-                                        bool imapEnableSSL;
-                                        imapEnableSSL = GetOutlookRegistryValue(subKey, "IMAP Use SSL") == "1";
-
                                         foreach (ProxyAccount account in accounts)
                                         {
                                             // If matched, set to use the local proxy.  If not matched and we previously used the local proxy, switch back to the original value.
-                                            if (account.RegistryKeys.Contains(subKey.Name))
+                                            if (account.OutlookRegistryKeys.Contains(subKey.Name))
                                             {
                                                 if (account.Matched)
                                                 {
@@ -1013,15 +1188,10 @@ namespace OpaqueMail.Net.ProxySettings
                                     string pop3Server = GetOutlookRegistryValue(subKey, "POP3 Server");
                                     if (!string.IsNullOrEmpty(pop3Server))
                                     {
-                                        int pop3Port;
-                                        int.TryParse(GetOutlookRegistryValue(subKey, "POP3 Port"), out pop3Port);
-                                        bool pop3EnableSSL;
-                                        pop3EnableSSL = GetOutlookRegistryValue(subKey, "POP3 Use SSL") == "1";
-
                                         foreach (ProxyAccount account in accounts)
                                         {
                                             // If matched, set to use the local proxy.  If not matched and we previously used the local proxy, switch back to the original value.
-                                            if (account.RegistryKeys.Contains(subKey.Name))
+                                            if (account.OutlookRegistryKeys.Contains(subKey.Name))
                                             {
                                                 if (account.Matched)
                                                 {
@@ -1045,7 +1215,73 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Finally, prompt to restart Outlook.
+            // Eighth, rewrite the Thunderbird registry values.
+            if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
+            {
+                foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
+                {
+                    if (File.Exists(directory + "\\prefs.js"))
+                    {
+                        string prefsFile = File.ReadAllText(directory + "\\prefs.js");
+
+                        int keyCount;
+                        int.TryParse(Functions.ReturnBetween(prefsFile, "user_pref(\"mail.account.lastKey\", ", ")"), out keyCount);
+                        for (int i = 1; i <= keyCount; i++)
+                        {
+                            string thunderbirdKey = directory + "~" + i.ToString();
+
+                            foreach (ProxyAccount account in accounts)
+                            {
+                                // If matched, set to use the local proxy.  If not matched and we previously used the local proxy, switch back to the original value.
+                                if (account.ThunderbirdKeys.Contains(thunderbirdKey))
+                                {
+                                    if (account.Matched)
+                                    {
+                                        if (Functions.ReturnBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".type\", \"", "\"").ToLower() == "pop3")
+                                        {
+                                            prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".hostname\", \"", "\"", fqdn);
+                                            prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".port\", ", ")", account.LocalPop3Port.ToString());
+                                        }
+                                        else
+                                        {
+                                            prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".hostname\", \"", "\"", fqdn);
+                                            prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".port\", ", ")", account.LocalImapPort.ToString());
+                                        }
+
+                                        prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".hostname\", \"", "\"", fqdn);
+                                        prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".port\", ", ")", account.LocalSmtpPort.ToString());
+                                        prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".is_gmail\", ", ")", "false");
+                                    }
+                                    else
+                                    {
+                                        if (Functions.ReturnBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".type\", \"", "\"").ToLower() == "pop3")
+                                        {
+                                            prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".hostname\", \"", "\"", account.RemotePop3Server);
+                                            prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".port\", ", ")", account.RemotePop3Port.ToString());
+                                        }
+                                        else
+                                        {
+                                            prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".hostname\", \"", "\"", account.RemoteImapServer);
+                                            prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".port\", ", ")", account.RemoteImapPort.ToString());
+                                        }
+
+                                        prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".hostname\", \"", "\"", account.RemoteSmtpServer);
+                                        prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.smtpserver.smtp" + i.ToString() + ".port\", ", ")", account.RemoteSmtpPort.ToString());
+
+                                        bool isGmail = account.RemoteSmtpServer.ToUpper() == "SMTP.GMAIL.COM" || account.RemoteSmtpServer.ToUpper() == "SMTP.GOOGLEMAIL.COM";
+                                        prefsFile = Functions.ReplaceBetween(prefsFile, "user_pref(\"mail.server.server" + i.ToString() + ".is_gmail\", ", ")", isGmail ? "true" : "false");
+                                    }
+                                }
+                            }
+                        }
+
+                        // Write the settings file back.
+                        File.WriteAllBytes(directory + "\\prefs.js", Encoding.UTF8.GetBytes(prefsFile));
+                    }
+                }
+            }
+
+            // Finally, prompt to restart Outlook or Thunderbird.
             Process[] processes = Process.GetProcessesByName("OUTLOOK");
             if (processes.Length > 0)
             {
@@ -1070,6 +1306,21 @@ namespace OpaqueMail.Net.ProxySettings
                             break;
                         }
                     }
+                }
+            }
+            processes = Process.GetProcessesByName("THUNDERBIRD");
+            if (processes.Length > 0)
+            {
+                DialogResult dr = MessageBox.Show("Thunderbird is currently running and will need to be restarted before these changes will take effect.  Would you like to restart Thunderbird now?", "Restart Thunderbird?", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+                if (dr == System.Windows.Forms.DialogResult.OK)
+                {
+                    // Stop Thunderbird.
+                    foreach (Process process in processes)
+                        process.Kill();
+
+                    // Try to start Thunderbird.
+                    if (File.Exists("C:\\Program Files (x86)\\Mozilla Thunderbird\\Thunderbird.exe"))
+                        Process.Start("C:\\Program Files (x86)\\Mozilla Thunderbird\\Thunderbird.exe");
                 }
             }
 
@@ -1150,7 +1401,8 @@ namespace OpaqueMail.Net.ProxySettings
             public string ClientType;
             public string ClientVersion;
 
-            public List<string> RegistryKeys = new List<string>();
+            public List<string> OutlookRegistryKeys = new List<string>();
+            public List<string> ThunderbirdKeys = new List<string>();
             public List<string> Usernames = new List<string>();
 
             public string ImapAcceptedIPs = "0.0.0.0";
@@ -1171,15 +1423,15 @@ namespace OpaqueMail.Net.ProxySettings
 
             public bool RemoteImapEnableSsl;
             public int RemoteImapPort;
-            public string RemoteImapServer;
+            public string RemoteImapServer = "";
 
             public bool RemotePop3EnableSsl;
             public int RemotePop3Port;
-            public string RemotePop3Server;
+            public string RemotePop3Server = "";
 
             public bool RemoteSmtpEnableSsl;
             public int RemoteSmtpPort;
-            public string RemoteSmtpServer;
+            public string RemoteSmtpServer = "";
             public string RemoteSmtpUsername;
             public string RemoteSmtpPassword;
 
