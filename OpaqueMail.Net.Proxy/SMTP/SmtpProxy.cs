@@ -875,11 +875,11 @@ namespace OpaqueMail.Net.Proxy
             }
             catch (SocketException ex)
             {
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception communicating with {" + arguments.RemoteServerHostName + "} on port {" + arguments.RemoteServerPort + "}: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Exception communicating with {" + arguments.RemoteServerHostName + "} on port {" + arguments.RemoteServerPort + "}: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
             catch (Exception ex)
             {
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Exception: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
             finally
             {

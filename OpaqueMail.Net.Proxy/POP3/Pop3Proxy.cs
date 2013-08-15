@@ -472,14 +472,12 @@ namespace OpaqueMail.Net.Proxy
                         while (Started && stillReceiving)
                         {
                             // Read data from the source and send it to its destination.
-                            int bytesRead = await clientStreamReader.ReadAsync(buffer, 0, Constants.SMALLBUFFERSIZE);
+                            string stringRead = await clientStreamReader.ReadLineAsync();
 
-                            if (bytesRead > 0)
+                            if (stringRead != null)
                             {
+                                int bytesRead = stringRead.Length;
                                 bytesTransmitted += (ulong)bytesRead;
-
-                                // Cast the bytes received to a string.
-                                string stringRead = new string(buffer, 0, bytesRead);
 
                                 messageBuilder.Append(stringRead);
 
@@ -488,14 +486,14 @@ namespace OpaqueMail.Net.Proxy
                                 {
                                     bool messageRelayed = false;
 
-                                    string[] commandParts = stringRead.Substring(0, stringRead.Length - 2).Split(new char[] { ' ' }, 2);
+                                    string[] commandParts = stringRead.Substring(0, stringRead.Length).Split(new char[] { ' ' }, 2);
 
                                     // Optionally replace credentials with those from our settings file.
                                     if (arguments.Credential != null && commandParts.Length == 2)
                                     {
                                         if (commandParts[0] == "USER")
                                         {
-                                            await remoteServerStreamWriter.WriteAsync("USER " + arguments.Credential.UserName + "\r\n");
+                                            await remoteServerStreamWriter.WriteLineAsync("USER " + arguments.Credential.UserName);
 
                                             ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: USER " + arguments.Credential.UserName, Proxy.LogLevel.Raw, LogLevel);
 
@@ -503,7 +501,7 @@ namespace OpaqueMail.Net.Proxy
                                         }
                                         else if (commandParts[0] == "PASS")
                                         {
-                                            await remoteServerStreamWriter.WriteAsync("PASS" + arguments.Credential.Password + "\r\n");
+                                            await remoteServerStreamWriter.WriteLineAsync("PASS" + arguments.Credential.Password);
 
                                             ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: PASS " + arguments.Credential.Password, Proxy.LogLevel.Raw, LogLevel);
 
@@ -516,14 +514,14 @@ namespace OpaqueMail.Net.Proxy
 
                                     if (!messageRelayed)
                                     {
-                                        await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
+                                        await remoteServerStreamWriter.WriteLineAsync(stringRead);
 
                                         ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
                                     }
                                 }
                                 else
                                 {
-                                    await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
+                                    await remoteServerStreamWriter.WriteLineAsync(stringRead);
 
                                     ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "S: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
 
@@ -559,10 +557,10 @@ namespace OpaqueMail.Net.Proxy
                     }
                 }
             }
-/*            catch (IOException)
+            catch (IOException)
             {
                 // Ignore either stream being closed.
-            }*/
+            }
             catch (ObjectDisposedException)
             {
                 // Ignore either stream being closed.
@@ -570,7 +568,7 @@ namespace OpaqueMail.Net.Proxy
             catch (Exception ex)
             {
                 // Log other exceptions.
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception while transmitting data: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Exception while transmitting data: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
             finally
             {

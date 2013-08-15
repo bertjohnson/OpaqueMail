@@ -460,7 +460,6 @@ namespace OpaqueMail.Net.Proxy
 
             // The overall number of bytes transmitted on this connection.
             ulong bytesTransmitted = 0;
-            int appendLength = 0, appendBytesTransmitted = 0;
 
             //  When a "[THROTTLED]" notice was last received.
             DateTime lastThrottleTime = new DateTime(1900, 1, 1);
@@ -477,12 +476,11 @@ namespace OpaqueMail.Net.Proxy
                         while (Started && stillReceiving)
                         {
                             // Read data from the source and send it to its destination.
-                            int bytesRead = await clientStreamReader.ReadAsync(buffer, 0, Constants.SMALLBUFFERSIZE);
+                            string stringRead = await clientStreamReader.ReadLineAsync();
 
-                            if (bytesRead > 0)
+                            if (stringRead != null)
                             {
-                                // Cast the bytes received to a string.
-                                string stringRead = new string(buffer, 0, bytesRead);
+                                int bytesRead = stringRead.Length;
                                 bytesTransmitted += (ulong)bytesRead;
 
                                 // If this data comes from the client, log it.  Otherwise, process it.
@@ -491,55 +489,76 @@ namespace OpaqueMail.Net.Proxy
                                     bool messageRelayed = false;
 
                                     string[] commandParts = stringRead.Split(new char[] { ' ' }, 4);
-                                    if (commandParts.Length > 2)
+                                    if (commandParts.Length > 1)
                                     {
-                                        // If we're in an APPEND command, wait until we've completed the append before logging another command.
-                                        if (appendLength > 0)
+                                        // Optionally replace credentials with those from our settings file.
+                                        if (arguments.Credential != null && commandParts[1] == "LOGIN" && commandParts.Length == 4)
                                         {
-                                            appendBytesTransmitted += stringRead.Length;
-                                            if (appendBytesTransmitted >= appendLength)
-                                                LastCommandReceived = "";
+                                            await remoteServerStreamWriter.WriteLineAsync(commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password);
+
+                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password, Proxy.LogLevel.Raw, LogLevel);
+
+                                            messageRelayed = true;
                                         }
+
+                                        if (commandParts[1] == "UID" && commandParts.Length > 2)
+                                            LastCommandReceived = commandParts[1] + " " + commandParts[2];
                                         else
+                                            LastCommandReceived = commandParts[1];
+
+                                        if (LastCommandReceived == "LOGOUT")
+                                            stillReceiving = false;
+
+                                        if (LogLevel == Proxy.LogLevel.Verbose)
                                         {
-                                            // Optionally replace credentials with those from our settings file.
-                                            if (arguments.Credential != null && commandParts[1] == "LOGIN" && commandParts.Length == 4)
+                                            switch (LastCommandReceived)
                                             {
-                                                await remoteServerStreamWriter.WriteAsync(commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password + "\r\n");
-
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password, Proxy.LogLevel.Raw, LogLevel);
-
-                                                messageRelayed = true;
-                                            }
-
-                                            if (commandParts[1] == "UID")
-                                                LastCommandReceived = commandParts[1] + " " + commandParts[2];
-                                            else
-                                                LastCommandReceived = commandParts[1];
-
-                                            if (LogLevel == Proxy.LogLevel.Verbose)
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "Command {" + LastCommandReceived + "} processed.", Proxy.LogLevel.Verbose, LogLevel);
-
-                                            // If we're in an APPEND command, remember how many bytes we should receive.
-                                            if (LastCommandReceived == "APPEND")
-                                            {
-                                                appendLength = 0;
-                                                int.TryParse(Functions.ReturnBetween(stringRead, "{", "}"), out appendLength);
-                                                appendBytesTransmitted = stringRead.Length - stringRead.IndexOf("\r\n") - 2;
+                                                case "APPEND":
+                                                case "AUTHENTICATE":
+                                                case "CAPABILITY":
+                                                case "CHECK":
+                                                case "CLOSE":
+                                                case "COPY":
+                                                case "CREATE":
+                                                case "DELETE":
+                                                case "ENABLE":
+                                                case "EXAMINE":
+                                                case "EXPUNGE":
+                                                case "FETCH":
+                                                case "GETQUOTA":
+                                                case "GETQUOTAROOT":
+                                                case "LIST":
+                                                case "LOGIN":
+                                                case "LOGOUT":
+                                                case "LSUB":
+                                                case "MOVE":
+                                                case "NOOP":
+                                                case "NOTIFY":
+                                                case "RENAME":
+                                                case "SEARCH":
+                                                case "SELECT":
+                                                case "SETQUOTA":
+                                                case "STATUS":
+                                                case "STORE":
+                                                case "SUBSCRIBE":
+                                                case "UID COPY":
+                                                case "UID FETCH":
+                                                case "UID SEARCH":
+                                                case "UID STORE":
+                                                case "UNSUBSCRIBE":
+                                                case "XLIST":
+                                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "Command {" + LastCommandReceived + "} processed.", Proxy.LogLevel.Verbose, LogLevel);
+                                                    break;
                                             }
                                         }
                                     }
 
                                     if (!messageRelayed)
-                                    {
-                                        await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
-
-                                        ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
-                                    }
+                                        await remoteServerStreamWriter.WriteLineAsync(stringRead);
                                 }
                                 else
                                 {
-                                    await remoteServerStreamWriter.WriteAsync(buffer, 0, bytesRead);
+                                    await remoteServerStreamWriter.WriteLineAsync(stringRead);
 
                                     ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "S: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
 
@@ -570,13 +589,22 @@ namespace OpaqueMail.Net.Proxy
 
                                     if (!inMessage)
                                     {
-                                        if (stringRead.IndexOf("[THROTTLED]\r\n", StringComparison.Ordinal) > -1)
+                                        string betweenBraces = Functions.ReturnBetween(stringRead, "[", "]");
+                                        switch (betweenBraces)
                                         {
-                                            if (DateTime.Now - lastThrottleTime >= new TimeSpan(0, 20, 0))
-                                            {
-                                                ProxyFunctions.Log(LogWriter, SessionId, ConnectionId.ToString(), "Connection speed throttled by the remote server.", Proxy.LogLevel.Warning, LogLevel);
-                                                lastThrottleTime = DateTime.Now;
-                                            }
+                                            case "CLIENTBUG":
+                                            case "CORRUPTION":
+                                            case "SERVERBUG":
+                                            case "UNAVAILABLE":
+                                                ProxyFunctions.Log(LogWriter, SessionId, ConnectionId.ToString(), stringRead.Substring(stringRead.IndexOf("[")), Proxy.LogLevel.Warning, LogLevel);
+                                                break;
+                                            case "THROTTLED":
+                                                if (DateTime.Now - lastThrottleTime >= new TimeSpan(0, 20, 0))
+                                                {
+                                                    ProxyFunctions.Log(LogWriter, SessionId, ConnectionId.ToString(), "Connection speed throttled by the remote server.", Proxy.LogLevel.Warning, LogLevel);
+                                                    lastThrottleTime = DateTime.Now;
+                                                }
+                                                break;
                                         }
 
                                         int pos = 0;
@@ -643,10 +671,10 @@ namespace OpaqueMail.Net.Proxy
                     }
                 }
             }
-/*            catch (IOException)
+            catch (IOException)
             {
                 // Ignore either stream being closed.
-            }*/
+            }
             catch (ObjectDisposedException)
             {
                 // Ignore either stream being closed.
@@ -654,7 +682,7 @@ namespace OpaqueMail.Net.Proxy
             catch (Exception ex)
             {
                 // Log other exceptions.
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception while transmitting data: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Exception while transmitting data: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
             finally
             {
