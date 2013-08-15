@@ -160,7 +160,6 @@ namespace OpaqueMail
                     MIMEBuilder.Append("--" + SmimeAlternativeViewBoundaryName + "\r\n");
                 }
                 
-                MIMEBuilder.Append("--" + SmimeAlternativeViewBoundaryName + "\r\n");
                 if (this.IsBodyHtml)
                     MIMEBuilder.Append("Content-Type: text/html\r\n");
                 else

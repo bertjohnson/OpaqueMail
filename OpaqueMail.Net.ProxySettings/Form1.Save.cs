@@ -68,6 +68,7 @@ namespace OpaqueMail.Net.ProxySettings
                     account.RemoteSmtpUsername = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerUsername");
                     account.RemoteSmtpPassword = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPassword");
                     account.RemoteSmtpFrom = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerFrom");
+                    account.RemoteSmtpTo = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerTo");
                     account.SmtpAcceptedIPs = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/AcceptedIPs");
                     account.SmtpCertificateLocation = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
                     account.SmtpCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SerialNumber");
@@ -557,6 +558,8 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteElementString("RemoteServerPassword", account.RemoteSmtpPassword);
                         streamWriter.WriteComment("(Optional) \"From\" address for all sent messages.  When supplied, it will override any values sent from the client.");
                         streamWriter.WriteElementString("RemoteServerFrom", account.RemoteSmtpFrom);
+                        streamWriter.WriteComment("(Optional) \"To\" address for all sent messages.  When supplied, it will override any values sent from the client.");
+                        streamWriter.WriteElementString("RemoteServerTo", account.RemoteSmtpTo);
 
                         streamWriter.WriteStartElement("Certificate");
                         streamWriter.WriteComment("Where certificates should be stored and retrieved from by default.  \"LocalMachine\" or \"CurrentUser\" only.");

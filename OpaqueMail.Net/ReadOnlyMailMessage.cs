@@ -144,7 +144,7 @@ namespace OpaqueMail
                     string headerValue = headerParts[1];
 
                     // Set header variables for common headers.
-                    if (!string.IsNullOrEmpty(headerType) && !string.IsNullOrEmpty(headerValue))
+                    if (!string.IsNullOrEmpty(headerType) && !headerType.StartsWith("\t") && !string.IsNullOrEmpty(headerValue))
                         Headers[headerParts[0]] = headerValue;
 
                     switch (headerType)
@@ -445,7 +445,7 @@ namespace OpaqueMail
                 // Handle continuations for headers spanning multiple lines.
                 if (!headerProcessed)
                 {
-                    if (!string.IsNullOrEmpty(lastHeaderType))
+                    if (!string.IsNullOrEmpty(lastHeaderType) && !lastHeaderType.Contains(" "))
                         Headers[lastHeaderType] += header;
 
                     switch (lastHeaderType)

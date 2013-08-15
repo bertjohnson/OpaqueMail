@@ -194,6 +194,8 @@ namespace OpaqueMail.Net.Proxy
         public NetworkCredential RemoteServerCredential;
         /// <summary>(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
         public string RemoteServerFrom;
+        /// <summary>(Optional) "To" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        public string RemoteServerTo;
 
         /// <summary>Encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
         public bool SmimeEncryptedEnvelope;
@@ -248,6 +250,8 @@ namespace OpaqueMail.Net.Proxy
         public NetworkCredential RemoteServerCredential;
         /// <summary>(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
         public string RemoteServerFrom;
+        /// <summary>(Optional) "To" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        public string RemoteServerTo;
 
         /// <summary>Encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
         public bool SmimeEncryptedEnvelope;
