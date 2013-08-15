@@ -107,15 +107,9 @@ namespace OpaqueMail
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
         public async Task SendAsync(MailMessage message)
         {
-            // If not performing any S/MIME encryption or signing, use the default System.Net.Mail.SmtpClient Send() method.
-            if (!message.SmimeSigned && !message.SmimeEncryptedEnvelope && !message.SmimeTripleWrapped)
-            {
-                // If this is a read-only message, it was forwarded by the Proxy and should be sent raw.
-                if (message is ReadOnlyMailMessage)
-                    await SmimeSendRawAsync(message);
-                else
-                    base.Send(message);
-            }
+            // If this is a read-only message, it was forwarded by the Proxy and should be sent raw.
+            if (message is ReadOnlyMailMessage)
+                await SmimeSendRawAsync(message);
             else
                 await SmimeSendAsync(message);
         }
@@ -171,29 +165,24 @@ namespace OpaqueMail
             // Initialize collections for all recipients.
             addressesWithPublicKeys = new HashSet<string>();
             addressesNeedingPublicKeys = new Dictionary<string, MailAddress>();
-            foreach (MailAddress toAddress in message.To)
+
+            MailAddressCollection[] addressRanges = new MailAddressCollection[] { message.To, message.CC, message.Bcc };
+            foreach (MailAddressCollection addressRange in addressRanges)
             {
-                string canonicalToAddress = toAddress.Address.ToUpper();
-                if (SmimeCertificateCache.ContainsKey(canonicalToAddress))
-                    addressesWithPublicKeys.Add(canonicalToAddress);
-                else
-                    addressesNeedingPublicKeys.Add(canonicalToAddress, toAddress);
-            }
-            foreach (MailAddress ccAddress in message.CC)
-            {
-                string canonicalCCAddress = ccAddress.Address.ToUpper();
-                if (SmimeCertificateCache.ContainsKey(canonicalCCAddress))
-                    addressesWithPublicKeys.Add(canonicalCCAddress);
-                else
-                    addressesNeedingPublicKeys.Add(canonicalCCAddress, ccAddress);
-            }
-            foreach (MailAddress bccAddress in message.Bcc)
-            {
-                string canonicalBccAddress = bccAddress.Address.ToUpper();
-                if (SmimeCertificateCache.ContainsKey(canonicalBccAddress))
-                    addressesWithPublicKeys.Add(canonicalBccAddress);
-                else
-                    addressesNeedingPublicKeys.Add(canonicalBccAddress, bccAddress);
+                foreach (MailAddress toAddress in addressRange)
+                {
+                    string canonicalToAddress = toAddress.Address.ToUpper();
+                    if (SmimeCertificateCache.ContainsKey(canonicalToAddress))
+                    {
+                        if (!addressesWithPublicKeys.Contains(canonicalToAddress))
+                            addressesWithPublicKeys.Add(canonicalToAddress);
+                    }
+                    else
+                    {
+                        if (!addressesNeedingPublicKeys.ContainsKey(canonicalToAddress))
+                            addressesNeedingPublicKeys.Add(canonicalToAddress, toAddress);
+                    }
+                }
             }
 
             // If any addresses haven't been mapped to public keys, map them.
@@ -382,7 +371,7 @@ namespace OpaqueMail
                 await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
                 response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
                 if (!response.StartsWith("2"))
-                    throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'MAIL FROM' and received '" + response + "'.");
+                    throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
             }
 
             foreach (MailAddress address in message.Bcc)
@@ -390,7 +379,7 @@ namespace OpaqueMail
                 await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
                 response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
                 if (!response.StartsWith("2"))
-                    throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'MAIL FROM' and received '" + response + "'.");
+                    throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
             }
 
             // Send the raw message.

@@ -446,7 +446,7 @@ namespace OpaqueMail
                 if (!headerProcessed)
                 {
                     if (!string.IsNullOrEmpty(lastHeaderType) && !lastHeaderType.Contains(" "))
-                        Headers[lastHeaderType] += header;
+                        Headers[lastHeaderType] += header.Replace("\t", " ");
 
                     switch (lastHeaderType)
                     {

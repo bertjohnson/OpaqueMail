@@ -1038,15 +1038,13 @@ namespace OpaqueMail
                     else
                         pos = header.LastIndexOf(" ", lastPos + 78);
 
+                    if (pos < 0 || pos == (lastPos - 1))
+                        pos = header.IndexOf(" ", lastPos + 78);
+
                     if (pos > -1)
                     {
-                        if (pos > lastPos)
-                        {
-                            headerBuilder.Append(header.Substring(lastPos, pos - lastPos) + "\r\n\t");
-                            pos++;
-                        }
-                        else
-                            headerBuilder.Append(header.Substring(lastPos));
+                        headerBuilder.Append(header.Substring(lastPos, pos - lastPos) + "\r\n\t");
+                        pos++;
                     }
                     lastPos = pos;
                 }

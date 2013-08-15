@@ -68,8 +68,9 @@ namespace OpaqueMail.Net.ProxySettings
                     account.RemoteSmtpEnableSsl = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerEnableSSL") ?? true;
                     account.RemoteSmtpUsername = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerUsername");
                     account.RemoteSmtpPassword = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPassword");
-                    account.RemoteSmtpFrom = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerFrom");
-                    account.RemoteSmtpTo = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerTo");
+                    account.RemoteSmtpFrom = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/From");
+                    account.RemoteSmtpTo = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/To");
+                    account.Signature = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Signature");
                     account.SmtpAcceptedIPs = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/AcceptedIPs");
                     account.SmtpCertificateLocation = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
                     account.SmtpCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SerialNumber");
@@ -686,10 +687,13 @@ namespace OpaqueMail.Net.ProxySettings
                         streamWriter.WriteElementString("RemoteServerUsername", account.RemoteSmtpUsername);
                         streamWriter.WriteComment("(Optional) Password used when authenticating to the remote SMTP server.  When supplied, it will override any values sent from the client.");
                         streamWriter.WriteElementString("RemoteServerPassword", account.RemoteSmtpPassword);
+
                         streamWriter.WriteComment("(Optional) \"From\" address for all sent messages.  When supplied, it will override any values sent from the client.");
-                        streamWriter.WriteElementString("RemoteServerFrom", account.RemoteSmtpFrom);
+                        streamWriter.WriteElementString("From", account.RemoteSmtpFrom);
                         streamWriter.WriteComment("(Optional) \"To\" address for all sent messages.  When supplied, it will override any values sent from the client.");
-                        streamWriter.WriteElementString("RemoteServerTo", account.RemoteSmtpTo);
+                        streamWriter.WriteElementString("To", account.RemoteSmtpTo);
+                        streamWriter.WriteComment("(Optional) Signature to add to the end of each sent message.");
+                        streamWriter.WriteElementString("Signature", account.Signature);
 
                         streamWriter.WriteStartElement("Certificate");
                         streamWriter.WriteComment("Where certificates should be stored and retrieved from by default.  \"LocalMachine\" or \"CurrentUser\" only.");
@@ -747,7 +751,7 @@ namespace OpaqueMail.Net.ProxySettings
 
                         if (account.LiveMailKeys.Count > 0)
                         {
-                            streamWriter.WriteComment("Windows LiveMail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteComment("Windows Live Mail keys for accounts configured through the OpaqueMail Proxy settings app.");
                             streamWriter.WriteElementString("LiveMailKeyCount", account.LiveMailKeys.Count.ToString());
 
                             int liveMailKeyId = 0;
@@ -821,7 +825,7 @@ namespace OpaqueMail.Net.ProxySettings
 
                         if (account.LiveMailKeys.Count > 0)
                         {
-                            streamWriter.WriteComment("Windows LiveMail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteComment("Windows Live Mail keys for accounts configured through the OpaqueMail Proxy settings app.");
                             streamWriter.WriteElementString("LiveMailKeyCount", account.LiveMailKeys.Count.ToString());
 
                             int liveMailKeyId = 0;
@@ -895,7 +899,7 @@ namespace OpaqueMail.Net.ProxySettings
 
                         if (account.LiveMailKeys.Count > 0)
                         {
-                            streamWriter.WriteComment("Windows LiveMail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteComment("Windows Live Mail keys for accounts configured through the OpaqueMail Proxy settings app.");
                             streamWriter.WriteElementString("LiveMailKeyCount", account.LiveMailKeys.Count.ToString());
 
                             int liveMailKeyId = 0;
@@ -1169,32 +1173,32 @@ namespace OpaqueMail.Net.ProxySettings
                                                         if (accountSettings.Contains("<POP3_Server "))
                                                         {
                                                             accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Server type=\"SZ\">", "</POP3_Server>", fqdn);
-                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Port type=\"DWORD\">", "</POP3_Port>", account.LocalPop3Port.ToString("X8"));
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Port type=\"DWORD\">", "</POP3_Port>", account.LocalPop3Port.ToString("X8").ToLower());
                                                         }
                                                         else
                                                         {
                                                             accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Server type=\"SZ\">", "</IMAP_Server>", fqdn);
-                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Port type=\"DWORD\">", "</IMAP_Port>", account.LocalImapPort.ToString("X8"));
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Port type=\"DWORD\">", "</IMAP_Port>", account.LocalImapPort.ToString("X8").ToLower());
                                                         }
 
                                                         accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Server type=\"SZ\">", "</SMTP_Server>", fqdn);
-                                                        accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Port type=\"DWORD\">", "</SMTP_Port>", account.LocalSmtpPort.ToString("X8"));
+                                                        accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Port type=\"DWORD\">", "</SMTP_Port>", account.LocalSmtpPort.ToString("X8").ToLower());
                                                     }
                                                     else
                                                     {
                                                         if (accountSettings.Contains("<POP3_Server "))
                                                         {
                                                             accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Server type=\"SZ\">", "</POP3_Server>", account.RemotePop3Server);
-                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Port type=\"DWORD\">", "</POP3_Port>", account.RemotePop3Port.ToString("X8"));
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Port type=\"DWORD\">", "</POP3_Port>", account.RemotePop3Port.ToString("X8").ToLower());
                                                         }
                                                         else
                                                         {
                                                             accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Server type=\"SZ\">", "</IMAP_Server>", account.RemoteImapServer);
-                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Port type=\"DWORD\">", "</IMAP_Port>", account.RemoteImapPort.ToString("X8"));
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Port type=\"DWORD\">", "</IMAP_Port>", account.RemoteImapPort.ToString("X8").ToLower());
                                                         }
 
                                                         accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Server type=\"SZ\">", "</SMTP_Server>", account.RemoteSmtpServer);
-                                                        accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Port type=\"DWORD\">", "</SMTP_Port>", account.RemoteSmtpPort.ToString("X8"));
+                                                        accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Port type=\"DWORD\">", "</SMTP_Port>", account.RemoteSmtpPort.ToString("X8").ToLower());
                                                     }
                                                 }
                                             }
