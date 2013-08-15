@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
@@ -1748,12 +1749,47 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Negotiate DEFLATE stream compression for the current session.
+        /// </summary>
+        public void StartDeflateCompression()
+        {
+            if (ServerCompressionSupport.Contains("DEFLATE"))
+            {
+                // Generate a unique command tag for tracking this command and its response.
+                string commandTag = UniqueCommandTag();
+
+                SendCommand(commandTag, "COMPRESS DEFLATE\r\n");
+                string response = ReadData(commandTag, "COMPRESS");
+
+                if (!(ImapStream is DeflateStream))
+                    ImapStream = new DeflateStream(ImapStream, CompressionLevel.Fastest);
+            }
+        }
+
+        /// <summary>
         /// Negotiate TLS security for the current session.
         /// </summary>
         public void StartTLS()
         {
+            StartTLS(false);
+        }
+
+        /// <summary>
+        /// Negotiate TLS security for the current session.
+        /// </summary>
+        public void StartTLS(bool sendCommand)
+        {
+            if (sendCommand)
+            {
+                // Generate a unique command tag for tracking this command and its response.
+                string commandTag = UniqueCommandTag();
+
+                SendCommand(commandTag, "STARTTLS\r\n");
+                string response = ReadData(commandTag, "STARTTLS");
+            }
+
             if (!(ImapStream is SslStream))
-                ImapStream = new SslStream(ImapTcpClient.GetStream());
+                ImapStream = new SslStream(ImapStream);
 
             if (!((SslStream)ImapStream).IsAuthenticated)
                 ((SslStream)ImapStream).AuthenticateAsClient(Host);

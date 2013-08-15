@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
@@ -500,11 +501,13 @@ namespace OpaqueMail.Net.Proxy
 
                                             messageRelayed = true;
                                         }
-
-                                        if (commandParts[1] == "UID" && commandParts.Length > 2)
-                                            LastCommandReceived = commandParts[1] + " " + commandParts[2];
                                         else
-                                            LastCommandReceived = commandParts[1];
+                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
+
+                                        if (commandParts[1].ToUpper() == "UID" && commandParts.Length > 2)
+                                            LastCommandReceived = (commandParts[1] + " " + commandParts[2]).ToUpper();
+                                        else
+                                            LastCommandReceived = commandParts[1].ToUpper();
 
                                         if (LastCommandReceived == "LOGOUT")
                                             stillReceiving = false;
@@ -558,10 +561,6 @@ namespace OpaqueMail.Net.Proxy
                                 }
                                 else
                                 {
-                                    await remoteServerStreamWriter.WriteLineAsync(stringRead);
-
-                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "S: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
-
                                     // If we're currently receiving a message, check to see if it's completed.
                                     if (inMessage)
                                     {
@@ -586,14 +585,18 @@ namespace OpaqueMail.Net.Proxy
                                             messageBuilder.Clear();
                                         }
                                     }
-
-                                    if (!inMessage)
+                                    else
                                     {
+                                        // Disallow proxy stream compression.
+                                        if (stringRead.StartsWith("* CAPABILITY"))
+                                            stringRead = stringRead.Replace(" COMPRESS=DEFLATE", "");
+
                                         string betweenBraces = Functions.ReturnBetween(stringRead, "[", "]");
                                         switch (betweenBraces)
                                         {
                                             case "CLIENTBUG":
                                             case "CORRUPTION":
+                                            case "OVERQUOTA":
                                             case "SERVERBUG":
                                             case "UNAVAILABLE":
                                                 ProxyFunctions.Log(LogWriter, SessionId, ConnectionId.ToString(), stringRead.Substring(stringRead.IndexOf("[")), Proxy.LogLevel.Warning, LogLevel);
@@ -607,62 +610,25 @@ namespace OpaqueMail.Net.Proxy
                                                 break;
                                         }
 
-                                        int pos = 0;
-                                        while (pos > -1)
+                                        // Messages are denoted by FETCH headers with their lengths in curly braces.
+                                        if (stringRead.ToUpper().Contains(" FETCH "))
                                         {
-                                            // Messages are denoted by FETCH headers with their lengths in curly braces.
-                                            pos = stringRead.IndexOf(" FETCH ", pos);
-                                            if (pos > -1)
+                                            int openBrace = stringRead.IndexOf("{");
+                                            if (openBrace > -1)
                                             {
-                                                int openBrace = stringRead.IndexOf("{", pos);
-                                                int lineBreak = stringRead.IndexOf("\r", pos);
-                                                if (lineBreak < -1)
-                                                    lineBreak = stringRead.Length + 1;
-
-                                                if (openBrace > -1 && openBrace < lineBreak)
+                                                int closeBrace = stringRead.IndexOf("}", openBrace);
+                                                if (closeBrace > -1)
                                                 {
-                                                    int closeBrace = stringRead.IndexOf("}", openBrace);
-                                                    if (closeBrace > -1)
-                                                    {
-                                                        // Only proceed if we can parse the size of the message.
-                                                        if (int.TryParse(stringRead.Substring(openBrace + 1, closeBrace - openBrace - 1), out messageLength))
-                                                        {
-                                                            int messageBytesRead = stringRead.Length - closeBrace - 3;
-
-                                                            if (messageBytesRead > messageLength)
-                                                            {
-                                                                string message = stringRead.Substring(closeBrace + 3, messageLength);
-                                                                if (message.IndexOf("application/x-pkcs7-signature") > -1 || message.IndexOf("application/pkcs7-mime") > -1)
-                                                                {
-                                                                    Thread processThread = new Thread(new ParameterizedThreadStart(ProcessMessage));
-                                                                    processThread.Name = "OpaqueMail IMAP Proxy Signature Processor";
-                                                                    ProcessMessageArguments processMessageArguments = new ProcessMessageArguments();
-                                                                    processMessageArguments.MessageText = message;
-                                                                    processMessageArguments.ConnectionId = ConnectionId.ToString();
-                                                                    processThread.Start(processMessageArguments);
-                                                                }
-                                                                pos = closeBrace + 3 + messageLength;
-                                                            }
-                                                            else
-                                                            {
-                                                                inMessage = true;
-                                                                messageBuilder.Clear();
-                                                                if (stringRead.Length > closeBrace + 3)
-                                                                    messageBuilder.Append(stringRead.Substring(closeBrace + 3));
-                                                                pos = -1;
-                                                            }
-                                                        }
-                                                        else
-                                                            pos = -1;
-                                                    }
-                                                    else
-                                                        pos = -1;
+                                                    // Only proceed if we can parse the size of the message.
+                                                    int.TryParse(stringRead.Substring(openBrace + 1, closeBrace - openBrace - 1), out messageLength);
                                                 }
-                                                else
-                                                    pos = -1;
                                             }
                                         }
                                     }
+
+                                    await remoteServerStreamWriter.WriteLineAsync(stringRead);
+
+                                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "S: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
                                 }
                             }
                             else
