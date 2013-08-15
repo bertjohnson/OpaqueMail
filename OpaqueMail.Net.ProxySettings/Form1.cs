@@ -132,6 +132,45 @@ namespace OpaqueMail.Net.ProxySettings
         }
 
         /// <summary>
+        /// Determine the serial number of a certificate matching the account name.
+        /// </summary>
+        /// <param name="certs">Collection of certificates to search within.</param>
+        /// <param name="accountName">Account name to match.</param>
+        /// <returns></returns>
+        private string GetMatchingCert(X509Certificate2Collection certs, string accountName)
+        {
+            string matchingCert = "self-signed";
+
+            // Check if there's a matching certificate.
+            foreach (X509Certificate2 cert in certs)
+            {
+                string canonicalCertSubject = "";
+                if (cert.Subject.StartsWith("E="))
+                {
+                    canonicalCertSubject = cert.Subject.Substring(2).ToUpper();
+                    int certSubjectComma = canonicalCertSubject.IndexOf(",");
+                    if (certSubjectComma > -1)
+                        canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
+
+                    if (accountName.ToUpper() == canonicalCertSubject)
+                        matchingCert = cert.SerialNumber;
+                }
+                else if (cert.Subject.StartsWith("CN="))
+                {
+                    canonicalCertSubject = cert.Subject.Substring(3).ToUpper();
+                    int certSubjectComma = canonicalCertSubject.IndexOf(",");
+                    if (certSubjectComma > -1)
+                        canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
+
+                    if (accountName.ToUpper() == canonicalCertSubject)
+                        matchingCert = cert.SerialNumber;
+                }
+            }
+
+            return matchingCert;
+        }
+
+        /// <summary>
         /// Determine the next available port.
         /// </summary>
         /// <param name="nextPortToTry">The first port to check.</param>
@@ -284,10 +323,11 @@ namespace OpaqueMail.Net.ProxySettings
             CertificateColumn.DisplayMember = "Name";
             CertificateColumn.ValueMember = "Value";
 
-            // Check which Outlook registry keys and Thunderbird configs have proxies associated.
+            // Check which Outlook registry keys, Thunderbird configs, and Windows Live Mail configs have proxies associated.
             XPathDocument document;
             HashSet<string> outlookRegistryKeys = new HashSet<string>();
             HashSet<string> thunderbirdKeys = new HashSet<string>();
+            HashSet<string> liveMailKeys = new HashSet<string>();
             try
             {
                 document = new XPathDocument(SettingsFileName);
@@ -311,11 +351,19 @@ namespace OpaqueMail.Net.ProxySettings
                         if (!string.IsNullOrEmpty(thunderbirdKey))
                             thunderbirdKeys.Add(thunderbirdKey);
                     }
+
+                    int? liveMailKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/LiveMailKeyCount") ?? 0;
+                    for (int j = 1; j <= liveMailKeyCount; j++)
+                    {
+                        string liveMailKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LiveMailKey" + j);
+                        if (!string.IsNullOrEmpty(liveMailKey))
+                            liveMailKeys.Add(liveMailKey);
+                    }
                 }
             }
             catch { }
 
-            // Correlate Outlook registry keys with accounts.
+            // First, correlate Outlook registry keys with accounts.
             AccountGrid.Rows.Clear();
             bool activeProxy = false;
             foreach (string outlookVersion in OutlookVersions.Keys)
@@ -337,33 +385,7 @@ namespace OpaqueMail.Net.ProxySettings
                                     {
                                         string accountName = GetOutlookRegistryValue(subKey, "Account Name");
 
-                                        string matchingCert = "self-signed";
-
-                                        // Check if there's a matching certificate.
-                                        foreach (X509Certificate2 cert in certs)
-                                        {
-                                            string canonicalCertSubject = "";
-                                            if (cert.Subject.StartsWith("E="))
-                                            {
-                                                canonicalCertSubject = cert.Subject.Substring(2).ToUpper();
-                                                int certSubjectComma = canonicalCertSubject.IndexOf(",");
-                                                if (certSubjectComma > -1)
-                                                    canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
-
-                                                if (accountName.ToUpper() == canonicalCertSubject)
-                                                    matchingCert = cert.SerialNumber;
-                                            }
-                                            else if (cert.Subject.StartsWith("CN="))
-                                            {
-                                                canonicalCertSubject = cert.Subject.Substring(3).ToUpper();
-                                                int certSubjectComma = canonicalCertSubject.IndexOf(",");
-                                                if (certSubjectComma > -1)
-                                                    canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
-
-                                                if (accountName.ToUpper() == canonicalCertSubject)
-                                                    matchingCert = cert.SerialNumber;
-                                            }
-                                        }
+                                        string matchingCert = GetMatchingCert(certs, accountName);
 
                                         if (!activeProxy && outlookRegistryKeys.Contains(subKey.Name))
                                             activeProxy = true;
@@ -377,7 +399,7 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Correlate Thunderbird config keys with accounts.
+            // Second, correlate Thunderbird config keys with accounts.
             activeProxy = false;
             if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
             {
@@ -398,38 +420,62 @@ namespace OpaqueMail.Net.ProxySettings
                             {
                                 string thunderbirdKey = directory + "~" + i.ToString();
 
-                                string matchingCert = "self-signed";
-
-                                // Check if there's a matching certificate.
-                                foreach (X509Certificate2 cert in certs)
-                                {
-                                    string canonicalCertSubject = "";
-                                    if (cert.Subject.StartsWith("E="))
-                                    {
-                                        canonicalCertSubject = cert.Subject.Substring(2).ToUpper();
-                                        int certSubjectComma = canonicalCertSubject.IndexOf(",");
-                                        if (certSubjectComma > -1)
-                                            canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
-
-                                        if (accountName.ToUpper() == canonicalCertSubject)
-                                            matchingCert = cert.SerialNumber;
-                                    }
-                                    else if (cert.Subject.StartsWith("CN="))
-                                    {
-                                        canonicalCertSubject = cert.Subject.Substring(3).ToUpper();
-                                        int certSubjectComma = canonicalCertSubject.IndexOf(",");
-                                        if (certSubjectComma > -1)
-                                            canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
-
-                                        if (accountName.ToUpper() == canonicalCertSubject)
-                                            matchingCert = cert.SerialNumber;
-                                    }
-                                }
+                                string matchingCert = GetMatchingCert(certs, accountName);
 
                                 if (!activeProxy && thunderbirdKeys.Contains(thunderbirdKey))
                                     activeProxy = true;
 
                                 AccountGrid.Rows.Add("Thunderbird", accountName, thunderbirdKeys.Contains(thunderbirdKey), matchingCert, thunderbirdKey);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Third, correlate Windows Live Mail config keys with accounts.
+            activeProxy = false;
+            if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
+            {
+                foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
+                {
+                    foreach (string file in Directory.GetFiles(directory))
+                    {
+                        if (file.EndsWith(".oeaccount"))
+                        {
+                            string settingsFile = File.ReadAllText(file);
+
+                            int pos = 0;
+                            while (pos > -1)
+                            {
+                                pos = settingsFile.IndexOf("<MessageAccount>", pos);
+                                if (pos > -1)
+                                {
+                                    int pos2 = settingsFile.IndexOf("</MessageAccount>", pos);
+                                    if (pos2 > -1)
+                                    {
+                                        string accountSettings = settingsFile.Substring(pos + 16, pos2 - pos - 16);
+
+                                        string accountName = Functions.ReturnBetween(accountSettings, "<Account_Name type=\"SZ\">", "</Account_Name>");
+                                        string smtpServer = Functions.ReturnBetween(accountSettings, "<SMTP_Server type=\"SZ\">", "</SMTP_Server>");
+                                        string address = Functions.ReturnBetween(accountSettings, "<SMTP_Email_Address type=\"SZ\">", "</SMTP_Email_Address>");
+
+                                        if (!string.IsNullOrEmpty(smtpServer) && !string.IsNullOrEmpty(address))
+                                        {
+                                            string liveMailKey = file + "~" + accountName;
+
+                                            string matchingCert = GetMatchingCert(certs, address);
+
+                                            if (!activeProxy && liveMailKeys.Contains(liveMailKey))
+                                                activeProxy = true;
+
+                                            AccountGrid.Rows.Add("Live Mail", address, liveMailKeys.Contains(liveMailKey), matchingCert, liveMailKey);
+                                        }
+
+                                        pos = pos2 + 17;
+                                    }
+                                    else
+                                        pos = -1;
+                                }
                             }
                         }
                     }
@@ -647,6 +693,7 @@ namespace OpaqueMail.Net.ProxySettings
 
             public List<string> OutlookRegistryKeys = new List<string>();
             public List<string> ThunderbirdKeys = new List<string>();
+            public List<string> LiveMailKeys = new List<string>();
             public List<string> Usernames = new List<string>();
 
             public string ImapAcceptedIPs;

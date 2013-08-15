@@ -22,7 +22,7 @@ SMTP proxy to add or remove S/MIME message signing, encryption, and authenticati
 
 Can also serve as a passthrough IMAP and POP3 proxy to import S/MIME certificates from incoming messages.
 
-Simplifies e-mail protection for Outlook, Thunderbird, and other Windows mail clients.
+Simplifies e-mail protection for Outlook, Thunderbird, Windows Live Mail, and other mail clients.
 
 Can be used to secure and authenticate mail programs that connect to SMTP servers anonymously (e.g. SharePoint).
 

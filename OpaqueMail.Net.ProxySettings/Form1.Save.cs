@@ -3,6 +3,7 @@ using OpaqueMail.Net.Proxy;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -124,6 +125,14 @@ namespace OpaqueMail.Net.ProxySettings
                             account.ThunderbirdKeys.Add(thunderbirdKey);
                     }
 
+                    int? liveMailKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/LiveMailKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string liveMailKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LiveMailKey" + j);
+                        if (!string.IsNullOrEmpty(liveMailKey) && !account.LiveMailKeys.Contains(liveMailKey))
+                            account.LiveMailKeys.Add(liveMailKey);
+                    }
+
                     accounts.Add(account);
                 }
 
@@ -163,6 +172,25 @@ namespace OpaqueMail.Net.ProxySettings
                         foreach (ProxyAccount existingAccount in accounts)
                         {
                             if (existingAccount.ThunderbirdKeys.Contains(thunderbirdKey) && !accountMatched)
+                            {
+                                account = existingAccount;
+                                j = 0;
+                                accountMatched = true;
+                            }
+                        }
+                    }
+
+                    // Check if a matching Windows Live Mail account already exists.
+                    int? liveMailKeyCount = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/LiveMailKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string liveMailKey = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LiveMailKey" + j);
+                        if (!string.IsNullOrEmpty(liveMailKey) && !account.LiveMailKeys.Contains(liveMailKey))
+                            account.LiveMailKeys.Add(liveMailKey);
+
+                        foreach (ProxyAccount existingAccount in accounts)
+                        {
+                            if (existingAccount.LiveMailKeys.Contains(liveMailKey) && !accountMatched)
                             {
                                 account = existingAccount;
                                 j = 0;
@@ -249,6 +277,25 @@ namespace OpaqueMail.Net.ProxySettings
                         foreach (ProxyAccount existingAccount in accounts)
                         {
                             if (existingAccount.ThunderbirdKeys.Contains(thunderbirdKey) && !accountMatched)
+                            {
+                                account = existingAccount;
+                                j = 0;
+                                accountMatched = true;
+                            }
+                        }
+                    }
+
+                    // Check if a matching Windows Live Mail account already exists.
+                    int? liveMailKeyCount = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/LiveMailKeyCount") ?? 0;
+                    for (int j = 1; j <= registryKeyCount; j++)
+                    {
+                        string liveMailKey = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LiveMailKey" + j);
+                        if (!string.IsNullOrEmpty(liveMailKey) && !account.LiveMailKeys.Contains(liveMailKey))
+                            account.LiveMailKeys.Add(liveMailKey);
+
+                        foreach (ProxyAccount existingAccount in accounts)
+                        {
+                            if (existingAccount.LiveMailKeys.Contains(liveMailKey) && !accountMatched)
                             {
                                 account = existingAccount;
                                 j = 0;
@@ -426,7 +473,90 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Fourth, check which accounts the user chooses to encrypt.
+            // Fourth, gather existing Windows Live Mail account settings.
+            if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
+            {
+                foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
+                {
+                    foreach (string file in Directory.GetFiles(directory))
+                    {
+                        if (file.EndsWith(".oeaccount"))
+                        {
+                            string settingsFile = File.ReadAllText(file);
+
+                            int pos = 0;
+                            while (pos > -1)
+                            {
+                                pos = settingsFile.IndexOf("<MessageAccount>", pos);
+                                if (pos > -1)
+                                {
+                                    int pos2 = settingsFile.IndexOf("</MessageAccount>", pos);
+                                    if (pos2 > -1)
+                                    {
+                                        string accountSettings = settingsFile.Substring(pos + 16, pos2 - pos - 16);
+
+                                        string accountName = Functions.ReturnBetween(accountSettings, "<Account_Name type=\"SZ\">", "</Account_Name>");
+                                        string smtpServer = Functions.ReturnBetween(accountSettings, "<SMTP_Server type=\"SZ\">", "</SMTP_Server>");
+                                        string address = Functions.ReturnBetween(accountSettings, "<SMTP_Email_Address type=\"SZ\">", "</SMTP_Email_Address>");
+
+                                        if (!string.IsNullOrEmpty(smtpServer) && !string.IsNullOrEmpty(address))
+                                        {
+                                            string liveMailKey = file + "~" + accountName;
+
+                                            bool matched = false;
+                                            foreach (ProxyAccount existingAccount in accounts)
+                                            {
+                                                if (existingAccount.LiveMailKeys.Contains(liveMailKey))
+                                                    matched = true;
+                                            }
+
+                                            if (!matched)
+                                            {
+                                                ProxyAccount account = new ProxyAccount();
+                                                account.ClientType = "Live Mail";
+
+                                                int sslValue = 0;
+                                                int.TryParse(Functions.ReturnBetween(accountSettings, "<SMTP_Secure_Connection type=\"DWORD\">", "</SMTP_Secure_Connection>"), out sslValue);
+                                                account.RemoteSmtpEnableSsl = sslValue > 0;
+                                                int.TryParse(Functions.ReturnBetween(accountSettings, "<SMTP_Port type=\"DWORD\">", "</SMTP_Port>"), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out account.RemoteSmtpPort);
+                                                account.RemoteSmtpServer = Functions.ReturnBetween(accountSettings, "<SMTP_Server type=\"SZ\">", "</SMTP_Server>");
+
+                                                if (accountSettings.Contains("<POP3_Server "))
+                                                {
+                                                    int.TryParse(Functions.ReturnBetween(accountSettings, "<POP3_Port type=\"DWORD\">", "</POP3_Port>"), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out account.RemotePop3Port);
+                                                    account.RemotePop3EnableSsl = (account.RemotePop3Port == 995);
+                                                    account.RemotePop3Server = Functions.ReturnBetween(accountSettings, "<POP3_Server type=\"SZ\">", "</POP3_Server>");
+                                                }
+                                                else
+                                                {
+                                                    int.TryParse(Functions.ReturnBetween(accountSettings, "<IMAP_Port type=\"DWORD\">", "</IMAP_Port>"), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out account.RemoteImapPort);
+                                                    account.RemoteImapEnableSsl = (account.RemoteImapPort == 993);
+                                                    account.RemoteImapServer = Functions.ReturnBetween(accountSettings, "<IMAP_Server type=\"SZ\">", "</IMAP_Server>");
+                                                }
+
+                                                // Only proceed if a server is found.
+                                                if (!string.IsNullOrEmpty(account.RemoteImapServer) || !string.IsNullOrEmpty(account.RemotePop3Server) || !string.IsNullOrEmpty(account.RemoteSmtpServer))
+                                                {
+                                                    account.Usernames.Add(address);
+                                                    account.LiveMailKeys.Add(liveMailKey);
+
+                                                    accounts.Add(account);
+                                                }
+                                            }
+                                        }
+
+                                        pos = pos2 + 17;
+                                    }
+                                    else
+                                        pos = -1;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Fifth, check which accounts the user chooses to encrypt.
             smtpServiceCount = 0;
             imapServiceCount = 0;
             pop3ServiceCount = 0;
@@ -440,7 +570,7 @@ namespace OpaqueMail.Net.ProxySettings
                 {
                     foreach (ProxyAccount account in accounts)
                     {
-                        if ((account.OutlookRegistryKeys.Contains((string)row.Cells[4].Value) || account.ThunderbirdKeys.Contains((string)row.Cells[4].Value)) && !account.Matched)
+                        if ((account.OutlookRegistryKeys.Contains((string)row.Cells[4].Value) || account.ThunderbirdKeys.Contains((string)row.Cells[4].Value) || account.LiveMailKeys.Contains((string)row.Cells[4].Value)) && !account.Matched)
                         {
                             account.Matched = true;
 
@@ -490,7 +620,7 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Fifth, write out the XML setting values.
+            // Sixth, write out the XML setting values.
             XmlWriterSettings streamWriterSettings = new XmlWriterSettings();
             streamWriterSettings.Indent = true;
             streamWriterSettings.IndentChars = "  ";
@@ -615,6 +745,16 @@ namespace OpaqueMail.Net.ProxySettings
                                 streamWriter.WriteElementString("ThunderbirdKey" + (++thunderbirdKeyId).ToString(), thunderbirdKey);
                         }
 
+                        if (account.LiveMailKeys.Count > 0)
+                        {
+                            streamWriter.WriteComment("Windows LiveMail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteElementString("LiveMailKeyCount", account.LiveMailKeys.Count.ToString());
+
+                            int liveMailKeyId = 0;
+                            foreach (string liveMailKey in account.LiveMailKeys)
+                                streamWriter.WriteElementString("LiveMailKey" + (++liveMailKeyId).ToString(), liveMailKey);
+                        }
+
                         streamWriter.WriteEndElement();
                     }
                 }
@@ -677,6 +817,16 @@ namespace OpaqueMail.Net.ProxySettings
                             int thunderbirdKeyId = 0;
                             foreach (string thunderbirdKey in account.ThunderbirdKeys)
                                 streamWriter.WriteElementString("ThunderbirdKey" + (++thunderbirdKeyId).ToString(), thunderbirdKey);
+                        }
+
+                        if (account.LiveMailKeys.Count > 0)
+                        {
+                            streamWriter.WriteComment("Windows LiveMail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteElementString("LiveMailKeyCount", account.LiveMailKeys.Count.ToString());
+
+                            int liveMailKeyId = 0;
+                            foreach (string liveMailKey in account.LiveMailKeys)
+                                streamWriter.WriteElementString("LiveMailKey" + (++liveMailKeyId).ToString(), liveMailKey);
                         }
 
                         streamWriter.WriteEndElement();
@@ -743,6 +893,16 @@ namespace OpaqueMail.Net.ProxySettings
                                 streamWriter.WriteElementString("ThunderbirdKey" + (++thunderbirdKeyId).ToString(), thunderbirdKey);
                         }
 
+                        if (account.LiveMailKeys.Count > 0)
+                        {
+                            streamWriter.WriteComment("Windows LiveMail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                            streamWriter.WriteElementString("LiveMailKeyCount", account.LiveMailKeys.Count.ToString());
+
+                            int liveMailKeyId = 0;
+                            foreach (string liveMailKey in account.LiveMailKeys)
+                                streamWriter.WriteElementString("LiveMailKey" + (++liveMailKeyId).ToString(), liveMailKey);
+                        }
+
                         streamWriter.WriteEndElement();
                     }
                 }
@@ -752,7 +912,7 @@ namespace OpaqueMail.Net.ProxySettings
                 streamWriter.WriteEndElement();
             }
 
-            // Sixth, address loopback firewall settings.
+            // Seventh, address loopback firewall settings.
             if (UpdateFirewall.Checked)
             {
                 // Enable the back connection hostname to avoid loopback checks.
@@ -802,11 +962,11 @@ namespace OpaqueMail.Net.ProxySettings
                 catch { }
             }
 
-            // Seventh, restart the OpaqueMail service.
+            // Eighth, restart the OpaqueMail service.
             InstallService();
             StartService();
 
-            // Eighth, rewrite the Outlook registry values.
+            // Ninth, rewrite the Outlook registry values.
             foreach (string outlookVersion in OutlookVersions.Keys)
             {
                 using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Office\" + outlookVersion + @"\Outlook\Profiles\Outlook\9375CFF0413111d3B88A00104B2A6676", false))
@@ -898,7 +1058,7 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Ninth, rewrite the Thunderbird registry values.
+            // Tenth, rewrite the Thunderbird registry values.
             if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
             {
                 foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
@@ -964,7 +1124,98 @@ namespace OpaqueMail.Net.ProxySettings
                 }
             }
 
-            // Tenth, save Outlook signatures.
+            // Eleventh, rewrite the Windows Live Mail registry values.
+            if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
+            {
+                foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
+                {
+                    foreach (string file in Directory.GetFiles(directory))
+                    {
+                        if (file.EndsWith(".oeaccount"))
+                        {
+                            string settingsFile = File.ReadAllText(file);
+                            StringBuilder settingsFileBuilder = new StringBuilder();
+
+                            int pos = 0, lastPos = 0;
+                            while (pos > -1)
+                            {
+                                lastPos = pos;
+
+                                pos = settingsFile.IndexOf("<MessageAccount>", pos);
+                                if (pos > -1)
+                                {
+                                    settingsFileBuilder.Append(settingsFile.Substring(lastPos, pos - lastPos));
+
+                                    int pos2 = settingsFile.IndexOf("</MessageAccount>", pos);
+                                    if (pos2 > -1)
+                                    {
+                                        string accountSettings = settingsFile.Substring(pos + 16, pos2 - pos - 16);
+
+                                        string accountName = Functions.ReturnBetween(accountSettings, "<Account_Name type=\"SZ\">", "</Account_Name>");
+                                        string smtpServer = Functions.ReturnBetween(accountSettings, "<SMTP_Server type=\"SZ\">", "</SMTP_Server>");
+                                        string address = Functions.ReturnBetween(accountSettings, "<SMTP_Email_Address type=\"SZ\">", "</SMTP_Email_Address>");
+
+                                        if (!string.IsNullOrEmpty(smtpServer) && !string.IsNullOrEmpty(address))
+                                        {
+                                            string liveMailKey = file + "~" + accountName;
+
+                                            foreach (ProxyAccount account in accounts)
+                                            {
+                                                // If matched, set to use the local proxy.  If not matched and we previously used the local proxy, switch back to the original value.
+                                                if (account.LiveMailKeys.Contains(liveMailKey))
+                                                {
+                                                    if (account.Matched)
+                                                    {
+                                                        if (accountSettings.Contains("<POP3_Server "))
+                                                        {
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Server type=\"SZ\">", "</POP3_Server>", fqdn);
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Port type=\"DWORD\">", "</POP3_Port>", account.LocalPop3Port.ToString("X8"));
+                                                        }
+                                                        else
+                                                        {
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Server type=\"SZ\">", "</IMAP_Server>", fqdn);
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Port type=\"DWORD\">", "</IMAP_Port>", account.LocalImapPort.ToString("X8"));
+                                                        }
+
+                                                        accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Server type=\"SZ\">", "</SMTP_Server>", fqdn);
+                                                        accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Port type=\"DWORD\">", "</SMTP_Port>", account.LocalSmtpPort.ToString("X8"));
+                                                    }
+                                                    else
+                                                    {
+                                                        if (accountSettings.Contains("<POP3_Server "))
+                                                        {
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Server type=\"SZ\">", "</POP3_Server>", account.RemotePop3Server);
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<POP3_Port type=\"DWORD\">", "</POP3_Port>", account.RemotePop3Port.ToString("X8"));
+                                                        }
+                                                        else
+                                                        {
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Server type=\"SZ\">", "</IMAP_Server>", account.RemoteImapServer);
+                                                            accountSettings = Functions.ReplaceBetween(accountSettings, "<IMAP_Port type=\"DWORD\">", "</IMAP_Port>", account.RemoteImapPort.ToString("X8"));
+                                                        }
+
+                                                        accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Server type=\"SZ\">", "</SMTP_Server>", account.RemoteSmtpServer);
+                                                        accountSettings = Functions.ReplaceBetween(accountSettings, "<SMTP_Port type=\"DWORD\">", "</SMTP_Port>", account.RemoteSmtpPort.ToString("X8"));
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        pos = pos2 + 17;
+
+                                        settingsFileBuilder.Append("<MessageAccount>" + accountSettings + "</MessageAccount>");
+                                    }
+                                    else
+                                        pos = -1;
+                                }
+                            }
+
+                            File.WriteAllText(file, settingsFileBuilder.ToString());
+                        }
+                    }
+                }
+            }
+
+            // Twelfth, save Outlook signatures.
             if (UpdateOutlookSignature.Checked)
             {
                 List<string> finalOutlookKeyLocations = new List<string>();
@@ -1019,6 +1270,21 @@ namespace OpaqueMail.Net.ProxySettings
                     // Try to start Thunderbird.
                     if (File.Exists("C:\\Program Files (x86)\\Mozilla Thunderbird\\Thunderbird.exe"))
                         Process.Start("C:\\Program Files (x86)\\Mozilla Thunderbird\\Thunderbird.exe");
+                }
+            }
+            processes = Process.GetProcessesByName("WLMAIL");
+            if (processes.Length > 0)
+            {
+                DialogResult dr = MessageBox.Show("Windows Live Mail is currently running and will need to be restarted before these changes will take effect.  Would you like to restart Windows Live Mail now?", "Restart Windows Live Mail?", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+                if (dr == System.Windows.Forms.DialogResult.OK)
+                {
+                    // Stop Windows Live Mail.
+                    foreach (Process process in processes)
+                        process.Kill();
+
+                    // Try to start Windows Live Mail.
+                    if (File.Exists("C:\\Program Files (x86)\\Windows Live\\Mail\\wlmail.exe"))
+                        Process.Start("C:\\Program Files (x86)\\Windows Live\\Mail\\wlmail.exe");
                 }
             }
 
