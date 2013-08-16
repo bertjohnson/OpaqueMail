@@ -440,7 +440,7 @@ namespace OpaqueMail
 
                 return mimeParts;
             }
-            catch
+            catch (Exception)
             {
                 // If unable to decrypt the body, return null.
                 return null;

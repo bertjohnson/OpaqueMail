@@ -554,7 +554,16 @@ namespace OpaqueMail
                         if (mimePart.SmimeSigned)
                         {
                             if (mimePart.SmimeSigningCertificates.Count > 0 && SmimeSigningCertificate == null)
-                                SmimeSigningCertificate = mimePart.SmimeSigningCertificates[0];
+                            {
+                                foreach (X509Certificate2 signingCert in mimePart.SmimeSigningCertificates)
+                                {
+                                    if (!SmimeSigningCertificateChain.Contains(signingCert))
+                                    {
+                                        SmimeSigningCertificateChain.Add(signingCert);
+                                        SmimeSigningCertificate = signingCert;
+                                    }
+                                }
+                            }
                         }
                         else
                             allMimePartsSigned = false;
@@ -769,7 +778,7 @@ namespace OpaqueMail
 
             if (HeadersEncoding != null)
                 castMessage.HeadersEncoding = HeadersEncoding;
-            castMessage.IsBodyHtml = IsBodyHtml;
+            castMessage.IsBodyHtml = IsBodyHtml || castMessage.Body.IndexOf("<HTML", StringComparison.OrdinalIgnoreCase) > -1;
             castMessage.Priority = Priority;
 
             // Process ReplyToList.

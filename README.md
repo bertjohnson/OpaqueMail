@@ -18,13 +18,13 @@ Created by Bert Johnson (http://bertjohnson.net) of Bkip Inc. (http://bkip.com).
 OpaqueMail S/MIME E-mail Proxy
 ==============================
 
-SMTP proxy to add or remove S/MIME message signing, encryption, and authentication for outbound messages.
+SMTP proxy to add or remove S/MIME message signing, encryption, and authentication for outbound messages.  Can operate in passthrough mode or augment messages to add or filter headers.
 
-Can also serve as a passthrough IMAP and POP3 proxy to import S/MIME certificates from incoming messages.
+Also serve as a passthrough IMAP and POP3 proxy to import S/MIME certificates, filter IPs, or export messages.
 
-Simplifies e-mail protection for Outlook, Thunderbird, Windows Live Mail, and other mail clients.
+Simplifies e-mail protection for Outlook, Thunderbird, Windows Live Mail, and other e-mail clients.
 
-Can be used to secure and authenticate mail programs that connect to SMTP servers anonymously (e.g. SharePoint).
+Can be used to secure and authenticate e-mail programs that connect to SMTP servers anonymously (e.g. SharePoint).
 
 Runs as a Windows service.  Inbound and outbound IPs, ports, logging, and TLS / SSL settings are all configurable via XML.
 

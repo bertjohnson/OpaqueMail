@@ -177,7 +177,7 @@ namespace OpaqueMail.Net.Proxy
                             oids.Add("1.3.6.1.5.5.7.3.1");    // Server Authentication.
 
                             // Generate the certificate with a duration of 10 years, 4096-bits, and a key usage of server authentication.
-                            serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, true, 4096, 10, oids);
+                            serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, StoreLocation.LocalMachine, true, 4096, 10, oids);
 
                             ProxyFunctions.Log(LogWriter, SessionId, "New certificate generated with Serial Number {" + Encoding.UTF8.GetString(serverCertificate.GetSerialNumber()) + "}.", Proxy.LogLevel.Information, LogLevel);
                         }
@@ -231,6 +231,7 @@ namespace OpaqueMail.Net.Proxy
 
                         // Increment the connection counter;
                         arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
+                        arguments.InstanceId = instanceId;
 
                         // Fork the thread and continue listening for new connections.
                         Thread processThread = new Thread(new ParameterizedThreadStart(ProcessConnection));
@@ -605,7 +606,7 @@ namespace OpaqueMail.Net.Proxy
                                                 // Look up the S/MIME signing certificate for the current sender.  If it doesn't exist, create one.
                                                 message.SmimeSigningCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, message.From.Address);
                                                 if (message.SmimeSigningCertificate == null)
-                                                    message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate("E=" + message.From.Address, message.From.Address, true, 4096, 10);
+                                                    message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate("E=" + message.From.Address, message.From.Address, StoreLocation.LocalMachine, true, 4096, 10);
 
                                                 ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "C: " + message.RawHeaders + "\r\n\r\n" + message.RawBody, Proxy.LogLevel.Raw, LogLevel);
 

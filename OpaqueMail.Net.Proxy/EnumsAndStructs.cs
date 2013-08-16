@@ -33,6 +33,8 @@ namespace OpaqueMail.Net.Proxy
         public bool RemoteServerEnableSsl;
         /// <summary>(Optional) Credentials to be used for all connections to the remote IMAP server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential RemoteServerCredential;
+        /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
+        public string ExportDirectory;
 
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
@@ -71,9 +73,13 @@ namespace OpaqueMail.Net.Proxy
         public bool RemoteServerEnableSsl;
         /// <summary>(Optional) Credentials to be used for all connections to the remote IMAP server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential RemoteServerCredential;
+        /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
+        public string ExportDirectory;
 
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
+        /// <summary>The instance number of the proxy.</summary>
+        public int InstanceId;
     }
 
     /// <summary>
@@ -114,6 +120,8 @@ namespace OpaqueMail.Net.Proxy
         public bool RemoteServerEnableSsl;
         /// <summary>(Optional) Credentials to be used for all connections to the remote POP3 server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential RemoteServerCredential;
+        /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
+        public string ExportDirectory;
 
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
@@ -152,9 +160,13 @@ namespace OpaqueMail.Net.Proxy
         public bool RemoteServerEnableSsl;
         /// <summary>(Optional) Credentials to be used for all connections to the remote POP3 server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential RemoteServerCredential;
+        /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
+        public string ExportDirectory;
 
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
+        /// <summary>The instance number of the proxy.</summary>
+        public int InstanceId;
     }
     
     /// <summary>
@@ -167,6 +179,14 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
+
+        /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
+        public string ExportDirectory;
+
+        /// <summary>The instance number of the proxy.</summary>
+        public int InstanceId;
+        /// <summary>The user transmitting this message.</summary>
+        public string UserName;
     }
 
     /// <summary>
@@ -273,6 +293,8 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
+        /// <summary>The instance number of the proxy.</summary>
+        public int InstanceId;
     }
 
     /// <summary>
@@ -291,10 +313,16 @@ namespace OpaqueMail.Net.Proxy
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
 
+        /// <summary>The instance number of the proxy.</summary>
+        public int InstanceId;
+
         /// <summary>IP address of client.</summary>
         public string IPAddress;
 
         /// <summary>(Optional) Credentials to be used for all connections to the remote server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential Credential;
+
+        /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
+        public string ExportDirectory;
     }
 }

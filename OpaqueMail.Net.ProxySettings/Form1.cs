@@ -101,8 +101,6 @@ namespace OpaqueMail.Net.ProxySettings
             AccountsLabel.Links.Add(AboutLabel.Text.IndexOf("http://opaquemail.org/"), 22, "http://opaquemail.org/");
             AccountsLabel.LinkClicked += Label_LinkClicked;
 
-            this.SaveSettingsButton.Click += new System.EventHandler(this.SaveSettingsButton_Click);
-
             // Load the e-mail accounts list and certificate choices.
             PopulateAccounts();
 
@@ -153,7 +151,10 @@ namespace OpaqueMail.Net.ProxySettings
                         canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
 
                     if (accountName.ToUpper() == canonicalCertSubject)
-                        matchingCert = cert.SerialNumber;
+                    {
+                        if (cert.Verify())
+                            matchingCert = cert.SerialNumber;
+                    }
                 }
                 else if (cert.Subject.StartsWith("CN="))
                 {
@@ -163,7 +164,10 @@ namespace OpaqueMail.Net.ProxySettings
                         canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
 
                     if (accountName.ToUpper() == canonicalCertSubject)
-                        matchingCert = cert.SerialNumber;
+                    {
+                        if (cert.Verify())
+                            matchingCert = cert.SerialNumber;
+                    }
                 }
             }
 
@@ -725,8 +729,8 @@ namespace OpaqueMail.Net.ProxySettings
             public string RemoteSmtpServer = "";
             public string RemoteSmtpUsername;
             public string RemoteSmtpPassword;
-            public string RemoteSmtpFrom;
-            public string RemoteSmtpTo;
+            public string FixedFrom;
+            public string FixedTo;
             public string Signature;
 
             public string ImapCertificateLocation;
@@ -747,6 +751,9 @@ namespace OpaqueMail.Net.ProxySettings
             public bool SmimeTripleWrap = true;
 
             public bool SmimeRemovePreviousOperations = true;
+
+            public string ImapExportDirectory;
+            public string Pop3ExportDirectory;
 
             public string ImapLogFile = "Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log";
             public LogLevel ImapLogLevel = LogLevel.Verbose;

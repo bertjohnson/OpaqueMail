@@ -34,6 +34,8 @@ namespace OpaqueMail.Net.Proxy
         protected X509Certificate2Collection SmimeCertificatesReceived = new X509Certificate2Collection();
         /// <summary>The last command received from the client.</summary>
         protected string LastCommandReceived = "";
+        /// <summary>The user transmitting this message.</summary>
+        protected string UserName = "";
         #endregion Protected Members
 
         #region Public Methods

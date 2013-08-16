@@ -29,7 +29,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote POP3 server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", LogLevel.None, 0);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", "", LogLevel.None, 0);
         }
 
         /// <summary>
@@ -43,10 +43,11 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerPort">Remote server port to connect to.</param>
         /// <param name="remoteServerEnableSsl">Whether the remote POP3 server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote POP3 server.  When set, this overrides any credentials passed locally.</param>
+        /// <param name="exportDirectory">(Optional) Location where all incoming messages are saved as EML files.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string logFile, LogLevel logLevel, int instanceId)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string exportDirectory, string logFile, LogLevel logLevel, int instanceId)
         {            
             // Create the log writer.
             string logFileName = "";
@@ -116,7 +117,7 @@ namespace OpaqueMail.Net.Proxy
                             oids.Add("1.3.6.1.5.5.7.3.1");    // Server Authentication.
 
                             // Generate the certificate with a duration of 10 years, 4096-bits, and a key usage of server authentication.
-                            serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, true, 4096, 10, oids);
+                            serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, StoreLocation.LocalMachine, true, 4096, 10, oids);
 
                             ProxyFunctions.Log(LogWriter, SessionId, "Certificate generated with Serial Number {" + serverCertificate.GetSerialNumberString() + "}.", Proxy.LogLevel.Information, LogLevel);
                         }
@@ -149,6 +150,7 @@ namespace OpaqueMail.Net.Proxy
                         arguments.AcceptedIPs = acceptedIPs;
                         arguments.TcpClient = client;
                         arguments.Certificate = serverCertificate;
+                        arguments.ExportDirectory = exportDirectory;
                         arguments.LocalIpAddress = localIPAddress;
                         arguments.LocalPort = localPort;
                         arguments.LocalEnableSsl = localEnableSsl;
@@ -159,6 +161,7 @@ namespace OpaqueMail.Net.Proxy
 
                         // Increment the connection counter;
                         arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
+                        arguments.InstanceId = instanceId;
 
                         // Fork the thread and continue listening for new connections.
                         Thread processThread = new Thread(new ParameterizedThreadStart(ProcessConnection));
@@ -280,6 +283,7 @@ namespace OpaqueMail.Net.Proxy
                                 arguments.Certificate = CertHelper.GetCertificateBySubjectName(certificateLocation, certificateValue);
                         }
 
+                        arguments.ExportDirectory = ProxyFunctions.GetXmlStringValue(navigator, "Settings/POP3/Service" + i + "/ExportDirectory");
                         arguments.LogFile = ProxyFunctions.GetXmlStringValue(navigator, "Settings/POP3/Service" + i + "/LogFile");
 
                         string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/POP3/Service" + i + "/LogLevel");
@@ -413,7 +417,9 @@ namespace OpaqueMail.Net.Proxy
                 remoteServerToClientArguments.RemoteServerStream = clientStream;
                 remoteServerToClientArguments.IsClient = false;
                 remoteServerToClientArguments.ConnectionId = ConnectionId.ToString();
+                remoteServerToClientArguments.InstanceId = arguments.InstanceId;
                 remoteServerToClientArguments.IPAddress = ip;
+                remoteServerToClientArguments.ExportDirectory = arguments.ExportDirectory;
                 Thread remoteServerToClientThread = new Thread(new ParameterizedThreadStart(RelayData));
                 remoteServerToClientThread.Name = "OpaqueMail POP3 Proxy Server to Client";
                 remoteServerToClientThread.Start(remoteServerToClientArguments);
@@ -424,6 +430,7 @@ namespace OpaqueMail.Net.Proxy
                 clientToRemoteServerArguments.RemoteServerStream = remoteServerStream;
                 clientToRemoteServerArguments.IsClient = true;
                 clientToRemoteServerArguments.ConnectionId = ConnectionId.ToString();
+                clientToRemoteServerArguments.InstanceId = arguments.InstanceId;
                 clientToRemoteServerArguments.IPAddress = ip;
                 clientToRemoteServerArguments.Credential = arguments.RemoteServerCredential;
                 Thread clientToRemoteServerThread = new Thread(new ParameterizedThreadStart(RelayData));
@@ -460,6 +467,9 @@ namespace OpaqueMail.Net.Proxy
             // The overall number of bytes transmitted on this connection.
             ulong bytesTransmitted = 0;
 
+            if (arguments.Credential != null)
+                UserName = arguments.Credential.UserName;
+
             bool stillReceiving = true;
             try
             {
@@ -479,7 +489,7 @@ namespace OpaqueMail.Net.Proxy
                                 int bytesRead = stringRead.Length;
                                 bytesTransmitted += (ulong)bytesRead;
 
-                                messageBuilder.Append(stringRead);
+                                messageBuilder.AppendLine(stringRead);
 
                                 // If this data comes from the client, log it.  Otherwise, process it.
                                 if (arguments.IsClient)
@@ -489,17 +499,22 @@ namespace OpaqueMail.Net.Proxy
                                     string[] commandParts = stringRead.Substring(0, stringRead.Length).Split(new char[] { ' ' }, 2);
 
                                     // Optionally replace credentials with those from our settings file.
-                                    if (arguments.Credential != null && commandParts.Length == 2)
+                                    if (commandParts.Length == 2)
                                     {
                                         if (commandParts[0] == "USER")
                                         {
-                                            await remoteServerStreamWriter.WriteLineAsync("USER " + arguments.Credential.UserName);
+                                            if (arguments.Credential != null)
+                                            {
+                                                await remoteServerStreamWriter.WriteLineAsync("USER " + arguments.Credential.UserName);
 
-                                            ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: USER " + arguments.Credential.UserName, Proxy.LogLevel.Raw, LogLevel);
+                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: USER " + arguments.Credential.UserName, Proxy.LogLevel.Raw, LogLevel);
 
-                                            messageRelayed = true;
+                                                messageRelayed = true;
+                                            }
+                                            else
+                                                UserName = commandParts[1];
                                         }
-                                        else if (commandParts[0] == "PASS")
+                                        else if (arguments.Credential != null && commandParts[0] == "PASS")
                                         {
                                             await remoteServerStreamWriter.WriteLineAsync("PASS" + arguments.Credential.Password);
 
@@ -526,28 +541,34 @@ namespace OpaqueMail.Net.Proxy
                                     ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "S: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
 
                                     // If we see a period between two linebreaks, treat it as the end of a message.
-                                    int endPos = stringRead.IndexOf("\r\n.\r\n");
-                                    if (endPos > -1)
+                                    if (stringRead == ".")
                                     {
                                         string message = messageBuilder.ToString();
-                                        endPos = message.IndexOf("\r\n.\r\n");
+                                        int endPos = message.IndexOf("\r\n.\r\n");
 
-                                        int lastOkPos = message.LastIndexOf("+OK", endPos);
-                                        if (lastOkPos > -1)
+                                        if (message.Contains("\r\n\r\n"))
                                         {
-                                            if (message.IndexOf("application/x-pkcs7-signature") > -1 || message.IndexOf("application/pkcs7-mime") > -1)
+                                            int lastOkPos = message.LastIndexOf("+OK", endPos);
+                                            if (lastOkPos > -1)
                                             {
-                                                Thread processThread = new Thread(new ParameterizedThreadStart(ProcessMessage));
-                                                processThread.Name = "OpaqueMail POP3 Proxy Signature Processor";
-                                                ProcessMessageArguments processMessageArguments = new ProcessMessageArguments();
-                                                processMessageArguments.MessageText = message;
-                                                processMessageArguments.ConnectionId = ConnectionId.ToString();
-                                                processThread.Start(processMessageArguments);
+                                                message = message.Substring(message.IndexOf("\r\n", lastOkPos) + 2);
+                                                if (message.IndexOf("application/x-pkcs7-signature") > -1 || message.IndexOf("application/pkcs7-mime") > -1 || !string.IsNullOrEmpty(arguments.ExportDirectory))
+                                                {
+                                                    Thread processThread = new Thread(new ParameterizedThreadStart(ProcessMessage));
+                                                    processThread.Name = "OpaqueMail POP3 Proxy Signature Processor";
+                                                    ProcessMessageArguments processMessageArguments = new ProcessMessageArguments();
+                                                    processMessageArguments.MessageText = message.Substring(0, message.Length - 5);
+                                                    processMessageArguments.ConnectionId = ConnectionId.ToString();
+                                                    processMessageArguments.ExportDirectory = arguments.ExportDirectory;
+                                                    processMessageArguments.InstanceId = arguments.InstanceId;
+                                                    processMessageArguments.UserName = UserName;
+                                                    processThread.Start(processMessageArguments);
+                                                }
+                                                messageBuilder.Remove(0, endPos + 5);
                                             }
-                                            messageBuilder.Remove(0, endPos + 5);
                                         }
-                                        else
-                                            messageBuilder.Clear();
+
+                                        messageBuilder.Clear();
                                     }
                                 }
                             }
@@ -591,6 +612,17 @@ namespace OpaqueMail.Net.Proxy
         {
             ProcessMessageArguments arguments = (ProcessMessageArguments)o;
 
+            // Export the message to a local directory.
+            if (!string.IsNullOrEmpty(arguments.ExportDirectory))
+            {
+                string messageId = Functions.ReturnBetween(arguments.MessageText.ToLower(), "message-id: <", ">");
+                if (string.IsNullOrEmpty(messageId))
+                    messageId = Guid.NewGuid().ToString();
+
+                string fileName = ProxyFunctions.GetExportFileName(arguments.ExportDirectory, messageId, arguments.InstanceId, arguments.UserName);
+                File.WriteAllText(fileName, arguments.MessageText);
+            }
+
             // Only parse the message if it contains a known S/MIME content type.
             string canonicalMessageText = arguments.MessageText.ToLower();
             if (canonicalMessageText.IndexOf("application/x-pkcs7-signature") > -1 || canonicalMessageText.IndexOf("application/pkcs7-mime") > -1)
@@ -627,7 +659,7 @@ namespace OpaqueMail.Net.Proxy
             Pop3ProxyArguments arguments = (Pop3ProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.LogFile, arguments.LogLevel, arguments.InstanceId);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.ExportDirectory, arguments.LogFile, arguments.LogLevel, arguments.InstanceId);
         }
         #endregion Private Methods
     }

@@ -66,8 +66,8 @@ namespace OpaqueMail
         public static CX509CertificateRequestCertificate CreateCertificateSigningRequest(string subjectName, int keyLength, int durationYears)
         {
             List<string> oids = new List<string>();
-            oids.Add("1.3.6.1.5.5.7.3.4");        // Secure Email.
-            oids.Add("1.3.6.1.4.1.311.10.3.4");   // Data Encipherment.
+            oids.Add("1.3.6.1.5.5.7.3.4");          // Secure Email.
+            oids.Add("1.3.6.1.4.1.6449.1.3.5.2");   // E-mail Protection.
 
             return CreateCertificateSigningRequest(subjectName, keyLength, durationYears, oids);
         }
@@ -110,8 +110,23 @@ namespace OpaqueMail
                 oid.InitializeFromValue(oidID);
                 oidCollection.Add(oid);
             }
+
+            CX509ExtensionKeyUsage keyUsage = new CX509ExtensionKeyUsage();
+            keyUsage.InitializeEncode(CERTENROLLLib.X509KeyUsageFlags.XCN_CERT_DIGITAL_SIGNATURE_KEY_USAGE | CERTENROLLLib.X509KeyUsageFlags.XCN_CERT_KEY_ENCIPHERMENT_KEY_USAGE);
+
             CX509ExtensionEnhancedKeyUsage enhancedKeyUsages = new CX509ExtensionEnhancedKeyUsage();
             enhancedKeyUsages.InitializeEncode(oidCollection);
+
+            string sanSubjectName = subjectName.Substring(subjectName.IndexOf("=") + 1);
+
+            CAlternativeName sanAlternateName = new CAlternativeName();
+            sanAlternateName.InitializeFromString(AlternativeNameType.XCN_CERT_ALT_NAME_RFC822_NAME, sanSubjectName);
+
+            CAlternativeNames sanAlternativeNames = new CAlternativeNames();
+            sanAlternativeNames.Add(sanAlternateName);
+
+            CX509ExtensionAlternativeNames alternativeNamesExtension = new CX509ExtensionAlternativeNames();
+            alternativeNamesExtension.InitializeEncode(sanAlternativeNames);
 
             // Create the self-signing request.
             CX509CertificateRequestCertificate cert = new CX509CertificateRequestCertificate();
@@ -120,7 +135,9 @@ namespace OpaqueMail
             cert.Issuer = distinguishedName;
             cert.NotBefore = DateTime.Now;
             cert.NotAfter = DateTime.Now.AddYears(1);
+            cert.X509Extensions.Add((CX509Extension)keyUsage);
             cert.X509Extensions.Add((CX509Extension)enhancedKeyUsages);
+            cert.X509Extensions.Add((CX509Extension)alternativeNamesExtension);
             cert.HashAlgorithm = hashAlgorithm;
             cert.Encode();
 
@@ -142,7 +159,7 @@ namespace OpaqueMail
             if (commaPos > -1)
                 friendlyName = friendlyName.Substring(0, commaPos);
 
-            return CreateSelfSignedCertificate(subjectName, friendlyName, false, 4096, 1);
+            return CreateSelfSignedCertificate(subjectName, friendlyName, StoreLocation.LocalMachine, false, 4096, 1);
         }
 
         /// <summary>
@@ -152,7 +169,7 @@ namespace OpaqueMail
         /// <param name="friendlyName">The friendly name of the certificate.</param>
         public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName)
         {
-            return CreateSelfSignedCertificate(subjectName, friendlyName, false, 4096, 1);
+            return CreateSelfSignedCertificate(subjectName, friendlyName, StoreLocation.LocalMachine , false, 4096, 1);
         }
 
         /// <summary>
@@ -160,10 +177,11 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="subjectName">The subject name of the certificate.</param>
         /// <param name="friendlyName">The friendly name of the certificate.</param>
+        /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
         /// <param name="addToTrustedRoot">Whether to add the generated certificate as a trusted root.</param>
-        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, bool addToTrustedRoot)
+        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addToTrustedRoot)
         {
-            return CreateSelfSignedCertificate(subjectName, friendlyName, addToTrustedRoot, 4096, 1);
+            return CreateSelfSignedCertificate(subjectName, friendlyName, location, addToTrustedRoot, 4096, 1);
         }
 
         /// <summary>
@@ -171,11 +189,12 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="subjectName">The subject name of the certificate.</param>
         /// <param name="friendlyName">The friendly name of the certificate.</param>
+        /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
         /// <param name="addToTrustedRoot">Whether to add the generated certificate as a trusted root.</param>
         /// <param name="keyLength">Size of the key in bits.</param>
-        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, bool addToTrustedRoot, int keyLength)
+        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addToTrustedRoot, int keyLength)
         {
-            return CreateSelfSignedCertificate(subjectName, friendlyName, addToTrustedRoot, keyLength, 1);
+            return CreateSelfSignedCertificate(subjectName, friendlyName, location, addToTrustedRoot, keyLength, 1);
         }
 
         /// <summary>
@@ -183,16 +202,17 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="subjectName">The subject name of the certificate.</param>
         /// <param name="friendlyName">The friendly name of the certificate.</param>
+        /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
         /// <param name="addToTrustedRoot">Whether to add the generated certificate as a trusted root.</param>
         /// <param name="keyLength">Size of the key in bits.</param>
         /// <param name="durationYears">Duration of the certificate, specified in years.</param>
-        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, bool addToTrustedRoot, int keyLength, int durationYears)
+        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addToTrustedRoot, int keyLength, int durationYears)
         {
             List<string> oids = new List<string>();
             oids.Add("1.3.6.1.5.5.7.3.4");        // Secure Email.
-            oids.Add("1.3.6.1.4.1.311.10.3.4");   // Data Encipherment.
+            oids.Add("1.3.6.1.4.1.6449.1.3.5.2");   // E-mail Protection.
 
-            return CreateSelfSignedCertificate(subjectName, friendlyName, addToTrustedRoot, keyLength, durationYears, oids);
+            return CreateSelfSignedCertificate(subjectName, friendlyName, location, addToTrustedRoot, keyLength, durationYears, oids);
         }
 
         /// <summary>
@@ -200,11 +220,12 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="subjectName">The subject name of the certificate.</param>
         /// <param name="friendlyName">The friendly name of the certificate.</param>
+        /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
         /// <param name="addAsTrustedRoot">Whether to add the generated certificate as a trusted root.</param>
         /// <param name="keyLength">Size of the key in bits.</param>
         /// <param name="durationYears">Duration of the certificate, specified in years.</param>
         /// <param name="oids">Collection of OIDs identifying certificate usage.</param>
-        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, bool addAsTrustedRoot, int keyLength, int durationYears, List<string> oids)
+        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addAsTrustedRoot, int keyLength, int durationYears, List<string> oids)
         {
             // Create the self-signing request.
             CX509CertificateRequestCertificate cert = CreateCertificateSigningRequest(subjectName, keyLength, durationYears, oids);
@@ -227,7 +248,7 @@ namespace OpaqueMail
             // If specified, also install the certificate to the trusted root store.
             if (addAsTrustedRoot)
             {
-                X509Store rootStore = new X509Store(StoreName.Root, StoreLocation.LocalMachine);
+                X509Store rootStore = new X509Store(StoreName.Root, location);
                 rootStore.Open(OpenFlags.ReadWrite);
                 rootStore.Add(certificate);
                 rootStore.Close();
@@ -306,6 +327,19 @@ namespace OpaqueMail
         public static void InstallWindowsCertificate(X509Certificate2 cert, StoreLocation location)
         {
             X509Store store = new X509Store(location);
+            store.Open(OpenFlags.ReadWrite);
+            store.Add(cert);
+            store.Close();
+        }
+
+        /// <summary>
+        /// Install a root certificate to the Windows certificate store in the specified location.
+        /// </summary>
+        /// <param name="cert">The certificate to install.</param>
+        /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
+        public static void InstallWindowsRootCertificate(X509Certificate2 cert, StoreLocation location)
+        {
+            X509Store store = new X509Store(StoreName.Root, location);
             store.Open(OpenFlags.ReadWrite);
             store.Add(cert);
             store.Close();

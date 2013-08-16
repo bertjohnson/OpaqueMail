@@ -12,33 +12,15 @@ namespace OpaqueMail.Net.Proxy
     {
         #region Public Methods
         /// <summary>
-        /// Process special characters in a log file name.
+        /// Ensure that a given directory exists by creating its components if needed.
         /// </summary>
-        /// <param name="fileName">Name of the log file.</param>
-        /// <param name="instanceId">The instance number of the proxy.</param>
-        /// <returns>The final log file name, with full path, to be used.</returns>
-        public static string GetLogFileName(string fileName, int instanceId, string localIpAddress, string remoteServerHostName, int localPort, int remotePort)
+        /// <param name="directory">Directory to ensure.</param>
+        public static void EnsureDirectory(string directory)
         {
-            // Replace the {#} token with the proxy instance number.
-            if (instanceId == 1)
-                fileName = fileName.Replace("{#}", "");
-            else
-                fileName = fileName.Replace("{#}", instanceId.ToString());
-
-            // Replace server and port {} tokens.
-            fileName = fileName.Replace("{localIpAddress}", localIpAddress);
-            fileName = fileName.Replace("{remoteServerHostName}", remoteServerHostName);
-            fileName = fileName.Replace("{localPort}", localPort.ToString());
-            fileName = fileName.Replace("{remotePort}", remotePort.ToString());
-
-            // If the log file location doesn't contain a directory, make it relative to where the service lives.
-            if (fileName.Length < 2 || (fileName[1] != ':' && !fileName.StartsWith("\\")))
-                fileName = AppDomain.CurrentDomain.BaseDirectory + fileName;
-
             // Unless this is a UNC path, make sure the specified directory exists.
-            if (!fileName.StartsWith("\\"))
+            if (!directory.StartsWith("\\"))
             {
-                string[] pathParts = fileName.Split('\\');
+                string[] pathParts = directory.Split('\\');
                 string path = pathParts[0];
 
                 for (int i = 1; i < pathParts.Length - 1; i++)
@@ -48,6 +30,73 @@ namespace OpaqueMail.Net.Proxy
                         Directory.CreateDirectory(path);
                 }
             }
+        }
+
+        /// <summary>
+        /// Process special characters in an exported e-mail file name.
+        /// </summary>
+        /// <param name="directory">The base directory to export messages to.</param>
+        /// <param name="messageId">ID of the message.</param>
+        /// <param name="instanceId">The instance number of the proxy.</param>
+        /// <param name="userName">The user transmitting this message.</param>
+        /// <returns>The final log file name, with full path, to be used.</returns>
+        public static string GetExportFileName(string directory, string messageId, int instanceId, string userName)
+        {
+            // Replace the {#} token with the proxy instance number.
+            if (instanceId == 1)
+                directory = directory.Replace("{#}", "");
+            else
+                directory = directory.Replace("{#}", instanceId.ToString());
+
+            // Replace server and port {} tokens.
+            directory = directory.Replace("{userName}", userName);
+
+            // If the log file location doesn't contain a directory, make it relative to where the service lives.
+            if (directory.Length < 2 || (directory[1] != ':' && !directory.StartsWith("\\")))
+                directory = AppDomain.CurrentDomain.BaseDirectory + directory;
+
+            if (!directory.EndsWith("\\"))
+                directory += "\\";
+
+            // Make sure the specified directory exists.
+            EnsureDirectory(directory);
+
+            while (File.Exists(directory + messageId + ".eml"))
+                messageId = Guid.NewGuid().ToString();
+
+            return directory + messageId + ".eml";
+        }
+
+        /// <summary>
+        /// Process special characters in a log file name.
+        /// </summary>
+        /// <param name="fileName">Name of the log file.</param>
+        /// <param name="instanceId">The instance number of the proxy.</param>
+        /// <param name="localIPAddress">Local IP address to bind to.</param>
+        /// <param name="localPort">Local port to listen on.</param>
+        /// <param name="remoteServerHostName">Remote server hostname to forward all POP3 messages to.</param>
+        /// <param name="remoteServerPort">Remote server port to connect to.</param>
+        /// <returns>The final log file name, with full path, to be used.</returns>
+        public static string GetLogFileName(string fileName, int instanceId, string localIPAddress, string remoteServerHostName, int localPort, int remoteServerPort)
+        {
+            // Replace the {#} token with the proxy instance number.
+            if (instanceId == 1)
+                fileName = fileName.Replace("{#}", "");
+            else
+                fileName = fileName.Replace("{#}", instanceId.ToString());
+
+            // Replace server and port {} tokens.
+            fileName = fileName.Replace("{localIpAddress}", localIPAddress);
+            fileName = fileName.Replace("{remoteServerHostName}", remoteServerHostName);
+            fileName = fileName.Replace("{localPort}", localPort.ToString());
+            fileName = fileName.Replace("{remotePort}", remoteServerPort.ToString());
+
+            // If the log file location doesn't contain a directory, make it relative to where the service lives.
+            if (fileName.Length < 2 || (fileName[1] != ':' && !fileName.StartsWith("\\")))
+                fileName = AppDomain.CurrentDomain.BaseDirectory + fileName;
+
+            // Make sure the specified directory exists.
+            EnsureDirectory(fileName);
 
             StringBuilder logFileNameBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
