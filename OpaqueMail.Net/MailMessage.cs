@@ -72,8 +72,6 @@ namespace OpaqueMail
         /// Requires private key.
         /// </summary>
         public X509Certificate2 SmimeSigningCertificate;
-        /// <summary>Certificate chain used to sign the message.</summary>
-        public X509Certificate2Collection SmimeSigningCertificateChain = new X509Certificate2Collection();
         /// <summary>Determine how the S/MIME message will be signed.</summary>
         public SmimeSigningOptionFlags SmimeSigningOptionFlags = SmimeSigningOptionFlags.SignTime;
         /// <summary>Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>

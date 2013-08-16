@@ -66,6 +66,8 @@ namespace OpaqueMail
         public string[] ReceivedChain;
         /// <summary>Return-Path header.</summary>
         public string ReturnPath = "";
+        /// <summary>Certificate chain used to sign the message.</summary>
+        public X509Certificate2Collection SmimeSigningCertificateChain = new X509Certificate2Collection();
         /// <summary>X-Subject-Encryption header, as optionally used by OpaqueMail.</summary>
         public bool SubjectEncryption;
         #endregion Public Members

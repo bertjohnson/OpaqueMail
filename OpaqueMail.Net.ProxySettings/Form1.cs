@@ -731,6 +731,8 @@ namespace OpaqueMail.Net.ProxySettings
             public string RemoteSmtpPassword;
             public string FixedFrom;
             public string FixedTo;
+            public string FixedCC;
+            public string FixedBcc;
             public string Signature;
 
             public string ImapCertificateLocation;

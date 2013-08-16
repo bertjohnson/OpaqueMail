@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Mail;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
@@ -33,7 +34,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", "", "", SmimeSettingsMode.BestEffort, true, true, true, true, true, "", LogLevel.None, 0);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", "", "", "", "", SmimeSettingsMode.BestEffort, true, true, true, true, true, "", LogLevel.None, 0);
         }
 
         /// <summary>
@@ -48,15 +49,17 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</param>
         /// <param name="from">(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
-        /// <param name="to">(Optional) "To" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="to">(Optional) "To" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="cc">(Optional) "CC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="bcc">(Optional) "BCC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
         /// <param name="signature">(Optional) Signature to add to the end of each sent message.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string from, string to, string signature, string logFile, LogLevel logLevel, int instanceId)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string from, string to, string cc, string bcc, string signature, string logFile, LogLevel logLevel, int instanceId)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, from, to, signature, SmimeSettingsMode.BestEffort, true, true, true, true, true, logFile, logLevel, instanceId);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, from, to, cc, bcc, signature, SmimeSettingsMode.BestEffort, true, true, true, true, true, logFile, logLevel, instanceId);
         }
 
         /// <summary>
@@ -71,7 +74,9 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</param>
         /// <param name="from">(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
-        /// <param name="to">(Optional) "To" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="to">(Optional) "To" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="cc">(Optional) "CC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="bcc">(Optional) "BCC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
         /// <param name="signature">(Optional) Signature to add to the end of each sent message.</param>
         /// <param name="smimeSettingsMode">Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</param>
         /// <param name="smimeEncryptedEnvelope">Whether the e-mail's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
@@ -79,9 +84,9 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="smimeTripleWrapped">Whether the e-mail should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
         /// <param name="smimeRemovePreviousOperations">Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</param>
         /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string from, string to, string signature, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string from, string to, string cc, string bcc, string signature, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, from, to, signature, smimeSettingsMode, smimeSigned, smimeEncryptedEnvelope, smimeTripleWrapped, smimeRemovePreviousOperations, sendCertificateReminders, "", LogLevel.None, 0);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, remoteServerCredential, from, to, cc, bcc, signature, smimeSettingsMode, smimeSigned, smimeEncryptedEnvelope, smimeTripleWrapped, smimeRemovePreviousOperations, sendCertificateReminders, "", LogLevel.None, 0);
         }
 
         /// <summary>
@@ -96,7 +101,9 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         /// <param name="remoteServerCredential">(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</param>
         /// <param name="from">(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
-        /// <param name="to">(Optional) "To" address for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="to">(Optional) "To" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="cc">(Optional) "CC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
+        /// <param name="bcc">(Optional) "BCC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
         /// <param name="signature">(Optional) Signature to add to the end of each sent message.</param>
         /// <param name="smimeSettingsMode">Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</param>
         /// <param name="smimeEncryptedEnvelope">Whether the e-mail's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
@@ -107,7 +114,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string from, string to, string signature, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders, string logFile, LogLevel logLevel, int instanceId)
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string from, string to, string cc, string bcc, string signature, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders, string logFile, LogLevel logLevel, int instanceId)
         {
             // Create the log writer.
             string logFileName = "";
@@ -219,6 +226,8 @@ namespace OpaqueMail.Net.Proxy
                         arguments.RemoteServerCredential = remoteServerCredential;
                         arguments.FixedFrom = from;
                         arguments.FixedTo = to;
+                        arguments.FixedCC = cc;
+                        arguments.FixedBcc = bcc;
                         arguments.FixedSignature = signature;
 
                         arguments.SmimeSettingsMode = smimeSettingsMode;
@@ -339,6 +348,8 @@ namespace OpaqueMail.Net.Proxy
 
                         arguments.FixedFrom = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/From");
                         arguments.FixedTo = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/To");
+                        arguments.FixedCC = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/CC");
+                        arguments.FixedBcc = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/BCC");
                         arguments.FixedSignature = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Signature");
 
                         string certificateLocationValue = ProxyFunctions.GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
@@ -558,6 +569,23 @@ namespace OpaqueMail.Net.Proxy
                                                     message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "To: ", "\r\n", Functions.ToMailAddressString(message.To));
                                                 else
                                                     message.RawHeaders = message.RawHeaders.Replace("\r\nSubject: ", "\r\nTo: " + Functions.ToMailAddressString(message.To) + "\r\nSubject: ");
+                                            }
+
+                                            if (!string.IsNullOrEmpty(arguments.FixedCC))
+                                            {
+                                                foreach (MailAddress address in Functions.FromMailAddressString(arguments.FixedCC))
+                                                    message.CC.Add(address);
+
+                                                if (message.RawHeaders.Contains("CC: "))
+                                                    message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "CC: ", "\r\n", Functions.ToMailAddressString(message.To));
+                                                else
+                                                    message.RawHeaders = message.RawHeaders.Replace("\r\nSubject: ", "\r\nTo: " + Functions.ToMailAddressString(message.To) + "\r\nSubject: ");
+                                            }
+
+                                            if (!string.IsNullOrEmpty(arguments.FixedBcc))
+                                            {
+                                                foreach (MailAddress address in Functions.FromMailAddressString(arguments.FixedBcc))
+                                                    message.Bcc.Add(address);
                                             }
 
                                             // Insert the fixed signature if one exists.
@@ -944,7 +972,7 @@ namespace OpaqueMail.Net.Proxy
             SmtpProxyArguments arguments = (SmtpProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.FixedFrom, arguments.FixedTo, arguments.FixedSignature, arguments.SmimeSettingsMode, arguments.SmimeSigned, arguments.SmimeEncryptedEnvelope, arguments.SmimeTripleWrapped, arguments.SmimeRemovePreviousOperations, arguments.SendCertificateReminders, arguments.LogFile, arguments.LogLevel, arguments.InstanceId);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.FixedFrom, arguments.FixedTo, arguments.FixedCC, arguments.FixedBcc, arguments.FixedSignature, arguments.SmimeSettingsMode, arguments.SmimeSigned, arguments.SmimeEncryptedEnvelope, arguments.SmimeTripleWrapped, arguments.SmimeRemovePreviousOperations, arguments.SendCertificateReminders, arguments.LogFile, arguments.LogLevel, arguments.InstanceId);
         }
         #endregion Private Methods
     }

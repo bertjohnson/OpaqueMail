@@ -214,8 +214,12 @@ namespace OpaqueMail.Net.Proxy
         public NetworkCredential RemoteServerCredential;
         /// <summary>(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
         public string FixedFrom;
-        /// <summary>(Optional) "To" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        /// <summary>(Optional) "To" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</summary>
         public string FixedTo;
+        /// <summary>(Optional) "CC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        public string FixedCC;
+        /// <summary>(Optional) "BCC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        public string FixedBcc;
         /// <summary>(Optional) Signature to add to the end of each sent message.</summary>
         public string FixedSignature;
 
@@ -272,8 +276,12 @@ namespace OpaqueMail.Net.Proxy
         public NetworkCredential RemoteServerCredential;
         /// <summary>(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
         public string FixedFrom;
-        /// <summary>(Optional) "To" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        /// <summary>(Optional) "To" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</summary>
         public string FixedTo;
+        /// <summary>(Optional) "CC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        public string FixedCC;
+        /// <summary>(Optional) "BCC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</summary>
+        public string FixedBcc;
         /// <summary>(Optional) Signature to add to the end of each sent message.</summary>
         public string FixedSignature;
 

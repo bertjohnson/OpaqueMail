@@ -75,6 +75,8 @@ namespace OpaqueMail.Net.ProxySettings
                         account.RemoteSmtpPassword = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/RemoteServerPassword");
                         account.FixedFrom = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/From");
                         account.FixedTo = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/To");
+                        account.FixedCC = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/CC");
+                        account.FixedBcc = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/BCC");
                         account.Signature = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Signature");
                         account.SmtpAcceptedIPs = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/AcceptedIPs");
                         account.SmtpCertificateLocation = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
@@ -697,8 +699,12 @@ namespace OpaqueMail.Net.ProxySettings
 
                             streamWriter.WriteComment("(Optional) \"From\" address for all sent messages.  When supplied, it will override any values sent from the client.");
                             streamWriter.WriteElementString("From", account.FixedFrom);
-                            streamWriter.WriteComment("(Optional) \"To\" address for all sent messages.  When supplied, it will override any values sent from the client.");
+                            streamWriter.WriteComment("(Optional) \"To\" address(es) for all sent messages.  When supplied, it will override any values sent from the client.");
                             streamWriter.WriteElementString("To", account.FixedTo);
+                            streamWriter.WriteComment("(Optional) \"CC\" address(es) for all sent messages.  When supplied, it will override any values sent from the client.");
+                            streamWriter.WriteElementString("CC", account.FixedTo);
+                            streamWriter.WriteComment("(Optional) \"BCC\" address(es) for all sent messages.  When supplied, it will override any values sent from the client.");
+                            streamWriter.WriteElementString("BCC", account.FixedTo);
                             streamWriter.WriteComment("(Optional) Signature to add to the end of each sent message.");
                             streamWriter.WriteElementString("Signature", account.Signature);
 
