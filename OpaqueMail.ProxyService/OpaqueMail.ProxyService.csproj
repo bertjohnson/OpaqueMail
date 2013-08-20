@@ -4,15 +4,16 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{BF21D27F-72AD-492E-8219-6C82C2330C72}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{C8F12621-2E22-48FD-8E52-71F1B059179E}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OpaqueMail</RootNamespace>
-    <AssemblyName>OpaqueMail.Net</AssemblyName>
+    <RootNamespace>OpaqueMail.ProxyService</RootNamespace>
+    <AssemblyName>OpaqueMail.ProxyService</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,6 +23,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -29,32 +31,52 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>OpaqueMail32.ico</ApplicationIcon>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration.Install" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Security" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
+    <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Multithreading.cs" />
-    <Compile Include="Constants.cs" />
-    <Compile Include="EnumsAndStructs.cs" />
-    <Compile Include="Functions.cs" />
-    <Compile Include="IMAP\ImapClient.cs" />
-    <Compile Include="IMAP\ImapClient.Properties.cs" />
-    <Compile Include="IMAP\ImapClient.Synchronous.cs" />
-    <Compile Include="Mailbox.cs" />
-    <Compile Include="MailMessage.cs" />
-    <Compile Include="MimePart.cs" />
-    <Compile Include="ReadOnlyMailMessage.cs" />
-    <Compile Include="POP3\Pop3Client.cs" />
+    <Compile Include="ProxyService.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="ProxyService.Designer.cs">
+      <DependentUpon>ProxyService.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SMTP\SmtpClient.cs" />
-    <Compile Include="TnefEncoding.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OpaqueMail.Net.CertHelper\OpaqueMail.Net.CertHelper.csproj">
+      <Project>{9f1402f2-d701-43a5-9ad6-cfa926c31dce}</Project>
+      <Name>OpaqueMail.Net.CertHelper</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpaqueMail.Proxy\OpaqueMail.Proxy.csproj">
+      <Project>{fbdcf97d-7ef1-470d-a13f-04cab5911d6b}</Project>
+      <Name>OpaqueMail.Proxy</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpaqueMail.Net\OpaqueMail.Net.csproj">
+      <Project>{bf21d27f-72ad-492e-8219-6c82c2330c72}</Project>
+      <Name>OpaqueMail.Net</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="OpaqueMail32.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

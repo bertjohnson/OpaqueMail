@@ -15,10 +15,10 @@ Licensed according to the MIT License (http://mit-license.org/).
 
 Created by Bert Johnson (http://bertjohnson.net) of Bkip Inc. (http://bkip.com).
 
-OpaqueMail S/MIME E-mail Proxy
+OpaqueMail E-mail Proxy
 ==============================
 
-SMTP proxy to add or remove S/MIME message signing, encryption, and authentication for outbound messages.  Can operate in passthrough mode or augment messages to add or filter headers.
+SMTP proxy and message transfer agent (MTA) to add or remove S/MIME message signing, encryption, and authentication for outbound messages.  Can operate in passthrough mode or augment messages to add or filter headers.
 
 Also serve as a passthrough IMAP and POP3 proxy to import S/MIME certificates, filter IPs, or export messages.
 

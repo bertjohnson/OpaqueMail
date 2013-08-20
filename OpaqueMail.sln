@@ -12,11 +12,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Net.CertHelper", "OpaqueMail.Net.CertHelper\OpaqueMail.Net.CertHelper.csproj", "{9F1402F2-D701-43A5-9AD6-CFA926C31DCE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Net.Proxy", "OpaqueMail.Net.Proxy\OpaqueMail.Net.Proxy.csproj", "{FBDCF97D-7EF1-470D-A13F-04CAB5911D6B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Proxy", "OpaqueMail.Proxy\OpaqueMail.Proxy.csproj", "{FBDCF97D-7EF1-470D-A13F-04CAB5911D6B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Net.ProxyService", "OpaqueMail.Net.ProxyService\OpaqueMail.Net.ProxyService.csproj", "{C8F12621-2E22-48FD-8E52-71F1B059179E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.ProxyService", "OpaqueMail.ProxyService\OpaqueMail.ProxyService.csproj", "{C8F12621-2E22-48FD-8E52-71F1B059179E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Net.ProxySettings", "OpaqueMail.Net.ProxySettings\OpaqueMail.Net.ProxySettings.csproj", "{EE9F6184-F918-4FC0-9018-3019DFB8A408}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.ProxySettings", "OpaqueMail.ProxySettings\OpaqueMail.ProxySettings.csproj", "{EE9F6184-F918-4FC0-9018-3019DFB8A408}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
