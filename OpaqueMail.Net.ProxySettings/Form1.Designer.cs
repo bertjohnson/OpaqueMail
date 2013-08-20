@@ -39,6 +39,11 @@
             this.AccountGroupBox = new System.Windows.Forms.GroupBox();
             this.AccountsLabel = new System.Windows.Forms.LinkLabel();
             this.AccountGrid = new System.Windows.Forms.DataGridView();
+            this.ClientColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.AccountColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.ProtectedColumn = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.CertificateColumn = new System.Windows.Forms.DataGridViewComboBoxColumn();
+            this.RegistryKeyColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ConfirmCertificatesTab = new System.Windows.Forms.TabPage();
             this.ProtectionGroupBox = new System.Windows.Forms.GroupBox();
             this.SmimeOperations = new System.Windows.Forms.ComboBox();
@@ -58,11 +63,6 @@
             this.NetworkAccess = new System.Windows.Forms.ComboBox();
             this.NetworkAccessLabel = new System.Windows.Forms.Label();
             this.SaveSettingsButton = new System.Windows.Forms.Button();
-            this.ClientColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.AccountColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.ProtectedColumn = new System.Windows.Forms.DataGridViewCheckBoxColumn();
-            this.CertificateColumn = new System.Windows.Forms.DataGridViewComboBoxColumn();
-            this.RegistryKeyColumn = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ServiceStatusLabel = new System.Windows.Forms.Label();
             this.Tabs.SuspendLayout();
             this.AboutTab.SuspendLayout();
@@ -193,6 +193,42 @@
             this.AccountGrid.ShowRowErrors = false;
             this.AccountGrid.Size = new System.Drawing.Size(546, 255);
             this.AccountGrid.TabIndex = 2;
+            // 
+            // ClientColumn
+            // 
+            this.ClientColumn.HeaderText = "Client";
+            this.ClientColumn.Name = "ClientColumn";
+            this.ClientColumn.ReadOnly = true;
+            this.ClientColumn.Width = 75;
+            // 
+            // AccountColumn
+            // 
+            this.AccountColumn.HeaderText = "Account";
+            this.AccountColumn.Name = "AccountColumn";
+            this.AccountColumn.ReadOnly = true;
+            this.AccountColumn.Width = 160;
+            // 
+            // ProtectedColumn
+            // 
+            this.ProtectedColumn.HeaderText = "Protected?";
+            this.ProtectedColumn.Name = "ProtectedColumn";
+            this.ProtectedColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.ProtectedColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
+            this.ProtectedColumn.Width = 60;
+            // 
+            // CertificateColumn
+            // 
+            this.CertificateColumn.HeaderText = "S/MIME Certificate";
+            this.CertificateColumn.Name = "CertificateColumn";
+            this.CertificateColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            this.CertificateColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
+            this.CertificateColumn.Width = 248;
+            // 
+            // RegistryKeyColumn
+            // 
+            this.RegistryKeyColumn.HeaderText = "Registry Key";
+            this.RegistryKeyColumn.Name = "RegistryKeyColumn";
+            this.RegistryKeyColumn.Visible = false;
             // 
             // ConfirmCertificatesTab
             // 
@@ -397,42 +433,6 @@
             this.SaveSettingsButton.UseVisualStyleBackColor = true;
             this.SaveSettingsButton.Click += new System.EventHandler(this.SaveSettingsButton_Click);
             // 
-            // ClientColumn
-            // 
-            this.ClientColumn.HeaderText = "Client";
-            this.ClientColumn.Name = "ClientColumn";
-            this.ClientColumn.ReadOnly = true;
-            this.ClientColumn.Width = 75;
-            // 
-            // AccountColumn
-            // 
-            this.AccountColumn.HeaderText = "Account";
-            this.AccountColumn.Name = "AccountColumn";
-            this.AccountColumn.ReadOnly = true;
-            this.AccountColumn.Width = 160;
-            // 
-            // ProtectedColumn
-            // 
-            this.ProtectedColumn.HeaderText = "Protected?";
-            this.ProtectedColumn.Name = "ProtectedColumn";
-            this.ProtectedColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.ProtectedColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
-            this.ProtectedColumn.Width = 60;
-            // 
-            // CertificateColumn
-            // 
-            this.CertificateColumn.HeaderText = "S/MIME Certificate";
-            this.CertificateColumn.Name = "CertificateColumn";
-            this.CertificateColumn.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.CertificateColumn.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Automatic;
-            this.CertificateColumn.Width = 248;
-            // 
-            // RegistryKeyColumn
-            // 
-            this.RegistryKeyColumn.HeaderText = "Registry Key";
-            this.RegistryKeyColumn.Name = "RegistryKeyColumn";
-            this.RegistryKeyColumn.Visible = false;
-            // 
             // ServiceStatusLabel
             // 
             this.ServiceStatusLabel.Location = new System.Drawing.Point(4, 402);
@@ -515,6 +515,5 @@
         private System.Windows.Forms.DataGridViewComboBoxColumn CertificateColumn;
         private System.Windows.Forms.DataGridViewTextBoxColumn RegistryKeyColumn;
         private System.Windows.Forms.Label ServiceStatusLabel;
-
     }
 }

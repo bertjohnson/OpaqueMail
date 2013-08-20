@@ -44,6 +44,9 @@ namespace OpaqueMail.Net.Proxy
         /// <summary>The instance number of the proxy.</summary>
         public int InstanceId;
 
+        /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
+        public bool DebugMode;
+
         /// <summary>IMAP Proxy to start.</summary>
         public ImapProxy Proxy;
     }
@@ -75,6 +78,9 @@ namespace OpaqueMail.Net.Proxy
         public NetworkCredential RemoteServerCredential;
         /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
         public string ExportDirectory;
+
+        /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
+        public bool DebugMode;
 
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
@@ -131,6 +137,9 @@ namespace OpaqueMail.Net.Proxy
         /// <summary>The instance number of the proxy.</summary>
         public int InstanceId;
 
+        /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
+        public bool DebugMode;
+        
         /// <summary>POP3 Proxy to start.</summary>
         public Pop3Proxy Proxy;
     }
@@ -163,6 +172,9 @@ namespace OpaqueMail.Net.Proxy
         /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
         public string ExportDirectory;
 
+        /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
+        public bool DebugMode;
+        
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
         /// <summary>The instance number of the proxy.</summary>
@@ -182,6 +194,9 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
         public string ExportDirectory;
+
+        /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
+        public bool DebugMode;
 
         /// <summary>The instance number of the proxy.</summary>
         public int InstanceId;
@@ -234,6 +249,10 @@ namespace OpaqueMail.Net.Proxy
         /// <summary>Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
         public bool SmimeTripleWrapped;
 
+        /// <summary>Collection of certificates to be used when searching for recipient public keys.</summary>
+        /// <remarks>If not specified, SmtpClient will use the current Windows user's certificate store.</remarks>
+        public X509Certificate2Collection SmimeValidCertificates;
+
         /// <summary>The file where events and exception information should be logged.</summary>
         public string LogFile;
         /// <summary>Proxy logging level, determining how much information is logged.</summary>
@@ -245,6 +264,9 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
         public bool SendCertificateReminders;
 
+        /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
+        public bool DebugMode;
+        
         /// <summary>SMTP Proxy to start.</summary>
         public SmtpProxy Proxy;
     }
@@ -296,9 +318,16 @@ namespace OpaqueMail.Net.Proxy
         /// <summary>Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
         public bool SmimeTripleWrapped;
 
+        /// <summary>Collection of certificates to be used when searching for recipient public keys.</summary>
+        /// <remarks>If not specified, SmtpClient will use the current Windows user's certificate store.</remarks>
+        public X509Certificate2Collection SmimeValidCertificates;
+
         /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
         public bool SendCertificateReminders;
 
+        /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
+        public bool DebugMode;
+        
         /// <summary>A unique connection identifier for logging.</summary>
         public string ConnectionId;
         /// <summary>The instance number of the proxy.</summary>
@@ -332,5 +361,8 @@ namespace OpaqueMail.Net.Proxy
 
         /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
         public string ExportDirectory;
+
+        /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
+        public bool DebugMode;
     }
 }

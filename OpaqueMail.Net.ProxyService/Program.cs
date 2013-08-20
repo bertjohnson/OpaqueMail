@@ -19,6 +19,7 @@ namespace OpaqueMail
             { 
                 new ProxyService() 
             };
+            System.Threading.Thread.Sleep(6000);
             ServiceBase.Run(ServicesToRun);
         }
     }

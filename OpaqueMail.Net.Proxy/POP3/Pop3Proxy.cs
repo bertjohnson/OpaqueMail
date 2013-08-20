@@ -29,7 +29,7 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote POP3 server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", "", LogLevel.None, 0);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", "", LogLevel.None, 0, false);
         }
 
         /// <summary>
@@ -47,7 +47,8 @@ namespace OpaqueMail.Net.Proxy
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
         /// <param name="instanceId">The instance number of the proxy.</param>
-        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string exportDirectory, string logFile, LogLevel logLevel, int instanceId)
+        /// <param name="debugMode">Whether the proxy instance is running in DEBUG mode and should output full exception messages.</param>
+        public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string exportDirectory, string logFile, LogLevel logLevel, int instanceId, bool debugMode)
         {            
             // Create the log writer.
             string logFileName = "";
@@ -162,6 +163,7 @@ namespace OpaqueMail.Net.Proxy
                         // Increment the connection counter;
                         arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
                         arguments.InstanceId = instanceId;
+                        arguments.DebugMode = debugMode;
 
                         // Fork the thread and continue listening for new connections.
                         Thread processThread = new Thread(new ParameterizedThreadStart(ProcessConnection));
@@ -172,7 +174,10 @@ namespace OpaqueMail.Net.Proxy
                 }
                 catch (Exception ex)
                 {
-                    ProxyFunctions.Log(LogWriter, SessionId, "Exception when starting proxy: " + ex.Message, Proxy.LogLevel.Critical, LogLevel);
+                    if (debugMode || System.Diagnostics.Debugger.IsAttached)
+                        ProxyFunctions.Log(LogWriter, SessionId, "Exception when starting proxy: " + ex.ToString(), Proxy.LogLevel.Critical, LogLevel);
+                    else
+                        ProxyFunctions.Log(LogWriter, SessionId, "Exception when starting proxy: " + ex.Message, Proxy.LogLevel.Critical, LogLevel);
                 }
             }
         }
@@ -314,6 +319,7 @@ namespace OpaqueMail.Net.Proxy
                         }
 
                         arguments.InstanceId = i;
+                        arguments.DebugMode = ProxyFunctions.GetXmlBoolValue(navigator, "Settings/POP3/Service" + i + "/Debug");
 
                         // Remember the proxy in order to close it when the service stops.
                         arguments.Proxy = new Pop3Proxy();
@@ -418,6 +424,7 @@ namespace OpaqueMail.Net.Proxy
                 remoteServerToClientArguments.IsClient = false;
                 remoteServerToClientArguments.ConnectionId = ConnectionId.ToString();
                 remoteServerToClientArguments.InstanceId = arguments.InstanceId;
+                remoteServerToClientArguments.DebugMode = arguments.DebugMode;
                 remoteServerToClientArguments.IPAddress = ip;
                 remoteServerToClientArguments.ExportDirectory = arguments.ExportDirectory;
                 Thread remoteServerToClientThread = new Thread(new ParameterizedThreadStart(RelayData));
@@ -431,6 +438,7 @@ namespace OpaqueMail.Net.Proxy
                 clientToRemoteServerArguments.IsClient = true;
                 clientToRemoteServerArguments.ConnectionId = ConnectionId.ToString();
                 clientToRemoteServerArguments.InstanceId = arguments.InstanceId;
+                clientToRemoteServerArguments.DebugMode = arguments.DebugMode;
                 clientToRemoteServerArguments.IPAddress = ip;
                 clientToRemoteServerArguments.Credential = arguments.RemoteServerCredential;
                 Thread clientToRemoteServerThread = new Thread(new ParameterizedThreadStart(RelayData));
@@ -439,11 +447,17 @@ namespace OpaqueMail.Net.Proxy
             }
             catch (SocketException ex)
             {
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception communicating with {" + arguments.RemoteServerHostName + "} on port {" + arguments.RemoteServerPort + "}: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                if (arguments.DebugMode || System.Diagnostics.Debugger.IsAttached)
+                    ProxyFunctions.Log(LogWriter, SessionId, "Exception communicating with {" + arguments.RemoteServerHostName + "} on port {" + arguments.RemoteServerPort + "}: " + ex.ToString(), Proxy.LogLevel.Error, LogLevel);
+                else
+                    ProxyFunctions.Log(LogWriter, SessionId, "Exception communicating with {" + arguments.RemoteServerHostName + "} on port {" + arguments.RemoteServerPort + "}: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
             catch (Exception ex)
             {
-                ProxyFunctions.Log(LogWriter, SessionId, "Exception: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                if (arguments.DebugMode || System.Diagnostics.Debugger.IsAttached)
+                    ProxyFunctions.Log(LogWriter, SessionId, "Exception: " + ex.ToString(), Proxy.LogLevel.Error, LogLevel);
+                else
+                    ProxyFunctions.Log(LogWriter, SessionId, "Exception: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
         }
 
@@ -561,6 +575,7 @@ namespace OpaqueMail.Net.Proxy
                                                     processMessageArguments.ConnectionId = ConnectionId.ToString();
                                                     processMessageArguments.ExportDirectory = arguments.ExportDirectory;
                                                     processMessageArguments.InstanceId = arguments.InstanceId;
+                                                    processMessageArguments.DebugMode = arguments.DebugMode;
                                                     processMessageArguments.UserName = UserName;
                                                     processThread.Start(processMessageArguments);
                                                 }
@@ -589,7 +604,10 @@ namespace OpaqueMail.Net.Proxy
             catch (Exception ex)
             {
                 // Log other exceptions.
-                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Exception while transmitting data: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                if (arguments.DebugMode || System.Diagnostics.Debugger.IsAttached)
+                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Exception while transmitting data: " + ex.ToString(), Proxy.LogLevel.Error, LogLevel);
+                else
+                    ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "Exception while transmitting data: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
             }
             finally
             {
@@ -645,7 +663,10 @@ namespace OpaqueMail.Net.Proxy
                 }
                 catch (Exception ex)
                 {
-                    ProxyFunctions.Log(LogWriter, SessionId, "Exception while processing message: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
+                    if (arguments.DebugMode || System.Diagnostics.Debugger.IsAttached)
+                        ProxyFunctions.Log(LogWriter, SessionId, "Exception while processing message: " + ex.ToString(), Proxy.LogLevel.Error, LogLevel);
+                    else
+                        ProxyFunctions.Log(LogWriter, SessionId, "Exception while processing message: " + ex.Message, Proxy.LogLevel.Error, LogLevel);
                 }
             }
         }
@@ -659,7 +680,7 @@ namespace OpaqueMail.Net.Proxy
             Pop3ProxyArguments arguments = (Pop3ProxyArguments)parameters;
 
             // Start the proxy using passed-in settings.
-            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.ExportDirectory, arguments.LogFile, arguments.LogLevel, arguments.InstanceId);
+            arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.ExportDirectory, arguments.LogFile, arguments.LogLevel, arguments.InstanceId, arguments.DebugMode);
         }
         #endregion Private Methods
     }

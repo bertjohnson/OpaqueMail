@@ -83,6 +83,7 @@ namespace OpaqueMail.Net.ProxySettings
                         account.SmtpCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SerialNumber");
                         account.SmtpCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SubjectName");
                         account.SmtpLogFile = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LogFile");
+                        account.SmtpDebugMode = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/Debug") ?? false;
 
                         string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/SMTP/Service" + i + "/LogLevel");
                         switch (logLevel.ToUpper())
@@ -116,6 +117,14 @@ namespace OpaqueMail.Net.ProxySettings
                         account.SmimeRemovePreviousOperations = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMERemovePreviousOperations") ?? true;
                         account.SmimeSign = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMESign") ?? true;
                         account.SmimeTripleWrap = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/SMIMETripleWrap") ?? true;
+
+                        int? publicKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/PublicKeyCount") ?? 0;
+                        for (int j = 1; j <= publicKeyCount; j++)
+                        {
+                            string publicKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/PublicKey" + j);
+                            if (!string.IsNullOrEmpty(publicKey) && !account.PublicKeys.Contains(publicKey))
+                                account.PublicKeys.Add(publicKey);
+                        }
 
                         int? registryKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/OutlookRegistryKeyCount") ?? 0;
                         for (int j = 1; j <= registryKeyCount; j++)
@@ -220,6 +229,7 @@ namespace OpaqueMail.Net.ProxySettings
                         account.ImapCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/Certificate/SubjectName");
                         account.ImapExportDirectory = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/ExportDirectory");
                         account.ImapLogFile = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/LogFile");
+                        account.ImapDebugMode = GetXmlBoolValue(navigator, "/Settings/IMAP/Service" + i + "/Debug") ?? false;
 
                         string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/IMAP/Service" + i + "/LogLevel");
                         switch (logLevel.ToUpper())
@@ -326,6 +336,7 @@ namespace OpaqueMail.Net.ProxySettings
                         account.Pop3CertificateSubjectName = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/Certificate/SubjectName");
                         account.Pop3ExportDirectory = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/ExportDirectory");
                         account.Pop3LogFile = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/LogFile");
+                        account.Pop3DebugMode = GetXmlBoolValue(navigator, "/Settings/POP3/Service" + i + "/Debug") ?? false;
 
                         string logLevel = ProxyFunctions.GetXmlStringValue(navigator, "Settings/POP3/Service" + i + "/LogLevel");
                         switch (logLevel.ToUpper())
@@ -699,11 +710,11 @@ namespace OpaqueMail.Net.ProxySettings
 
                             streamWriter.WriteComment("(Optional) \"From\" address for all sent messages.  When supplied, it will override any values sent from the client.");
                             streamWriter.WriteElementString("From", account.FixedFrom);
-                            streamWriter.WriteComment("(Optional) \"To\" address(es) for all sent messages.  When supplied, it will override any values sent from the client.");
+                            streamWriter.WriteComment("(Optional) \"To\" address for all sent messages.  When supplied, it will add the recipient(s) to any included with the original message.");
                             streamWriter.WriteElementString("To", account.FixedTo);
-                            streamWriter.WriteComment("(Optional) \"CC\" address(es) for all sent messages.  When supplied, it will override any values sent from the client.");
+                            streamWriter.WriteComment("(Optional) \"CC\" address for all sent messages.  When supplied, it will add the recipient(s) to any included with the original message.");
                             streamWriter.WriteElementString("CC", account.FixedTo);
-                            streamWriter.WriteComment("(Optional) \"BCC\" address(es) for all sent messages.  When supplied, it will override any values sent from the client.");
+                            streamWriter.WriteComment("(Optional) \"BCC\" address for all sent messages.  When supplied, it will add the recipient(s) to any included with the original message.");
                             streamWriter.WriteElementString("BCC", account.FixedTo);
                             streamWriter.WriteComment("(Optional) Signature to add to the end of each sent message.");
                             streamWriter.WriteElementString("Signature", account.Signature);
@@ -741,6 +752,22 @@ namespace OpaqueMail.Net.ProxySettings
 
                             streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Raw");
                             streamWriter.WriteElementString("LogLevel", account.SmtpLogLevel.ToString());
+
+                            if (account.SmtpDebugMode)
+                            {
+                                streamWriter.WriteComment("Whether the proxy instance is running in DEBUG mode and should output full exception messages.");
+                                streamWriter.WriteElementString("Debug", account.SmtpDebugMode.ToString());
+                            }
+
+                            if (account.PublicKeys.Count > 0)
+                            {
+                                streamWriter.WriteComment("Collection of public keys for recipients, Base-64 encoded.");
+                                streamWriter.WriteElementString("PublicKeyCount", account.PublicKeys.Count.ToString());
+
+                                int publicKeyId = 0;
+                                foreach (string publicKey in account.PublicKeys)
+                                    streamWriter.WriteElementString("PublicKey" + (++publicKeyId), publicKey);
+                            }
 
                             if (account.OutlookRegistryKeys.Count > 0)
                             {
@@ -819,6 +846,12 @@ namespace OpaqueMail.Net.ProxySettings
                             streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Raw");
                             streamWriter.WriteElementString("LogLevel", account.ImapLogLevel.ToString());
 
+                            if (account.ImapDebugMode)
+                            {
+                                streamWriter.WriteComment("Whether the proxy instance is running in DEBUG mode and should output full exception messages.");
+                                streamWriter.WriteElementString("Debug", account.ImapDebugMode.ToString());
+                            }
+
                             if (account.OutlookRegistryKeys.Count > 0)
                             {
                                 streamWriter.WriteComment("Outlook registry keys for accounts configured through the OpaqueMail Proxy settings app.");
@@ -895,6 +928,12 @@ namespace OpaqueMail.Net.ProxySettings
 
                             streamWriter.WriteComment("Proxy logging level, determining how much information is logged.  Possible values: None, Critical, Error, Warning, Information, Verbose, Raw");
                             streamWriter.WriteElementString("LogLevel", account.Pop3LogLevel.ToString());
+
+                            if (account.Pop3DebugMode)
+                            {
+                                streamWriter.WriteComment("Whether the proxy instance is running in DEBUG mode and should output full exception messages.");
+                                streamWriter.WriteElementString("Debug", account.Pop3DebugMode.ToString());
+                            }
 
                             if (account.OutlookRegistryKeys.Count > 0)
                             {

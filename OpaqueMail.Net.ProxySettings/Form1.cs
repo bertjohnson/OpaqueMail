@@ -754,8 +754,14 @@ namespace OpaqueMail.Net.ProxySettings
 
             public bool SmimeRemovePreviousOperations = true;
 
+            public HashSet<string> PublicKeys = new HashSet<string>();
+
             public string ImapExportDirectory;
             public string Pop3ExportDirectory;
+
+            public bool ImapDebugMode;
+            public bool Pop3DebugMode;
+            public bool SmtpDebugMode;
 
             public string ImapLogFile = "Logs\\IMAPProxy{#}-{yyyy-MM-dd}.log";
             public LogLevel ImapLogLevel = LogLevel.Verbose;

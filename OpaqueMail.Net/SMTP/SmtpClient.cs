@@ -42,7 +42,7 @@ namespace OpaqueMail
 
         #region Private Members
         /// <summary>Buffer used during various S/MIME operations.</summary>
-        private byte[] buffer = new byte[Constants.LARGEBUFFERSIZE];
+        private byte[] buffer = new byte[Constants.HUGEBUFFERSIZE];
         /// <summary>Cache of recipient public keys to speed up subsequent usage of this SmtpClient.</summary>
         private Dictionary<string, X509Certificate2> SmimeCertificateCache = new Dictionary<string, X509Certificate2>();
         #endregion Private Members
@@ -205,7 +205,6 @@ namespace OpaqueMail
                 }
 
                 // Loop through certificates and check for matching recipients.
-                /// TODO: Allow for users to choose when there are multiple certificate options and/or define default criteria.
                 foreach (X509Certificate2 cert in SmimeValidCertificates)
                 {
                     // Look at certificates with e-mail subject names.
@@ -304,41 +303,50 @@ namespace OpaqueMail
             SmtpTcpClient.Connect(Host, Port);
             Stream SmtpStream = SmtpTcpClient.GetStream();
 
+            // Use stream readers and writers to simplify I/O.
+            StreamReader reader = new StreamReader(SmtpStream);
+            StreamWriter writer = new StreamWriter(SmtpStream);
+            writer.AutoFlush = true;
+
             // Read the welcome message.
-            string response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            string response = await reader.ReadLineAsync();
 
             // Send EHLO and find out server capabilities.
-            await Functions.SendStreamStringAsync(SmtpStream, buffer, "EHLO " + Host + "\r\n");
-            response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            await writer.WriteLineAsync("EHLO " + Host);
+            char[] charBuffer = new char[Constants.SMALLBUFFERSIZE];
+            int bytesRead = await reader.ReadAsync(charBuffer, 0, Constants.SMALLBUFFERSIZE);
+            response = new string(charBuffer, 0, bytesRead);
             if (!response.StartsWith("2"))
                 throw new SmtpException("Unable to connect to remote server '" + Host + "'.  Sent 'EHLO' and received '" + response + "'.");
 
             // Stand up a TLS/SSL stream.
             if (EnableSsl)
             {
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, "STARTTLS\r\n");
-                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                await writer.WriteLineAsync("STARTTLS");
+                response = await reader.ReadLineAsync();
                 if (!response.StartsWith("2"))
                     throw new SmtpException("Unable to start TLS/SSL protection with '" + Host + "'.  Received '" + response + "'.");
 
                 SmtpStream = new SslStream(SmtpStream);
+                ((SslStream)SmtpStream).AuthenticateAsClient(Host);
 
-                if (!((SslStream)SmtpStream).IsAuthenticated)
-                    ((SslStream)SmtpStream).AuthenticateAsClient(Host);
+                reader = new StreamReader(SmtpStream);
+                writer = new StreamWriter(SmtpStream);
+                writer.AutoFlush = true;
             }
-    
+
             // Authenticate using the AUTH LOGIN command.
             if (Credentials != null)
             {
                 NetworkCredential cred = (NetworkCredential)Credentials;
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, "AUTH LOGIN\r\n");
-                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                await writer.WriteLineAsync("AUTH LOGIN");
+                response = await reader.ReadLineAsync();
                 if (!response.StartsWith("3"))
                     throw new SmtpException("Unable to authenticate with server '" + Host + "'.  Received '" + response + "'.");
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, Functions.ToBase64String(cred.UserName) + "\r\n");
-                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, Functions.ToBase64String(cred.Password) + "\r\n");
-                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                await writer.WriteLineAsync(Functions.ToBase64String(cred.UserName));
+                response = await reader.ReadLineAsync();
+                await writer.WriteLineAsync(Functions.ToBase64String(cred.Password));
+                response = await reader.ReadLineAsync();
                 if (!response.StartsWith("2"))
                     throw new SmtpException("Unable to authenticate with server '" + Host + "'.  Received '" + response + "'.");
             }
@@ -348,8 +356,8 @@ namespace OpaqueMail
 
             // Specify who the message is from.
             rawHeaders.Append(Functions.SpanHeaderLines("From: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.From))) + "\r\n");
-            await Functions.SendStreamStringAsync(SmtpStream, buffer, "MAIL FROM:<" + message.From.Address + ">\r\n");
-            response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            await writer.WriteLineAsync("MAIL FROM:<" + message.From.Address + ">");
+            response = await reader.ReadLineAsync();
             if (!response.StartsWith("2"))
                 throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'MAIL FROM' and received '" + response + "'.");
 
@@ -358,8 +366,8 @@ namespace OpaqueMail
                 rawHeaders.Append(Functions.SpanHeaderLines("To: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.To))) + "\r\n");
             foreach (MailAddress address in message.To)
             {
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
-                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                await writer.WriteLineAsync("RCPT TO:<" + address.Address + ">");
+                response = await reader.ReadLineAsync();
                 if (!response.StartsWith("2"))
                     throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
             }
@@ -368,31 +376,29 @@ namespace OpaqueMail
                 rawHeaders.Append(Functions.SpanHeaderLines("CC: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.CC))) + "\r\n");
             foreach (MailAddress address in message.CC)
             {
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
-                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                await writer.WriteLineAsync("RCPT TO:<" + address.Address + ">");
+                response = await reader.ReadLineAsync();
                 if (!response.StartsWith("2"))
                     throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
             }
 
             foreach (MailAddress address in message.Bcc)
             {
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, "RCPT TO:<" + address.Address + ">\r\n");
-                response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+                await writer.WriteLineAsync("RCPT TO:<" + address.Address + ">");
+                response = await reader.ReadLineAsync();
                 if (!response.StartsWith("2"))
                     throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
             }
 
             // Send the raw message.
-            await Functions.SendStreamStringAsync(SmtpStream, buffer, "DATA\r\n");
-            response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            await writer.WriteLineAsync("DATA");
+            response = await reader.ReadLineAsync();
             if (!response.StartsWith("3"))
                 throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'DATA' and received '" + response + "'.");
 
             // If a read-only mail message is passed in with its raw headers and body, save a few steps by sending that directly.
             if (message is ReadOnlyMailMessage)
-            {
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, ((ReadOnlyMailMessage)message).RawHeaders + "\r\n" + ((ReadOnlyMailMessage)message).RawBody + "\r\n.\r\n");
-            }
+                await writer.WriteAsync(((ReadOnlyMailMessage)message).RawHeaders + "\r\n" + ((ReadOnlyMailMessage)message).RawBody + "\r\n.\r\n");
             else
             {
                 rawHeaders.Append(Functions.SpanHeaderLines("Subject: " + Functions.EncodeMailHeader(message.Subject)) + "\r\n");
@@ -412,15 +418,19 @@ namespace OpaqueMail
                     }
                 }
 
-                await Functions.SendStreamStringAsync(SmtpStream, buffer, rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
+                await writer.WriteAsync(rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
             }
 
-            response = await Functions.ReadStreamStringAsync(SmtpStream, buffer);
+            response = await reader.ReadLineAsync();
             if (!response.StartsWith("2"))
                 throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent message and received '" + response + "'.");
 
             // Clean up this connection.
-            await Functions.SendStreamStringAsync(SmtpStream, buffer, "QUIT\r\n");
+            await writer.WriteLineAsync("QUIT");
+
+            writer.Dispose();
+            reader.Dispose();
+
             SmtpStream.Dispose();
             SmtpTcpClient.Close();
         }
@@ -428,10 +438,9 @@ namespace OpaqueMail
         /// <summary>
         /// Create a byte array containing an encrypted S/MIME envelope.
         /// </summary>
-        /// <param name="buffer">A byte array to streamline bit shuffling.</param>
         /// <param name="contentBytes">The contents of the envelope to be encrypted.</param>
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
-        private byte[] SmimeEncryptEnvelope(byte[] buffer, byte[] contentBytes, MailMessage message, bool alreadySigned)
+        private byte[] SmimeEncryptEnvelope(byte[] contentBytes, MailMessage message, bool alreadySigned)
         {
             // Resolve recipient public keys.
             Dictionary<string, MailAddress> addressesNeedingPublicKeys;
@@ -542,7 +551,7 @@ namespace OpaqueMail
             if (message.SmimeEncryptedEnvelope || message.SmimeTripleWrapped)
             {
                 int unencryptedSize = MIMEMessageBytes.Length;
-                MIMEMessageBytes = SmimeEncryptEnvelope(buffer, MIMEMessageBytes, message, successfullySigned);
+                MIMEMessageBytes = SmimeEncryptEnvelope(MIMEMessageBytes, message, successfullySigned);
                 successfullyEncrypted = MIMEMessageBytes.Length != unencryptedSize;
 
                 // If the message won't be triple-wrapped, wrap the encrypted message with MIME.

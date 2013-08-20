@@ -12,6 +12,11 @@ namespace OpaqueMail
     public class Constants
     {
         /// <summary>
+        /// Extra large buffer size for bit shuffling.
+        /// </summary>
+        public const int HUGEBUFFERSIZE = 16777216;
+
+        /// <summary>
         /// Large buffer size for bit shuffling.
         /// </summary>
         public const int LARGEBUFFERSIZE = 1048576;
