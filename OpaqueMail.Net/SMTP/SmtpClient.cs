@@ -204,7 +204,7 @@ namespace OpaqueMail
             if (addressesNeedingPublicKeys.Count > 0)
             {
                 // Read from the Windows certificate store if valid certificates aren't specified.
-                if (SmimeValidCertificates == null)
+                if (SmimeValidCertificates == null || SmimeValidCertificates.Count < 1)
                 {
                     // Load from the current user.
                     X509Store store = new X509Store(StoreLocation.CurrentUser);

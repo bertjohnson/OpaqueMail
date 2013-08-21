@@ -728,9 +728,9 @@ namespace OpaqueMail.ProxySettings
                             streamWriter.WriteComment("(Optional) \"To\" address for all sent messages.  When supplied, it will add the recipient(s) to any included with the original message.");
                             streamWriter.WriteElementString("To", account.FixedTo);
                             streamWriter.WriteComment("(Optional) \"CC\" address for all sent messages.  When supplied, it will add the recipient(s) to any included with the original message.");
-                            streamWriter.WriteElementString("CC", account.FixedTo);
+                            streamWriter.WriteElementString("CC", account.FixedCC);
                             streamWriter.WriteComment("(Optional) \"BCC\" address for all sent messages.  When supplied, it will add the recipient(s) to any included with the original message.");
-                            streamWriter.WriteElementString("BCC", account.FixedTo);
+                            streamWriter.WriteElementString("BCC", account.FixedBcc);
                             streamWriter.WriteComment("(Optional) Signature to add to the end of each sent message.");
                             streamWriter.WriteElementString("Signature", account.Signature);
 

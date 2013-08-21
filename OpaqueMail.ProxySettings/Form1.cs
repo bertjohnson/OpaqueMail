@@ -69,7 +69,10 @@ namespace OpaqueMail.ProxySettings
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
             if (keyData == Keys.F5)
+            {
                 PopulateAccounts();
+                UpdateServiceStatus(null);
+            }
 
             return base.ProcessCmdKey(ref msg, keyData);
         }
@@ -341,7 +344,6 @@ namespace OpaqueMail.ProxySettings
             {
                 document = new XPathDocument(SettingsFileName);
                 XPathNavigator navigator = document.CreateNavigator();
-
                 int smtpServiceCount = GetXmlIntValue(navigator, "/Settings/SMTP/ServiceCount") ?? 0;
                 for (int i = 1; i <= smtpServiceCount; i++)
                 {
@@ -374,7 +376,6 @@ namespace OpaqueMail.ProxySettings
 
             // First, correlate Outlook registry keys with accounts.
             AccountGrid.Rows.Clear();
-            bool activeProxy = false;
             foreach (string outlookVersion in OutlookVersions.Keys)
             {
                 using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Office\" + outlookVersion + @"\Outlook\Profiles\Outlook\9375CFF0413111d3B88A00104B2A6676", false))
@@ -396,9 +397,6 @@ namespace OpaqueMail.ProxySettings
 
                                         string matchingCert = GetMatchingCert(certs, accountName);
 
-                                        if (!activeProxy && outlookRegistryKeys.Contains(subKey.Name))
-                                            activeProxy = true;
-
                                         AccountGrid.Rows.Add(OutlookVersions[outlookVersion], accountName, outlookRegistryKeys.Contains(subKey.Name), matchingCert, subKey.Name);
                                     }
                                 }
@@ -409,7 +407,6 @@ namespace OpaqueMail.ProxySettings
             }
 
             // Second, correlate Thunderbird config keys with accounts.
-            activeProxy = false;
             if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
             {
                 foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
@@ -431,9 +428,6 @@ namespace OpaqueMail.ProxySettings
 
                                 string matchingCert = GetMatchingCert(certs, accountName);
 
-                                if (!activeProxy && thunderbirdKeys.Contains(thunderbirdKey))
-                                    activeProxy = true;
-
                                 AccountGrid.Rows.Add("Thunderbird", accountName, thunderbirdKeys.Contains(thunderbirdKey), matchingCert, thunderbirdKey);
                             }
                         }
@@ -442,7 +436,6 @@ namespace OpaqueMail.ProxySettings
             }
 
             // Third, correlate Windows Live Mail config keys with accounts.
-            activeProxy = false;
             if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
             {
                 foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
@@ -474,9 +467,6 @@ namespace OpaqueMail.ProxySettings
 
                                             string matchingCert = GetMatchingCert(certs, address);
 
-                                            if (!activeProxy && liveMailKeys.Contains(liveMailKey))
-                                                activeProxy = true;
-
                                             AccountGrid.Rows.Add("Live Mail", address, liveMailKeys.Contains(liveMailKey), matchingCert, liveMailKey);
                                         }
 
@@ -491,12 +481,9 @@ namespace OpaqueMail.ProxySettings
                 }
             }
 
-            // If there's at least one active proxy, ensure the service is running.
-            if (activeProxy)
-            {
-                InstallService();
-                StartService();
-            }
+            // Ensure the service is running.
+            InstallService();
+            StartService();
         }
 
         /// <summary>

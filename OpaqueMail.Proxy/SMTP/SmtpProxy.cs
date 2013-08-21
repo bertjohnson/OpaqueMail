@@ -49,7 +49,7 @@ namespace OpaqueMail.Proxy
         /// <param name="remoteServerEnableSsl">Whether the remote SMTP server requires TLS/SSL.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl)
         {
-            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", "", "", "", "", SmimeSettingsMode.BestEffort, true, true, true, true, true, "", LogLevel.None, 0, new X509Certificate2Collection(), false);
+            Start(acceptedIPs, localIPAddress, localPort, localEnableSsl, remoteServerHostName, remoteServerPort, remoteServerEnableSsl, null, "", "", "", "", "", SmimeSettingsMode.BestEffort, true, true, true, true, true, "", LogLevel.None, 0, null, false);
         }
 
         /// <summary>
@@ -611,7 +611,19 @@ namespace OpaqueMail.Proxy
 
                                             if (!string.IsNullOrEmpty(arguments.FixedTo))
                                             {
-                                                message.To.Add(Functions.FromMailAddressString(arguments.FixedTo)[0]);
+                                                MailAddressCollection addresses = Functions.FromMailAddressString(arguments.FixedTo);
+                                                foreach (MailAddress address in addresses)
+                                                {
+                                                    bool addressFound = false;
+                                                    foreach (MailAddress existingAddress in message.To)
+                                                    {
+                                                        if (existingAddress.Address.ToUpper() == address.Address.ToUpper())
+                                                            addressFound = true;
+                                                    }
+
+                                                    if (!addressFound)
+                                                        message.To.Add(address);
+                                                }
 
                                                 if (message.RawHeaders.Contains("To: "))
                                                     message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "To: ", "\r\n", Functions.ToMailAddressString(message.To));
@@ -621,8 +633,19 @@ namespace OpaqueMail.Proxy
 
                                             if (!string.IsNullOrEmpty(arguments.FixedCC))
                                             {
-                                                foreach (MailAddress address in Functions.FromMailAddressString(arguments.FixedCC))
-                                                    message.CC.Add(address);
+                                                MailAddressCollection addresses = Functions.FromMailAddressString(arguments.FixedCC);
+                                                foreach (MailAddress address in addresses)
+                                                {
+                                                    bool addressFound = false;
+                                                    foreach (MailAddress existingAddress in message.CC)
+                                                    {
+                                                        if (existingAddress.Address.ToUpper() == address.Address.ToUpper())
+                                                            addressFound = true;
+                                                    }
+
+                                                    if (!addressFound)
+                                                        message.CC.Add(address);
+                                                }
 
                                                 if (message.RawHeaders.Contains("CC: "))
                                                     message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "CC: ", "\r\n", Functions.ToMailAddressString(message.To));
@@ -632,8 +655,19 @@ namespace OpaqueMail.Proxy
 
                                             if (!string.IsNullOrEmpty(arguments.FixedBcc))
                                             {
-                                                foreach (MailAddress address in Functions.FromMailAddressString(arguments.FixedBcc))
-                                                    message.Bcc.Add(address);
+                                                MailAddressCollection addresses = Functions.FromMailAddressString(arguments.FixedBcc);
+                                                foreach (MailAddress address in addresses)
+                                                {
+                                                    bool addressFound = false;
+                                                    foreach (MailAddress existingAddress in message.Bcc)
+                                                    {
+                                                        if (existingAddress.Address.ToUpper() == address.Address.ToUpper())
+                                                            addressFound = true;
+                                                    }
+
+                                                    if (!addressFound)
+                                                        message.Bcc.Add(address);
+                                                }
                                             }
 
                                             // Insert the fixed signature if one exists.
