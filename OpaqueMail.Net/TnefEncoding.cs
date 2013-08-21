@@ -19,7 +19,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Represents an e-mail encoded using Microsoft's TNEF format.

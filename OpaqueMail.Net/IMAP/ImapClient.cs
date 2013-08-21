@@ -26,7 +26,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Allows applications to retrieve and manage e-mail by using the Internet Message Access Protocol (IMAP).
@@ -259,7 +259,6 @@ namespace OpaqueMail
         /// <summary>
         /// Raises an event indicating the IMAP server disconnecting this connection due to a "BYE" command.
         /// </summary>
-        /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
         protected void OnImapClientDisconnectEvent()
         {
             ImapClientDisconnectEvent(this);
@@ -393,8 +392,6 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
         /// <param name="messages">The raw messages to append.</param>
-        /// <param name="flags">Optional flags to be applied for the message.</param>
-        /// <param name="date">Optional date for the message.</param>
         public async Task<bool> AppendMessagesAsync(string mailboxName, string[] messages)
         {
             return await AppendMessagesAsync(mailboxName, messages, new string[] { }, null);
@@ -930,7 +927,7 @@ namespace OpaqueMail
         /// Load an instance of a message in a specified mailbox based on its index.
         /// </summary>
         /// <param name="mailboxName">The mailbox to load from.</param>
-        /// <param name="uid">The index of the message to load.</param>
+        /// <param name="index">The index of the message to load.</param>
         public async Task<ReadOnlyMailMessage> GetMessageAsync(string mailboxName, int index)
         {
             return await GetMessageHelper(mailboxName, index, false, false, false);
@@ -1038,7 +1035,6 @@ namespace OpaqueMail
         /// <summary>
         /// Retrieve up to 25 of the most recent messages from the current mailbox.
         /// </summary>
-        /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync()
         {
             return await GetMessagesAsync(CurrentMailboxName, 25, 1, false, false, false);
@@ -1571,7 +1567,7 @@ namespace OpaqueMail
         /// <summary>
         /// Request that the server forwards notifications matching the specified criteria.
         /// </summary>
-        /// <param name="searchQuery">Well-formatted notification criteria string.</param>
+        /// <param name="notificationCriteria">Well-formatted notification criteria string.</param>
         public async Task<bool> Notify(string notificationCriteria)
         {
             if (ServerSupportsNotify)
@@ -2440,10 +2436,17 @@ namespace OpaqueMail
     /// Provides data for ImapClient events.
     /// </summary>
     public class ImapClientEventArgs : EventArgs
-    {   
+    {
+        /// <summary>Name of the mailbox containing the message to be processed.</summary>
         public string MailboxName;
+        /// <summary>ID of the message to be processed.</summary>
         public int MessageId;
 
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        /// <param name="mailboxName">Name of the mailbox containing the message to be processed.</param>
+        /// <param name="messageId">ID of the message to be processed.</param>
         public ImapClientEventArgs(string mailboxName, int messageId)
         {
             MailboxName = mailboxName;

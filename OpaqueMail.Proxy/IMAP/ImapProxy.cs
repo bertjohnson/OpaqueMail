@@ -13,6 +13,7 @@
  * 
  */
 
+using OpaqueMail.Net;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,6 +31,9 @@ using System.Xml.XPath;
 
 namespace OpaqueMail.Proxy
 {
+    /// <summary>
+    /// IMAP proxy to import S/MIME certificates, filter IPs, or export messages.
+    /// </summary>
     public class ImapProxy : ProxyBase
     {
         #region Public Methods

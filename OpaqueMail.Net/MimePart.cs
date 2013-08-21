@@ -22,7 +22,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Represents a node in a MIME encoded message tree.
@@ -467,6 +467,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="signatureBlock">The S/MIME signature block.</param>
         /// <param name="body">The message's raw body.</param>
+        /// <param name="signingCertificates">Collection of certificates to be used when signing.</param>
         public static bool VerifySignature(string signatureBlock, string body, out X509Certificate2Collection signingCertificates)
         {
             // Ignore MIME headers for the signature block;

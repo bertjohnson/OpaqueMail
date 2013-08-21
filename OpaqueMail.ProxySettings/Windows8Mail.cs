@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail.ProxySettings
+namespace OpaqueMail.Proxy.Settings
 {
     /// <summary>
     /// Helper class to create a loopback exception for the Windows 8 Mail app.
@@ -129,7 +129,7 @@ namespace OpaqueMail.ProxySettings
         /// <summary>
         /// Object to track app container information.
         /// </summary>
-        public class AppContainer
+        internal class AppContainer
         {
             public String AppContainerName { get; set; }
             public String DisplayName { get; set; }

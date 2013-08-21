@@ -20,7 +20,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Thread-safe asynchronous lock.
@@ -45,6 +45,9 @@ namespace OpaqueMail
             return wait.IsCompleted ? releaser : wait.ContinueWith((_, state) => new Releaser((AsyncLock)state), this, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
+        /// <summary>
+        /// Helper class for unlocking.
+        /// </summary>
         public struct Releaser : IDisposable
         {
             private readonly AsyncLock lockToRelease;

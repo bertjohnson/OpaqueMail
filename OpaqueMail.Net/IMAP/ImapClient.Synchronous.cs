@@ -19,7 +19,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     public partial class ImapClient
     {
@@ -73,8 +73,6 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
         /// <param name="messages">The raw messages to append.</param>
-        /// <param name="flags">Optional flags to be applied for the message.</param>
-        /// <param name="date">Optional date for the message.</param>
         public bool AppendMessages(string mailboxName, string[] messages)
         {
             return Task.Run(() => AppendMessagesAsync(mailboxName, messages, new string[] { }, null)).Result;
@@ -227,7 +225,7 @@ namespace OpaqueMail
         /// Load an instance of a message in a specified mailbox based on its index.
         /// </summary>
         /// <param name="mailboxName">The mailbox to load from.</param>
-        /// <param name="uid">The index of the message to load.</param>
+        /// <param name="index">The index of the message to load.</param>
         public ReadOnlyMailMessage GetMessage(string mailboxName, int index)
         {
             return Task.Run(() => GetMessageAsync(mailboxName, index)).Result;
@@ -318,7 +316,6 @@ namespace OpaqueMail
         /// <summary>
         /// Retrieve up to 25 of the most recent messages from the current mailbox.
         /// </summary>
-        /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         public List<ReadOnlyMailMessage> GetMessages()
         {
             return Task.Run(() => GetMessagesAsync()).Result;

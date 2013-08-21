@@ -13,6 +13,7 @@
  * 
  */
 
+using OpaqueMail.Net;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -29,6 +30,9 @@ using System.Xml.XPath;
 
 namespace OpaqueMail.Proxy
 {
+    /// <summary>
+    /// POP3 proxy to import S/MIME certificates, filter IPs, or export messages.
+    /// </summary>
     public class Pop3Proxy : ProxyBase
     {
         #region Public Methods

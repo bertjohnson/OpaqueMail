@@ -25,13 +25,13 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Represents an e-mail message that was received using the ImapClient or Pop3Client classes.
     /// Includes OpaqueMail extensions to facilitate handling of secure S/MIME messages.
     /// </summary>
-    public class ReadOnlyMailMessage : OpaqueMail.MailMessage
+    public class ReadOnlyMailMessage : OpaqueMail.Net.MailMessage
     {
         #region Public Members
         /// <summary>Collection of all recipients of this message, based on To, CC, and Bcc paramaters.</summary>
@@ -744,8 +744,8 @@ namespace OpaqueMail
         /// <summary>
         /// Initializes a populated instance of the OpaqueMail.MailMessage class representing the message text passed in.
         /// </summary>
-        /// <param name="messageText">The raw headers of the e-mail message.</param>
-        /// <param name="messageText">The raw body of the e-mail message.</param>
+        /// <param name="header">The raw headers of the e-mail message.</param>
+        /// <param name="body">The raw body of the e-mail message.</param>
         public ReadOnlyMailMessage(string header, string body)
         {
             new ReadOnlyMailMessage(header + "\r\n" + body);
@@ -756,8 +756,7 @@ namespace OpaqueMail
         /// <summary>
         /// Cast a ReadOnlyMailMessage to a MaiLMessage.
         /// </summary>
-        /// <param name="message">ReadOnlyMailMessage object to cast.</param>
-        /// <returns></returns>
+        /// <returns>A MailMessage representation.</returns>
         public MailMessage AsMailMessage()
         {
             MailMessage castMessage = new MailMessage();
@@ -852,22 +851,22 @@ namespace OpaqueMail
                 switch (flag.ToUpper())
                 {
                     case "\\ANSWERED":
-                        Flags = Flags | OpaqueMail.Flags.Answered;
+                        Flags = Flags | Flags.Answered;
                         break;
                     case "\\DELETED":
-                        Flags = Flags | OpaqueMail.Flags.Deleted;
+                        Flags = Flags | Flags.Deleted;
                         break;
                     case "\\DRAFT":
-                        Flags = Flags | OpaqueMail.Flags.Draft;
+                        Flags = Flags | Flags.Draft;
                         break;
                     case "\\FLAGGED":
-                        Flags = Flags | OpaqueMail.Flags.Flagged;
+                        Flags = Flags | Flags.Flagged;
                         break;
                     case "\\RECENT":
-                        Flags = Flags | OpaqueMail.Flags.Recent;
+                        Flags = Flags | Flags.Recent;
                         break;
                     case "\\SEEN":
-                        Flags = Flags | OpaqueMail.Flags.Seen;
+                        Flags = Flags | Flags.Seen;
                         break;
                 }
             }

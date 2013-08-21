@@ -13,6 +13,7 @@
  * 
  */
 
+using OpaqueMail.Net;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -23,6 +24,9 @@ using System.Xml.XPath;
 
 namespace OpaqueMail.Proxy
 {
+    /// <summary>
+    /// Provides common functions used by other OpaqueMail Proxy classes.
+    /// </summary>
     public class ProxyFunctions
     {
         #region Public Methods
@@ -207,8 +211,11 @@ namespace OpaqueMail.Proxy
         /// <summary>
         /// Log an event or exception.
         /// </summary>
+        /// <param name="LogWriter">Log writer object used for documenting events.</param>
         /// <param name="sessionId">The current session's unique ID.</param>
         /// <param name="message">The message to log.</param>
+        /// <param name="minimalLogLevel">The minimal log level needed for the message to be logged.</param>
+        /// <param name="currentLogLevel">The session's current log level.</param>
         public static void Log(StreamWriter LogWriter, string sessionId, string message, LogLevel minimalLogLevel, LogLevel currentLogLevel)
         {
             if ((int)currentLogLevel >= (int)minimalLogLevel)
@@ -227,9 +234,12 @@ namespace OpaqueMail.Proxy
         /// <summary>
         /// Log an event or exception.
         /// </summary>
+        /// <param name="LogWriter">Log writer object used for documenting events.</param>
         /// <param name="sessionId">The current session's unique ID.</param>
         /// <param name="connectionId">The current connection's unique ID.</param>
         /// <param name="message">The message to log.</param>
+        /// <param name="minimalLogLevel">The minimal log level needed for the message to be logged.</param>
+        /// <param name="currentLogLevel">The session's current log level.</param>
         public static void Log(StreamWriter LogWriter, string sessionId, string connectionId, string message, LogLevel minimalLogLevel, LogLevel currentLogLevel)
         {
             if ((int)currentLogLevel >= (int)minimalLogLevel)

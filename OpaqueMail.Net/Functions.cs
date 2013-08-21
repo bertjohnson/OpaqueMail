@@ -26,7 +26,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Provides common functions used by other OpaqueMail classes.
@@ -721,6 +721,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="streamReader">StreamReader to receive message from.</param>
         /// <param name="buffer">A character array to streamline bit shuffling.</param>
+        /// <param name="maximumBytes">The maximum number of bytes to return.</param>
         /// <returns>Any text read from the stream connection.</returns>
         public static string ReadStreamString(StreamReader streamReader, char[] buffer, int maximumBytes)
         {

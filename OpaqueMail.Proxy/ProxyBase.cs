@@ -25,6 +25,9 @@ using System.Threading.Tasks;
 
 namespace OpaqueMail.Proxy
 {
+    /// <summary>
+    /// Foundation for IMAP, POP3, and SMTP proxies.
+    /// </summary>
     public class ProxyBase
     {
         #region Public Members

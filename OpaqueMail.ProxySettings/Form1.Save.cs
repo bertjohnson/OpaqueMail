@@ -14,6 +14,7 @@
  */
 
 using Microsoft.Win32;
+using OpaqueMail.Net;
 using OpaqueMail.Proxy;
 using System;
 using System.Collections.Generic;
@@ -30,7 +31,7 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
 
-namespace OpaqueMail.ProxySettings
+namespace OpaqueMail.Proxy.Settings
 {
     public partial class Form1
     {

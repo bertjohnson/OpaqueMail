@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("OpaqueMail.TestClient")]
+[assembly: AssemblyTitle("OpaqueMail.Net.TestClient")]
 [assembly: AssemblyDescription(".NET e-mail encryption library with S/MIME support for SMTP, IMAP, and POP3.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Bert Johnson")]
@@ -33,4 +33,4 @@ using System.Runtime.InteropServices;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.5.5")]
-[assembly: AssemblyFileVersion("1.5.5.1")]
+[assembly: AssemblyFileVersion("1.5.5.2")]

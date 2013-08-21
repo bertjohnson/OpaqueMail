@@ -19,7 +19,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Supported authentication methods.
@@ -67,7 +67,7 @@ namespace OpaqueMail
         public string MailListId;
         /// <summary>X-MSMail-Priority header.</summary>
         public string MSMailPriority;
-        /// <summary>\X-Original-Arrival-Time header.</summary>
+        /// <summary>X-Original-Arrival-Time header.</summary>
         public DateTime OriginalArrivalTime;
         /// <summary>X-Original-Message-ID header</summary>
         public string OriginalMessageId;
@@ -123,16 +123,27 @@ namespace OpaqueMail
     /// </summary>
     public struct ImapIdentification
     {
+        /// <summary>Name of the IMAP client.</summary>
         public string Name;
+        /// <summary>Version of the IMAP client</summary>
         public string Version;
+        /// <summary>Operating system.</summary>
         public string OS;
+        /// <summary>Operating system vendor.</summary>
         public string OSVendor;
+        /// <summary>IMAP client vendor.</summary>
         public string Vendor;
+        /// <summary>IMAP client support URL</summary>
         public string SupportURL;
+        /// <summary>IMAP client address.</summary>
         public string Address;
+        /// <summary>Current date.</summary>
         public string Date;
+        /// <summary>Command issued.</summary>
         public string Command;
+        /// <summary>Command arguments.</summary>
         public string Arguments;
+        /// <summary>Environment information.</summary>
         public string Environment;
     }
 
@@ -141,7 +152,9 @@ namespace OpaqueMail
     /// </summary>
     public struct QuotaUsage
     {
+        /// <summary>Quota used.</summary>
         public int Usage;
+        /// <summary>Maximum quota size.</summary>
         public int QuotaMaximum;
     }
 

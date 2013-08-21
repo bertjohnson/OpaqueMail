@@ -23,7 +23,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Allows applications to retrieve and manage e-mail by using the Post Office Protocol (POP3).
@@ -240,7 +240,7 @@ namespace OpaqueMail
         /// <summary>
         /// Delete a message from the server based on its index.
         /// </summary>
-        /// <param name="index">Index of the message to delete.</param>
+        /// <param name="uid">UID of the message to delete.</param>
         public bool DeleteMessageUid(string uid)
         {
             return Task.Run(() => DeleteMessageAsync(uid)).Result;
@@ -461,8 +461,8 @@ namespace OpaqueMail
         /// <summary>
         /// Retrieve a specific message from the server based on its UID, optionally returning only headers.
         /// </summary>
-        /// <param name="index">The index number of the message to return.</param>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
+        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
         public ReadOnlyMailMessage GetMessage(string uid, bool headersOnly)
         {
             return Task.Run(() => GetMessageAsync(uid, headersOnly)).Result;
@@ -499,8 +499,8 @@ namespace OpaqueMail
         /// <summary>
         /// Retrieve a specific message from the server based on its UID, optionally returning only headers.
         /// </summary>
-        /// <param name="index">The index number of the message to return.</param>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
+        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
         public async Task<ReadOnlyMailMessage> GetMessageAsync(string uid, bool headersOnly)
         {
             return await GetMessageHelper(-1, uid, headersOnly);

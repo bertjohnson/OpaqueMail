@@ -25,7 +25,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Represents an e-mail message that can be sent using the OpaqueMail.SmtpClient class.
@@ -137,8 +137,8 @@ namespace OpaqueMail
         /// <summary>
         /// Generate a multipart/mixed message containing the e-mail's body, alternate views, and attachments.
         /// </summary>
-        /// <param name="buffer">Buffer used during various S/MIME operations.</param>
         /// <param name="SmimeBoundaryName">Text delimiting S/MIME message parts.</param>
+        /// <param name="SmimeAlternativeViewBoundaryName">Text delimiting S/MIME message alternative view parts.</param>
         public async Task<byte[]> MIMEEncode(string SmimeBoundaryName, string SmimeAlternativeViewBoundaryName)
         {
             // Write out body of the message.

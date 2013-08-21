@@ -31,8 +31,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.XPath;
 
-namespace OpaqueMail
+namespace OpaqueMail.Proxy
 {
+    /// <summary>
+    /// Service to proxy SMTP, IMAP, and POP3 traffic.
+    /// </summary>
     public partial class ProxyService : ServiceBase
     {
         #region Private Members
@@ -190,7 +193,7 @@ namespace OpaqueMail
     }
 
     /// <summary>
-    /// Set the service account to the local system.
+    /// Sets the service account to the local system.
     /// </summary>
     [RunInstaller(true)]
     public sealed class ProxyServiceProcessInstaller : ServiceProcessInstaller
@@ -202,7 +205,7 @@ namespace OpaqueMail
     }
 
     /// <summary>
-    /// Handle OpaqueMail Proxy service installation.
+    /// Handles OpaqueMail Proxy service installation.
     /// </summary>
     [RunInstaller(true)]
     public sealed class ProxyServiceInstaller : ServiceInstaller

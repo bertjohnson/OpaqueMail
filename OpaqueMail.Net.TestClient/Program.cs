@@ -19,8 +19,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace OpaqueMail.TestClient
+namespace OpaqueMail.Net.TestClient
 {
+    /// <summary>
+    /// Main program thread of OpaqueMail.Net test client.
+    /// </summary>
     static class Program
     {
         /// <summary>

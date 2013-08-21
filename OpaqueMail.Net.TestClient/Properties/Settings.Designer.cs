@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace OpaqueMail.TestClient.Properties
+namespace OpaqueMail.Net.TestClient.Properties
 {
 
 

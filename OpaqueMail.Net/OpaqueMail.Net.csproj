@@ -40,7 +40,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Multithreading.cs" />
+    <Compile Include="LockAsync.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="EnumsAndStructs.cs" />
     <Compile Include="Functions.cs" />

@@ -22,7 +22,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpaqueMail
+namespace OpaqueMail.Net
 {
     /// <summary>
     /// Helper class for creating, importing, and exporting X509 certiticates.
@@ -295,7 +295,7 @@ namespace OpaqueMail
         /// Retrieve a certificate from the Windows certificate store based on its subject name.
         /// </summary>
         /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
-        /// <param name="serialNumber">Serial number of the certificate.</param>
+        /// <param name="subjectName">Subject name of the certificate.</param>
         public static X509Certificate2 GetCertificateBySubjectName(StoreLocation location, string subjectName)
         {
             X509Store store = new X509Store(location);

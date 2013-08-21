@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace OpaqueMail.ProxySettings.Properties
+namespace OpaqueMail.Proxy.Settings.Properties
 {
 
 

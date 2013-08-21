@@ -30,8 +30,11 @@ using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
 
-namespace OpaqueMail.TestClient
+namespace OpaqueMail.Net.TestClient
 {
+    /// <summary>
+    /// Form to test out OpaqueMail.Net functionality.
+    /// </summary>
     public partial class Form1 : Form
     {
         #region Private Members
@@ -376,7 +379,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         {
             MailAddressCollection mac = Functions.FromMailAddressString("'Toni Johnson' <toni@tonij.net>");
 
-            DialogResult result = MessageBox.Show("Are you sure?  All settings will be overwritten by the contents of \"OpaqueMail.TestClient.xml\".", "Confirm Load", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+            DialogResult result = MessageBox.Show("Are you sure?  All settings will be overwritten by the contents of \"OpaqueMail.Net.TestClient.xml\".", "Confirm Load", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
             if (result == DialogResult.OK)
                 LoadSettings();
         }
@@ -607,7 +610,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private string GetSettingsFileName()
         {
-            return AppDomain.CurrentDomain.BaseDirectory + "\\OpaqueMail.TestClient.xml";
+            return AppDomain.CurrentDomain.BaseDirectory + "\\OpaqueMail.Net.TestClient.xml";
         }
 
         /// <summary>
@@ -984,7 +987,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private void SaveSettings()
         {
-            DialogResult result = MessageBox.Show("Are you sure?  Settings (including passwords) will be saved as plaintext into \"OpaqueMail.TestClient.xml\".", "Confirm Save", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
+            DialogResult result = MessageBox.Show("Are you sure?  Settings (including passwords) will be saved as plaintext into \"OpaqueMail.Net.TestClient.xml\".", "Confirm Save", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
             if (result == DialogResult.OK)
             {
                 XmlWriterSettings streamWriterSettings = new XmlWriterSettings();
