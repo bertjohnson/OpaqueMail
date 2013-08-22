@@ -151,7 +151,7 @@ namespace OpaqueMail.Proxy.Settings
                         }
 
                         int? thunderbirdKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/ThunderbirdKeyCount") ?? 0;
-                        for (int j = 1; j <= registryKeyCount; j++)
+                        for (int j = 1; j <= thunderbirdKeyCount; j++)
                         {
                             string thunderbirdKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/ThunderbirdKey" + j);
                             if (!string.IsNullOrEmpty(thunderbirdKey) && !account.ThunderbirdKeys.Contains(thunderbirdKey))
@@ -159,11 +159,19 @@ namespace OpaqueMail.Proxy.Settings
                         }
 
                         int? liveMailKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/LiveMailKeyCount") ?? 0;
-                        for (int j = 1; j <= registryKeyCount; j++)
+                        for (int j = 1; j <= liveMailKeyCount; j++)
                         {
                             string liveMailKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LiveMailKey" + j);
                             if (!string.IsNullOrEmpty(liveMailKey) && !account.LiveMailKeys.Contains(liveMailKey))
                                 account.LiveMailKeys.Add(liveMailKey);
+                        }
+
+                        int? operaMailKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/OperaMailKeyCount") ?? 0;
+                        for (int j = 1; j <= operaMailKeyCount; j++)
+                        {
+                            string operaMailKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/OperaMailKey" + j);
+                            if (!string.IsNullOrEmpty(operaMailKey) && !account.OperaMailKeys.Contains(operaMailKey))
+                                account.OperaMailKeys.Add(operaMailKey);
                         }
 
                         accounts.Add(account);
@@ -224,6 +232,25 @@ namespace OpaqueMail.Proxy.Settings
                             foreach (ProxyAccount existingAccount in accounts)
                             {
                                 if (existingAccount.LiveMailKeys.Contains(liveMailKey) && !accountMatched)
+                                {
+                                    account = existingAccount;
+                                    j = 0;
+                                    accountMatched = true;
+                                }
+                            }
+                        }
+
+                        // Check if a matching Opera Mail account already exists.
+                        int? operaKeyCount = GetXmlIntValue(navigator, "/Settings/IMAP/Service" + i + "/OperaMailKeyCount") ?? 0;
+                        for (int j = 1; j <= registryKeyCount; j++)
+                        {
+                            string operaMailKey = GetXmlStringValue(navigator, "/Settings/IMAP/Service" + i + "/OperaMailKey" + j);
+                            if (!string.IsNullOrEmpty(operaMailKey) && !account.OperaMailKeys.Contains(operaMailKey))
+                                account.OperaMailKeys.Add(operaMailKey);
+
+                            foreach (ProxyAccount existingAccount in accounts)
+                            {
+                                if (existingAccount.OperaMailKeys.Contains(operaMailKey) && !accountMatched)
                                 {
                                     account = existingAccount;
                                     j = 0;
@@ -331,6 +358,25 @@ namespace OpaqueMail.Proxy.Settings
                             foreach (ProxyAccount existingAccount in accounts)
                             {
                                 if (existingAccount.LiveMailKeys.Contains(liveMailKey) && !accountMatched)
+                                {
+                                    account = existingAccount;
+                                    j = 0;
+                                    accountMatched = true;
+                                }
+                            }
+                        }
+
+                        // Check if a matching Opera Mail account already exists.
+                        int? operaMailKeyCount = GetXmlIntValue(navigator, "/Settings/POP3/Service" + i + "/OperaMailKeyCount") ?? 0;
+                        for (int j = 1; j <= registryKeyCount; j++)
+                        {
+                            string operaMailKey = GetXmlStringValue(navigator, "/Settings/POP3/Service" + i + "/OperaMailKey" + j);
+                            if (!string.IsNullOrEmpty(operaMailKey) && !account.OperaMailKeys.Contains(operaMailKey))
+                                account.OperaMailKeys.Add(operaMailKey);
+
+                            foreach (ProxyAccount existingAccount in accounts)
+                            {
+                                if (existingAccount.OperaMailKeys.Contains(operaMailKey) && !accountMatched)
                                 {
                                     account = existingAccount;
                                     j = 0;
@@ -593,7 +639,71 @@ namespace OpaqueMail.Proxy.Settings
                     }
                 }
 
-                // Fifth, check which accounts the user chooses to encrypt.
+                // Fifth, gather existing Opera Mail account settings.
+                if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Opera Mail\\Opera Mail\\mail\\accounts.ini"))
+                {
+                    string settingsFile = File.ReadAllText(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Opera Mail\\Opera Mail\\mail\\accounts.ini");
+
+                    int accountCount = 0;
+                    int.TryParse(Functions.ReturnBetween(settingsFile, "Count=", "\r\n"), out accountCount);
+
+                    for (int i = 1; i <= accountCount; i++)
+                    {
+                        int pos = settingsFile.IndexOf("[Account" + i.ToString() + "]");
+
+                        string smtpServer = Functions.ReturnBetween(settingsFile, "Outgoing Servername=", "\r\n", pos);
+                        string address = Functions.ReturnBetween(settingsFile, "Account Name=", "\r\n", pos);
+
+                        if (!string.IsNullOrEmpty(smtpServer) && !string.IsNullOrEmpty(address))
+                        {
+                            string operaMailKey = i.ToString() + "~" + address;
+
+                            bool matched = false;
+                            foreach (ProxyAccount existingAccount in accounts)
+                            {
+                                if (existingAccount.OperaMailKeys.Contains(operaMailKey))
+                                    matched = true;
+                            }
+
+                            if (!matched)
+                            {
+                                ProxyAccount account = new ProxyAccount();
+                                account.ClientType = "Opera Mail";
+
+                                account.RemoteSmtpEnableSsl = Functions.ReturnBetween(settingsFile, "Secure Connection In=", "\r\n", pos) == "1";
+                                account.RemoteSmtpServer = smtpServer;
+                                string remoteSmtpPort = Functions.ReturnBetween(settingsFile, "Outgoing Port=", "\r\n", pos);
+                                int.TryParse(remoteSmtpPort, out account.RemoteSmtpPort);
+
+                                if (Functions.ReturnBetween(settingsFile, "Incoming Protocol=", "\r\n", pos) == "IMAP")
+                                {
+                                    account.RemoteImapEnableSsl = Functions.ReturnBetween(settingsFile, "Secure Connection Out=", "\r\n", pos) == "1";
+                                    account.RemoteImapServer = Functions.ReturnBetween(settingsFile, "Incoming Servername=", "\r\n", pos);
+                                    string remoteImapPort = Functions.ReturnBetween(settingsFile, "Incoming Port=", "\r\n", pos);
+                                    int.TryParse(remoteImapPort, out account.RemoteImapPort);
+                                }
+                                else
+                                {
+                                    account.RemotePop3EnableSsl = Functions.ReturnBetween(settingsFile, "Secure Connection Out=", "\r\n", pos) == "1";
+                                    account.RemotePop3Server = Functions.ReturnBetween(settingsFile, "Incoming Servername=", "\r\n", pos);
+                                    string remotePop3Port = Functions.ReturnBetween(settingsFile, "Incoming Port=", "\r\n", pos);
+                                    int.TryParse(remotePop3Port, out account.RemotePop3Port);
+                                }
+
+                                // Only proceed if a server is found.
+                                if (!string.IsNullOrEmpty(account.RemoteImapServer) || !string.IsNullOrEmpty(account.RemotePop3Server) || !string.IsNullOrEmpty(account.RemoteSmtpServer))
+                                {
+                                    account.Usernames.Add(address);
+                                    account.OperaMailKeys.Add(operaMailKey);
+
+                                    accounts.Add(account);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Sixth, check which accounts the user chooses to encrypt.
                 smtpServiceCount = 0;
                 imapServiceCount = 0;
                 pop3ServiceCount = 0;
@@ -607,7 +717,7 @@ namespace OpaqueMail.Proxy.Settings
                     {
                         foreach (ProxyAccount account in accounts)
                         {
-                            if ((account.OutlookRegistryKeys.Contains((string)row.Cells[4].Value) || account.ThunderbirdKeys.Contains((string)row.Cells[4].Value) || account.LiveMailKeys.Contains((string)row.Cells[4].Value)) && !account.Matched)
+                            if ((account.OutlookRegistryKeys.Contains((string)row.Cells[4].Value) || account.ThunderbirdKeys.Contains((string)row.Cells[4].Value) || account.LiveMailKeys.Contains((string)row.Cells[4].Value) || account.OperaMailKeys.Contains((string)row.Cells[4].Value)) && !account.Matched)
                             {
                                 account.Matched = true;
 
@@ -657,7 +767,7 @@ namespace OpaqueMail.Proxy.Settings
                     }
                 }
 
-                // Sixth, write out the XML setting values.
+                // Seventh, write out the XML setting values.
                 XmlWriterSettings streamWriterSettings = new XmlWriterSettings();
                 streamWriterSettings.Indent = true;
                 streamWriterSettings.IndentChars = "  ";
@@ -815,6 +925,16 @@ namespace OpaqueMail.Proxy.Settings
                                     streamWriter.WriteElementString("LiveMailKey" + (++liveMailKeyId).ToString(), liveMailKey);
                             }
 
+                            if (account.OperaMailKeys.Count > 0)
+                            {
+                                streamWriter.WriteComment("Opera Mail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                                streamWriter.WriteElementString("OperaMailKeyCount", account.OperaMailKeys.Count.ToString());
+
+                                int operaMailKeyId = 0;
+                                foreach (string operaMailKey in account.OperaMailKeys)
+                                    streamWriter.WriteElementString("OperaMailKey" + (++operaMailKeyId).ToString(), operaMailKey);
+                            }
+
                             streamWriter.WriteEndElement();
                         }
                     }
@@ -896,6 +1016,16 @@ namespace OpaqueMail.Proxy.Settings
                                 int liveMailKeyId = 0;
                                 foreach (string liveMailKey in account.LiveMailKeys)
                                     streamWriter.WriteElementString("LiveMailKey" + (++liveMailKeyId).ToString(), liveMailKey);
+                            }
+
+                            if (account.OperaMailKeys.Count > 0)
+                            {
+                                streamWriter.WriteComment("Opera Mail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                                streamWriter.WriteElementString("OperaMailKeyCount", account.OperaMailKeys.Count.ToString());
+
+                                int operaMailKeyId = 0;
+                                foreach (string operaMailKey in account.OperaMailKeys)
+                                    streamWriter.WriteElementString("OperaMailKey" + (++operaMailKeyId).ToString(), operaMailKey);
                             }
 
                             streamWriter.WriteEndElement();
@@ -981,6 +1111,16 @@ namespace OpaqueMail.Proxy.Settings
                                     streamWriter.WriteElementString("LiveMailKey" + (++liveMailKeyId).ToString(), liveMailKey);
                             }
 
+                            if (account.OperaMailKeys.Count > 0)
+                            {
+                                streamWriter.WriteComment("Opera Mail keys for accounts configured through the OpaqueMail Proxy settings app.");
+                                streamWriter.WriteElementString("OperaMailKeyCount", account.OperaMailKeys.Count.ToString());
+
+                                int operaMailKeyId = 0;
+                                foreach (string operaMailKey in account.OperaMailKeys)
+                                    streamWriter.WriteElementString("OperaMailKey" + (++operaMailKeyId).ToString(), operaMailKey);
+                            }
+
                             streamWriter.WriteEndElement();
                         }
                     }
@@ -990,7 +1130,7 @@ namespace OpaqueMail.Proxy.Settings
                     streamWriter.WriteEndElement();
                 }
 
-                // Seventh, generate and process any needed self-signed certificates.
+                // Eighth, generate and process any needed self-signed certificates.
                 HashSet<string> certificatesGenerated = new HashSet<string>();
                 foreach (DataGridViewRow row in AccountGrid.Rows)
                 {
@@ -1027,7 +1167,7 @@ namespace OpaqueMail.Proxy.Settings
                     }
                 }
 
-                // Eighth, address loopback firewall settings.
+                // Ninth, address loopback firewall settings.
                 if (UpdateFirewall.Checked)
                 {
                     // Enable the back connection hostname to avoid loopback checks.
@@ -1077,11 +1217,11 @@ namespace OpaqueMail.Proxy.Settings
                     catch { }
                 }
 
-                // Ninth, restart the OpaqueMail service.
+                // Tenth, restart the OpaqueMail service.
                 InstallService();
                 StartService();
 
-                // Tenth, rewrite the Outlook registry values.
+                // Eleventh, rewrite the Outlook registry values.
                 foreach (string outlookVersion in OutlookVersions.Keys)
                 {
                     using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Office\" + outlookVersion + @"\Outlook\Profiles\Outlook\9375CFF0413111d3B88A00104B2A6676", false))
@@ -1173,7 +1313,7 @@ namespace OpaqueMail.Proxy.Settings
                     }
                 }
 
-                // Eleventh, rewrite the Thunderbird registry values.
+                // Twelfth, rewrite the Thunderbird registry values.
                 if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
                 {
                     foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\Thunderbird\\Profiles"))
@@ -1239,7 +1379,7 @@ namespace OpaqueMail.Proxy.Settings
                     }
                 }
 
-                // Twelfth, rewrite the Windows Live Mail registry values.
+                // Thirteenth, rewrite the Windows Live Mail registry values.
                 if (Directory.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
                 {
                     foreach (string directory in Directory.GetDirectories(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Microsoft\\Windows Live Mail"))
@@ -1330,7 +1470,66 @@ namespace OpaqueMail.Proxy.Settings
                     }
                 }
 
-                // Thirteenth, save Outlook signatures.
+                // Fourteenth, rewrite the Opera Mail registry values.
+                if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Opera Mail\\Opera Mail\\mail\\accounts.ini"))
+                {
+                    string settingsFile = File.ReadAllText(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Opera Mail\\Opera Mail\\mail\\accounts.ini");
+
+                    int accountCount = 0;
+                    int.TryParse(Functions.ReturnBetween(settingsFile, "Count=", "\r\n"), out accountCount);
+
+                    for (int i = 1; i <= accountCount; i++)
+                    {
+                        int pos = settingsFile.IndexOf("[Account" + i.ToString() + "]");
+
+                        string smtpServer = Functions.ReturnBetween(settingsFile, "Outgoing Servername=", "\r\n", pos);
+                        string address = Functions.ReturnBetween(settingsFile, "Account Name=", "\r\n", pos);
+
+                        if (!string.IsNullOrEmpty(smtpServer) && !string.IsNullOrEmpty(address))
+                        {
+                            string operaMailKey = i.ToString() + "~" + address;
+
+                            foreach (ProxyAccount account in accounts)
+                            {
+                                // If matched, set to use the local proxy.  If not matched and we previously used the local proxy, switch back to the original value.
+                                if (account.OperaMailKeys.Contains(operaMailKey))
+                                {
+                                    if (account.Matched)
+                                    {
+                                        settingsFile = Functions.ReplaceBetween(settingsFile, "Incoming Servername=", "\r\n", pos, fqdn);
+                                        if (Functions.ReturnBetween(settingsFile, "Incoming Protocol=", "\r\n", pos) == "IMAP")
+                                            settingsFile = Functions.ReplaceBetween(settingsFile, "Incoming Port=", "\r\n", pos, account.LocalImapPort.ToString());
+                                        else
+                                            settingsFile = Functions.ReplaceBetween(settingsFile, "Incoming Port=", "\r\n", pos, account.LocalPop3Port.ToString());
+
+                                        settingsFile = Functions.ReplaceBetween(settingsFile, "Outgoing Servername=", "\r\n", pos, fqdn);
+                                        settingsFile = Functions.ReplaceBetween(settingsFile, "Outgoing Port=", "\r\n", pos, account.LocalSmtpPort.ToString());
+                                    }
+                                    else
+                                    {
+                                        if (Functions.ReturnBetween(settingsFile, "Incoming Protocol=", "\r\n", pos) == "IMAP")
+                                        {
+                                            settingsFile = Functions.ReplaceBetween(settingsFile, "Incoming Servername=", "\r\n", pos, account.RemoteImapServer);
+                                            settingsFile = Functions.ReplaceBetween(settingsFile, "Incoming Port=", "\r\n", pos, account.LocalImapPort.ToString());
+                                        }
+                                        else
+                                        {
+                                            settingsFile = Functions.ReplaceBetween(settingsFile, "Incoming Servername=", "\r\n", pos, account.RemotePop3Server);
+                                            settingsFile = Functions.ReplaceBetween(settingsFile, "Incoming Port=", "\r\n", pos, account.LocalPop3Port.ToString());
+                                        }
+
+                                        settingsFile = Functions.ReplaceBetween(settingsFile, "Outgoing Servername=", "\r\n", pos, account.RemoteSmtpServer);
+                                        settingsFile = Functions.ReplaceBetween(settingsFile, "Outgoing Port=", "\r\n", pos, account.RemoteSmtpPort.ToString());
+                                    }
+                                }
+                            }
+
+                            File.WriteAllText(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Opera Mail\\Opera Mail\\mail\\accounts.ini", settingsFile);
+                        }
+                    }
+                }
+
+                // Fifteenth, save Outlook signatures.
                 if (UpdateOutlookSignature.Checked)
                 {
                     List<string> finalOutlookKeyLocations = new List<string>();
@@ -1345,7 +1544,8 @@ namespace OpaqueMail.Proxy.Settings
                     SetOutlookSignatures(finalOutlookKeyLocations);
 
                 }
-                // Finally, prompt to restart Outlook or Thunderbird.
+
+                // Finally, prompt to restart programs.
                 Process[] processes = Process.GetProcessesByName("OUTLOOK");
                 if (processes.Length > 0)
                 {
@@ -1400,6 +1600,22 @@ namespace OpaqueMail.Proxy.Settings
                         // Try to start Windows Live Mail.
                         if (File.Exists("C:\\Program Files (x86)\\Windows Live\\Mail\\wlmail.exe"))
                             Process.Start("C:\\Program Files (x86)\\Windows Live\\Mail\\wlmail.exe");
+                    }
+                }
+                processes = Process.GetProcessesByName("OPERAMAIL");
+                if (processes.Length > 0)
+                {
+                    DialogResult dr = MessageBox.Show("Opera Mail is currently running and will need to be restarted before these changes will take effect.  Would you like to restart Opera Mail now?", "Restart Opera Mail?", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (dr == System.Windows.Forms.DialogResult.Yes)
+                    {
+                        // Stop Opera Mail.
+                        foreach (Process process in processes)
+                            process.Kill();
+
+                        // Try to start Opera Mail.
+                        string fileName = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Opera Mail\\OperaMail.exe";
+                        if (File.Exists(fileName))
+                            Process.Start(fileName);
                     }
                 }
 

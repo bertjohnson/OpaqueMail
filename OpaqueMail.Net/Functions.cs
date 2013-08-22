@@ -952,18 +952,32 @@ namespace OpaqueMail.Net
         /// Replace the string between the first two instances of specified start and end strings.
         /// </summary>
         /// <param name="haystack">Container string to search within.</param>
-        /// <param name="start">First string boundary.</param>
-        /// <param name="end">Second string boundary.</param>
+        /// <param name="startString">First string boundary.</param>
+        /// <param name="endString">Second string boundary.</param>
         /// <param name="value">String to replace the substring with.</param>
         /// <returns>The haystack with value replacing any text between the specified start and end strings.</returns>
-        public static string ReplaceBetween(string haystack, string start, string end, string value)
+        public static string ReplaceBetween(string haystack, string startString, string endString, string value)
         {
-            int pos = haystack.IndexOf(start, StringComparison.Ordinal);
+            return ReplaceBetween(haystack, startString, endString, 0, value);
+        }
+
+        /// <summary>
+        /// Replace the string between the first two instances of specified start and end strings.
+        /// </summary>
+        /// <param name="haystack">Container string to search within.</param>
+        /// <param name="startString">First string boundary.</param>
+        /// <param name="endString">Second string boundary.</param>
+        /// <param name="startIndex">The search starting position.</param>
+        /// <param name="value">String to replace the substring with.</param>
+        /// <returns>The haystack with value replacing any text between the specified start and end strings.</returns>
+        public static string ReplaceBetween(string haystack, string startString, string endString, int startIndex, string value)
+        {
+            int pos = haystack.IndexOf(startString, startIndex, StringComparison.Ordinal);
             if (pos > -1)
             {
-                int pos2 = haystack.IndexOf(end, pos + start.Length, StringComparison.Ordinal);
+                int pos2 = haystack.IndexOf(endString, pos + startString.Length, StringComparison.Ordinal);
                 if (pos2 > -1)
-                    return haystack.Substring(0, pos + start.Length) + value + haystack.Substring(pos2);
+                    return haystack.Substring(0, pos + startString.Length) + value + haystack.Substring(pos2);
             }
             return haystack;
         }
@@ -972,17 +986,30 @@ namespace OpaqueMail.Net
         /// Returns the string between the first two instances of specified start and end strings.
         /// </summary>
         /// <param name="haystack">Container string to search within.</param>
-        /// <param name="start">First string boundary.</param>
-        /// <param name="end">Second string boundary.</param>
+        /// <param name="startString">First string boundary.</param>
+        /// <param name="endString">Second string boundary.</param>
         /// <returns>Any text found in the haystack between the specified start and end strings.</returns>
-        public static string ReturnBetween(string haystack, string start, string end)
+        public static string ReturnBetween(string haystack, string startString, string endString)
         {
-            int pos = haystack.IndexOf(start, StringComparison.Ordinal);
+            return ReturnBetween(haystack, startString, endString, 0);
+        }
+
+        /// <summary>
+        /// Returns the string between the first two instances of specified start and end strings.
+        /// </summary>
+        /// <param name="haystack">Container string to search within.</param>
+        /// <param name="startString">First string boundary.</param>
+        /// <param name="endString">Second string boundary.</param>
+        /// <param name="startIndex">The search starting position.</param>
+        /// <returns>Any text found in the haystack between the specified start and end strings.</returns>
+        public static string ReturnBetween(string haystack, string startString, string endString, int startIndex)
+        {
+            int pos = haystack.IndexOf(startString, startIndex, StringComparison.Ordinal);
             if (pos > -1)
             {
-                int pos2 = haystack.IndexOf(end, pos + start.Length, StringComparison.Ordinal);
+                int pos2 = haystack.IndexOf(endString, pos + startString.Length, StringComparison.Ordinal);
                 if (pos2 > -1)
-                    return haystack.Substring(pos + start.Length, pos2 - pos - start.Length);
+                    return haystack.Substring(pos + startString.Length, pos2 - pos - startString.Length);
             }
             return "";
         }

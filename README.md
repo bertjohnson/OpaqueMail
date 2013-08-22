@@ -22,7 +22,7 @@ SMTP proxy and message transfer agent (MTA) to add or remove S/MIME message sign
 
 Also serve as a passthrough IMAP and POP3 proxy to import S/MIME certificates, filter IPs, or export messages.
 
-Simplifies e-mail protection for Outlook, Thunderbird, Windows Live Mail, and other e-mail clients.
+Simplifies e-mail protection for Outlook, Thunderbird, Windows Live Mail, Opera Mail, and other e-mail clients.
 
 Can be used to secure and authenticate e-mail programs that connect to SMTP servers anonymously (e.g. SharePoint).
 

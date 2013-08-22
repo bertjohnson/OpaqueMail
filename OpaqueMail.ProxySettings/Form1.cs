@@ -339,11 +339,12 @@ namespace OpaqueMail.Proxy.Settings
             CertificateColumn.DisplayMember = "Name";
             CertificateColumn.ValueMember = "Value";
 
-            // Check which Outlook registry keys, Thunderbird configs, and Windows Live Mail configs have proxies associated.
+            // Check which Outlook registry keys, Thunderbird configs, Windows Live Mail configs, and Opera Mail configs have proxies associated.
             XPathDocument document;
             HashSet<string> outlookRegistryKeys = new HashSet<string>();
             HashSet<string> thunderbirdKeys = new HashSet<string>();
             HashSet<string> liveMailKeys = new HashSet<string>();
+            HashSet<string> operaMailKeys = new HashSet<string>();
             try
             {
                 document = new XPathDocument(SettingsFileName);
@@ -373,6 +374,14 @@ namespace OpaqueMail.Proxy.Settings
                         string liveMailKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LiveMailKey" + j);
                         if (!string.IsNullOrEmpty(liveMailKey))
                             liveMailKeys.Add(liveMailKey);
+                    }
+
+                    int? operaMailKeyCount = GetXmlIntValue(navigator, "/Settings/SMTP/Service" + i + "/OperaMailKeyCount") ?? 0;
+                    for (int j = 1; j <= operaMailKeyCount; j++)
+                    {
+                        string operaMailKey = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/OperaMailKey" + j);
+                        if (!string.IsNullOrEmpty(operaMailKey))
+                            operaMailKeys.Add(operaMailKey);
                     }
                 }
             }
@@ -481,6 +490,32 @@ namespace OpaqueMail.Proxy.Settings
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            // Fourth, correlate Opera Mail config keys with accounts.
+            if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Opera Mail\\Opera Mail\\mail\\accounts.ini"))
+            {
+                string settingsFile = File.ReadAllText(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Opera Mail\\Opera Mail\\mail\\accounts.ini");
+
+                int accountCount = 0;
+                int.TryParse(Functions.ReturnBetween(settingsFile, "Count=", "\r\n"), out accountCount);
+
+                for (int i = 1; i <= accountCount; i++)
+                {
+                    int pos = settingsFile.IndexOf("[Account" + i.ToString() + "]");
+
+                    string smtpServer = Functions.ReturnBetween(settingsFile, "Outgoing Servername=", "\r\n", pos);
+                    string address = Functions.ReturnBetween(settingsFile, "Account Name=", "\r\n", pos);
+
+                    if (!string.IsNullOrEmpty(smtpServer) && !string.IsNullOrEmpty(address))
+                    {
+                        string operaMailKey = i.ToString() + "~" + address;
+
+                        string matchingCert = GetMatchingCert(certs, address);
+
+                        AccountGrid.Rows.Add("Opera Mail", address, operaMailKeys.Contains(operaMailKey), matchingCert, operaMailKey);
                     }
                 }
             }
@@ -697,6 +732,7 @@ namespace OpaqueMail.Proxy.Settings
             public List<string> OutlookRegistryKeys = new List<string>();
             public List<string> ThunderbirdKeys = new List<string>();
             public List<string> LiveMailKeys = new List<string>();
+            public List<string> OperaMailKeys = new List<string>();
             public List<string> Usernames = new List<string>();
 
             public string ImapAcceptedIPs;
