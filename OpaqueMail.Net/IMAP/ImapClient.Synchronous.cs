@@ -158,6 +158,16 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Delete a series of messages from the server.
+        /// </summary>
+        /// <param name="mailboxName">Mailbox containing the messages to delete.</param>
+        /// <param name="indices">Array of message indices to delete.</param>
+        public bool DeleteMessages(string mailboxName, int[] indices)
+        {
+            return Task.Run(() => DeleteMessagesAsync(mailboxName, indices)).Result;
+        }
+
+        /// <summary>
         /// Delete a message from the server.
         /// </summary>
         /// <param name="mailboxName">Mailbox containing the message to delete.</param>
@@ -165,6 +175,17 @@ namespace OpaqueMail.Net
         public bool DeleteMessageUid(string mailboxName, int uid)
         {
             return Task.Run(() => DeleteMessageUidAsync(mailboxName, uid)).Result;
+        }
+
+        /// <summary>
+        /// Delete a series of messages from the server.
+        /// </summary>
+        /// <param name="mailboxName">Mailbox containing the messages to delete.</param>
+        /// <param name="indices">Array of message indices to delete.</param>
+        /// <param name="uids">Array of message UIDs to delete.</param>
+        public bool DeleteMessagesUid(string mailboxName, int[] uids)
+        {
+            return Task.Run(() => DeleteMessagesUidAsync(mailboxName, uids)).Result;
         }
 
         /// <summary>
@@ -201,15 +222,6 @@ namespace OpaqueMail.Net
         public bool ExpungeMailbox()
         {
             return Task.Run(() => ExpungeMailboxAsync()).Result;
-        }
-
-        /// <summary>
-        /// Retrieve a list of the IMAP's servers extended capabilities.
-        /// </summary>
-        /// <param name="imapVersion">String representing the server's IMAP version.</param>
-        public string[] GetCapabilities(string imapVersion)
-        {
-            return Task.Run(() => GetCapabilitiesAsync(imapVersion)).Result;
         }
 
         /// <summary>

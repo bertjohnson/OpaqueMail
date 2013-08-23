@@ -11,6 +11,8 @@ Inherits from System.Net.Mail.MailMessage and System.Net.Mail.SmtpClient for sim
 
 Thoroughly documented.  Designed for security, portability, and performance.
 
+Supporting documentation and tutorials available at (http://opaquemail.org/library/).
+
 Licensed according to the MIT License (http://mit-license.org/).
 
 Created by Bert Johnson (http://bertjohnson.net) of Bkip Inc. (http://bkip.com).
@@ -27,6 +29,8 @@ Simplifies e-mail protection for Outlook, Thunderbird, Windows Live Mail, Opera 
 Can be used to secure and authenticate e-mail programs that connect to SMTP servers anonymously (e.g. SharePoint).
 
 Runs as a Windows service.  Inbound and outbound IPs, ports, logging, and TLS / SSL settings are all configurable via XML.
+
+Supporting documentation and tutorials available at (http://opaquemail.org/proxy/).
 
 Licensed according to the MIT License (http://mit-license.org/).
 

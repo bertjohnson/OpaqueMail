@@ -431,7 +431,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// <summary>
         /// When a message has been selected, attempt to load its preview.
         /// </summary>
-        private void Pop3MessageList_SelectedIndexChanged(object sender, EventArgs e)
+        private async void Pop3MessageList_SelectedIndexChanged(object sender, EventArgs e)
         {
             Pop3DeleteMessageButton.Enabled = Pop3MessageList.SelectedIndex > -1;
             if (Pop3MessageList.SelectedIndex > -1)
@@ -452,7 +452,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                             if (myPop3Client.IsConnected)
                             {
                                 // Retrieve the selected message.
-                                ReadOnlyMailMessage message = myPop3Client.GetMessage(Pop3MessageIDs[Pop3MessageList.SelectedIndex]);
+                                ReadOnlyMailMessage message = await myPop3Client.GetMessageAsync(Pop3MessageIDs[Pop3MessageList.SelectedIndex]);
 
                                 if (message != null)
                                 {
@@ -735,6 +735,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 if (!myImapClient.IsConnected || !myImapClient.IsAuthenticated)
                 {
                     MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    myImapClient = null;
                     return;
                 }
             }
@@ -805,7 +806,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             // If we're not currently connected to the POP3 server, connect and authenticate.
             if (myPop3Client == null)
             {
-                int pop3Port = 993;
+                int pop3Port = 995;
                 int.TryParse(Pop3Port.Text, out pop3Port);
 
                 myPop3Client = new Pop3Client(Pop3Host.Text, pop3Port, Pop3Username.Text, Pop3Password.Text, Pop3Ssl.Checked);
@@ -821,6 +822,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 if (!myPop3Client.IsConnected || !myPop3Client.IsAuthenticated)
                 {
                     MessageBox.Show("Unable to connect to the POP3 server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    myPop3Client = null;
                     return;
                 }
             }

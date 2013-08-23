@@ -443,9 +443,9 @@ namespace OpaqueMail.Net
         /// Retrieve a specific message from the server based on its UID.
         /// </summary>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
-        public ReadOnlyMailMessage GetMessage(string uid)
+        public ReadOnlyMailMessage GetMessageUid(string uid)
         {
-            return Task.Run(() => GetMessageAsync(uid)).Result;
+            return Task.Run(() => GetMessageUidAsync(uid)).Result;
         }
 
         /// <summary>
@@ -463,9 +463,9 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public ReadOnlyMailMessage GetMessage(string uid, bool headersOnly)
+        public ReadOnlyMailMessage GetMessageUid(string uid, bool headersOnly)
         {
-            return Task.Run(() => GetMessageAsync(uid, headersOnly)).Result;
+            return Task.Run(() => GetMessageUidAsync(uid, headersOnly)).Result;
         }
 
         /// <summary>
@@ -481,7 +481,7 @@ namespace OpaqueMail.Net
         /// Retrieve a specific message from the server based on its UID.
         /// </summary>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageAsync(string uid)
+        public async Task<ReadOnlyMailMessage> GetMessageUidAsync(string uid)
         {
             return await GetMessageHelper(-1, uid, false);
         }
@@ -501,7 +501,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageAsync(string uid, bool headersOnly)
+        public async Task<ReadOnlyMailMessage> GetMessageUidAsync(string uid, bool headersOnly)
         {
             return await GetMessageHelper(-1, uid, headersOnly);
         }

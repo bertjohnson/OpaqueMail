@@ -135,6 +135,7 @@ namespace OpaqueMail.Net.TestClient
             this.SmtpFromLabel = new System.Windows.Forms.Label();
             this.LoadSettingsButton = new System.Windows.Forms.Button();
             this.SaveSettingsButton = new System.Windows.Forms.Button();
+            this.button1 = new System.Windows.Forms.Button();
             this.TabsControl.SuspendLayout();
             this.SettingsTab.SuspendLayout();
             this.SmtpSettingsGroup.SuspendLayout();
@@ -182,6 +183,7 @@ namespace OpaqueMail.Net.TestClient
             // 
             // SmtpSettingsGroup
             // 
+            this.SmtpSettingsGroup.Controls.Add(this.button1);
             this.SmtpSettingsGroup.Controls.Add(this.SmtpCopyImapButton);
             this.SmtpSettingsGroup.Controls.Add(this.SmtpCopyPop3Button);
             this.SmtpSettingsGroup.Controls.Add(this.SmtpSslLabel);
@@ -1090,6 +1092,15 @@ namespace OpaqueMail.Net.TestClient
             this.SaveSettingsButton.UseVisualStyleBackColor = true;
             this.SaveSettingsButton.Click += new System.EventHandler(this.SaveSettingsButton_Click);
             // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(156, 67);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.TabIndex = 12;
+            this.button1.Text = "button1";
+            this.button1.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -1225,6 +1236,7 @@ namespace OpaqueMail.Net.TestClient
         private System.Windows.Forms.Button ImapAppendMessageButton;
         private System.Windows.Forms.Button ImapGetQuotaButton;
         private System.Windows.Forms.TextBox ImapSearchText;
+        private System.Windows.Forms.Button button1;
     }
 }
 

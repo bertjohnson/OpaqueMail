@@ -237,7 +237,7 @@ namespace OpaqueMail.Net
         public delegate void ImapClientThrottleHandler(object sender);
 
         /// <summary>
-        /// Represents the event handler that will handle an ImapClientNewMessageEvent.
+        /// Represents the event handler that will handle an ImapClientDisconnectEvent.
         /// </summary>
         public event ImapClientDisconnectEventHandler ImapClientDisconnectEvent;
 
@@ -754,6 +754,20 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Delete a series of messages from the server.
+        /// </summary>
+        /// <param name="mailboxName">Mailbox containing the messages to delete.</param>
+        /// <param name="indices">Array of message indices to delete.</param>
+        public async Task<bool> DeleteMessagesAsync(string mailboxName, int[] indices)
+        {
+            bool returnValue = true;
+            foreach (int index in indices)
+                returnValue = returnValue && await DeleteMessageAsync(mailboxName, index);
+
+            return returnValue;
+        }
+
+        /// <summary>
         /// Delete a message from the server.
         /// </summary>
         /// <param name="mailboxName">Mailbox containing the message to delete.</param>
@@ -761,6 +775,21 @@ namespace OpaqueMail.Net
         public async Task<bool> DeleteMessageUidAsync(string mailboxName, int uid)
         {
             return await AddFlagsToMessageHelperAsync(mailboxName, uid, new string[] { "\\Deleted" }, true);
+        }
+
+        /// <summary>
+        /// Delete a series of messages from the server.
+        /// </summary>
+        /// <param name="mailboxName">Mailbox containing the messages to delete.</param>
+        /// <param name="indices">Array of message indices to delete.</param>
+        /// <param name="uids">Array of message UIDs to delete.</param>
+        public async Task<bool> DeleteMessagesUidAsync(string mailboxName, int[] uids)
+        {
+            bool returnValue = true;
+            foreach (int uid in uids)
+                returnValue = returnValue && await DeleteMessageUidAsync(mailboxName, uid);
+
+            return returnValue;
         }
 
         /// <summary>
@@ -873,7 +902,7 @@ namespace OpaqueMail.Net
         /// Retrieve a list of the IMAP's servers extended capabilities.
         /// </summary>
         /// <param name="imapVersion">String representing the server's IMAP version.</param>
-        public async Task<string[]> GetCapabilitiesAsync(string imapVersion)
+        public string[] GetCapabilities(out string imapVersion)
         {
             // If we've logged in or out since last checking capabilities, ignore the cache.
             if (LastCapabilitiesCheckAuthenticationState == IsAuthenticated)
@@ -891,8 +920,8 @@ namespace OpaqueMail.Net
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "CAPABILITY\r\n");
-            string response = await ReadDataAsync(commandTag, "CAPABILITY");
+            SendCommand(commandTag, "CAPABILITY\r\n");
+            string response = ReadData(commandTag, "CAPABILITY");
 
             imapVersion = "";
             if (response.StartsWith("* CAPABILITY "))
