@@ -56,7 +56,10 @@
 
       <!-- Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied. -->
       <SMIMERemovePreviousOperations>True</SMIMERemovePreviousOperations>
-      
+
+      <!-- (Optional) Location where all outbound messages are saved as EML files. -->
+      <ExportDirectory></ExportDirectory>
+
       <!-- Where log files should be stored, if any.  Leave blank to avoid logging. -->
       <!-- Date and instance variables can be encased in angle braces.  For example, "Logs\SMTPProxy{#}-{yyyy-MM-dd}.log". -->
       <LogFile>Logs\SMTPProxy{#}-{yyyy-MM-dd}.log</LogFile>
@@ -86,6 +89,14 @@
       <RemoteServerPort>993</RemoteServerPort>
       <!-- Whether the remote IMAP server supports TLS/SSL protection. -->
       <RemoteServerEnableSSL>True</RemoteServerEnableSSL>
+
+      <!-- (Optional) Username used when authenticating to the remote IMAP server.  When supplied, it will override any values sent from the client. -->
+      <RemoteServerUsername></RemoteServerUsername>
+      <!-- (Optional) Password used when authenticating to the remote IMAP server.  When supplied, it will override any values sent from the client. -->
+      <RemoteServerPassword></RemoteServerPassword>
+
+      <!-- (Optional) Location where all incoming messages are saved as EML files. -->
+      <ExportDirectory></ExportDirectory>
 
       <!-- Where log files should be stored, if any.  Leave blank to avoid logging. -->
       <!-- Date and instance variables can be encased in angle braces.  For example, "Logs\IMAPProxy{#}-{yyyy-MM-dd}.log". -->
@@ -117,6 +128,14 @@
       <!-- Whether the remote POP3 server supports TLS/SSL protection. -->
       <RemoteServerEnableSSL>True</RemoteServerEnableSSL>
 
+      <!-- (Optional) Username used when authenticating to the remote POP3 server.  When supplied, it will override any values sent from the client. -->
+      <RemoteServerUsername></RemoteServerUsername>
+      <!-- (Optional) Password used when authenticating to the remote POP3 server.  When supplied, it will override any values sent from the client. -->
+      <RemoteServerPassword></RemoteServerPassword>
+
+      <!-- (Optional) Location where all incoming messages are saved as EML files. -->
+      <ExportDirectory></ExportDirectory>
+      
       <!-- Where log files should be stored, if any.  Leave blank to avoid logging. -->
       <!-- Date and instance variables can be encased in angle braces.  For example, "Logs\POP3Proxy{#}-{yyyy-MM-dd}.log". -->
       <LogFile>Logs\POP3Proxy{#}-{yyyy-MM-dd}.log</LogFile>

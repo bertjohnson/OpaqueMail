@@ -228,6 +228,8 @@ namespace OpaqueMail.Proxy
         public bool RemoteServerEnableSsl;
         /// <summary>(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential RemoteServerCredential;
+        /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
+        public string ExportDirectory;
         /// <summary>(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
         public string FixedFrom;
         /// <summary>(Optional) "To" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</summary>
@@ -297,6 +299,8 @@ namespace OpaqueMail.Proxy
         public bool RemoteServerEnableSsl;
         /// <summary>(Optional) Credentials to be used for all connections to the remote SMTP server.  When set, this overrides any credentials passed locally.</summary>
         public NetworkCredential RemoteServerCredential;
+        /// <summary>(Optional) Location where all incoming messages are saved as EML files.</summary>
+        public string ExportDirectory;
         /// <summary>(Optional) "From" address for all sent messages.  When supplied, it will override any values sent from the client.</summary>
         public string FixedFrom;
         /// <summary>(Optional) "To" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</summary>

@@ -98,6 +98,7 @@ namespace OpaqueMail.Proxy.Settings
                         account.SmtpCertificateLocation = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/Location");
                         account.SmtpCertificateSerialNumber = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SerialNumber");
                         account.SmtpCertificateSubjectName = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/Certificate/SubjectName");
+                        account.SmtpExportDirectory = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/ExportDirectory");
                         account.SmtpLogFile = GetXmlStringValue(navigator, "/Settings/SMTP/Service" + i + "/LogFile");
                         account.SmtpDebugMode = GetXmlBoolValue(navigator, "/Settings/SMTP/Service" + i + "/Debug") ?? false;
 
@@ -871,6 +872,9 @@ namespace OpaqueMail.Proxy.Settings
 
                             streamWriter.WriteComment("Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.");
                             streamWriter.WriteElementString("SMIMERemovePreviousOperations", account.SmimeRemovePreviousOperations.ToString());
+
+                            streamWriter.WriteComment("(Optional) Location where all outbound messages are saved as EML files.");
+                            streamWriter.WriteElementString("ExportDirectory", account.SmtpExportDirectory);
 
                             streamWriter.WriteComment("Where log files should be stored, if any.  Leave blank to avoid logging.");
                             streamWriter.WriteComment("Date and instance variables can be encased in angle braces.  For example, \"Logs\\SMTPProxy{#}-{yyyy-MM-dd}.log\".");

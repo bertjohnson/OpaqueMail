@@ -791,6 +791,7 @@ namespace OpaqueMail.Proxy.Settings
 
             public HashSet<string> PublicKeys = new HashSet<string>();
 
+            public string SmtpExportDirectory;
             public string ImapExportDirectory;
             public string Pop3ExportDirectory;
 
