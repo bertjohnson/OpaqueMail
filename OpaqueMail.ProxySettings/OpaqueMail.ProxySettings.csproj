@@ -61,8 +61,8 @@
     <Compile Include="Form1.Save.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Windows8Mail.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="Windows8Mail.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
