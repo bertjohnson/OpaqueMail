@@ -15,7 +15,7 @@ Supporting documentation and tutorials available at (http://opaquemail.org/libra
 
 Licensed according to the MIT License (http://mit-license.org/).
 
-Created by Bert Johnson (http://bertjohnson.net) of Bkip Inc. (http://bkip.com).
+Created by Bert Johnson (http://bertjohnson.net/) of Bkip Inc. (http://bkip.com/).
 
 OpaqueMail E-mail Proxy
 ==============================
@@ -34,7 +34,7 @@ Supporting documentation and tutorials available at (http://opaquemail.org/proxy
 
 Licensed according to the MIT License (http://mit-license.org/).
 
-Created by Bert Johnson (http://bertjohnson.net) of Bkip Inc. (http://bkip.com).
+Created by Bert Johnson (http://bertjohnson.net/) of Bkip Inc. (http://bkip.com/).
 
 License
 =======

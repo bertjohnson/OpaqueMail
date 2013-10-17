@@ -3,7 +3,7 @@
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.net) of Bkip Inc. (http://bkip.com).
+ * Copyright © Bert Johnson (http://bertjohnson.net/) of Bkip Inc. (http://bkip.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -282,72 +282,75 @@ namespace OpaqueMail.Net
                     propertyValueCount = ReadUint32(MapiPropertiesBytes);
 
                 // Process only MAPI property types we care about.
-                switch (propertyType)
+                for (int j = 0; j < propertyValueCount; j++)
                 {
-                    case 0X0000:    // Unspecified
-                    case 0X0001:    // Null
-                        break;
-                    case 0X0002:    // Short
-                    case 0X0003:    // Int
-                    case 0X0004:    // Float
-                    case 0X000a:    // Error
-                    case 0X000b:    // Boolean
-                        Cursor += 4;
-                        break;
-                    case 0X0005:    // Double
-                    case 0X0006:    // Currency
-                    case 0X0007:    // Application Time
-                    case 0X0014:    // Int64
-                    case 0X0040:    // System Time
-                        Cursor += 8;
-                        break;
-                    case 0X0048:    // CLSID
-                        Cursor += 16;
-                        break;
-                    case 0x000d:    // Object
-                    case 0x001e:    // String
-                    case 0x001f:    // Unicode String
-                    case 0x0102:    // Binary
-                        // Read the length of the current value.
-                        int propertyValueLength = (int)ReadUint32(MapiPropertiesBytes);
-                        byte[] propertyValue;
+                    switch (propertyType)
+                    {
+                        case 0X0000:    // Unspecified
+                        case 0X0001:    // Null
+                            break;
+                        case 0X0002:    // Short
+                        case 0X0003:    // Int
+                        case 0X0004:    // Float
+                        case 0X000a:    // Error
+                        case 0X000b:    // Boolean
+                            Cursor += 4;
+                            break;
+                        case 0X0005:    // Double
+                        case 0X0006:    // Currency
+                        case 0X0007:    // Application Time
+                        case 0X0014:    // Int64
+                        case 0X0040:    // System Time
+                            Cursor += 8;
+                            break;
+                        case 0X0048:    // CLSID
+                            Cursor += 16;
+                            break;
+                        case 0x000d:    // Object
+                        case 0x001e:    // String
+                        case 0x001f:    // Unicode String
+                        case 0x0102:    // Binary
+                            // Read the length of the current value.
+                            int propertyValueLength = (int)ReadUint32(MapiPropertiesBytes);
+                            byte[] propertyValue;
 
-                        // Process only MAPI properties with IDs we care about.
-                        int lastCursor = Cursor;
-                        switch (propertyID)
-                        {
-                            case 0x1000:    // Body
-                                if (string.IsNullOrEmpty(Body))
-                                {
-                                    // Read the raw body.
+                            // Process only MAPI properties with IDs we care about.
+                            int lastCursor = Cursor;
+                            switch (propertyID)
+                            {
+                                case 0x1000:    // Body
+                                    if (string.IsNullOrEmpty(Body))
+                                    {
+                                        // Read the raw body.
+                                        propertyValue = new byte[propertyValueLength];
+                                        Buffer.BlockCopy(MapiPropertiesBytes, Cursor, propertyValue, 0, propertyValueLength);
+
+                                        Body = Encoding.UTF8.GetString(propertyValue);
+                                        ContentType = "text/plain";
+                                    }
+                                    break;
+                                case 0x1009:    // RTF Compressed
+                                    // Read the RTF compressed body.
+                                    Body = DecompressRTF(MapiPropertiesBytes);
+                                    ContentType = "text/rtf";
+                                    break;
+                                case 0x1013:    // Body HTML
+                                    // Read the HTML body.
                                     propertyValue = new byte[propertyValueLength];
                                     Buffer.BlockCopy(MapiPropertiesBytes, Cursor, propertyValue, 0, propertyValueLength);
 
                                     Body = Encoding.UTF8.GetString(propertyValue);
-                                    ContentType = "text/plain";
-                                }
-                                break;
-                            case 0x1009:    // RTF Compressed
-                                // Read the RTF compressed body.
-                                Body = DecompressRTF(MapiPropertiesBytes);
-                                ContentType = "text/rtf";
-                                break;
-                            case 0x1013:    // Body HTML
-                                // Read the HTML body.
-                                propertyValue = new byte[propertyValueLength];
-                                Buffer.BlockCopy(MapiPropertiesBytes, Cursor, propertyValue, 0, propertyValueLength);
+                                    ContentType = "text/html";
+                                    break;
+                            }
 
-                                Body = Encoding.UTF8.GetString(propertyValue);
-                                ContentType = "text/html";
-                                break;
-                        }
+                            Cursor = lastCursor + propertyValueLength;
+                            // Deal with non-uniform values by proceeding to the next DWORD.
+                            if (propertyValueLength % 4 > 0)
+                                Cursor += 4 - (propertyValueLength % 4);
 
-                        Cursor = lastCursor + propertyValueLength;
-                        // Deal with non-uniform values by proceeding to the next DWORD.
-                        if (propertyValueLength % 4 > 0)
-                            Cursor += 4 - (propertyValueLength % 4);
-
-                        break;
+                            break;
+                    }
                 }
             }
         }
@@ -377,7 +380,7 @@ namespace OpaqueMail.Net
                 // Note: we ignore the CRC.
 
                 // Prepopulate a buffer with RTF tags to speed up decryption.
-                string rtfPreBufferString = "{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\n\r\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx";
+                string rtfPreBufferString = "{\\rtf1\\ansi\\mac\\deff0\\deftab720{\\fonttbl;}{\\f0\\fnil \\froman \\fswiss \\fmodern \\fscript \\fdecor MS Sans SerifSymbolArialTimes New RomanCourier{\\colortbl\\red0\\green0\\blue0\r\n\\par \\pard\\plain\\f0\\fs20\\b\\i\\u\\tab\\tx";
                 byte[] rtfPreBuffer = Encoding.UTF8.GetBytes(rtfPreBufferString);
 
                 // Populate the initial output buffer the RTF tags from above.
