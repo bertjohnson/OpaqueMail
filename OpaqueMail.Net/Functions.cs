@@ -119,32 +119,35 @@ namespace OpaqueMail.Net
                     cursor = header.IndexOf("=?", cursor, StringComparison.Ordinal);
                     if (cursor > -1)
                     {
+                        headerBuilder.Append(header.Substring(lastCursor, cursor - lastCursor));
+
                         int middleCursor = header.IndexOf("?", cursor + 2, StringComparison.Ordinal);
+
                         if (middleCursor > -1 && middleCursor < header.Length - 2)
                         {
-                            int endCursor = header.IndexOf("?=", middleCursor + 1, StringComparison.Ordinal);
-                            if (endCursor > -1 && endCursor > middleCursor + 2)
+                            int endCursor = header.IndexOf("?=", middleCursor + 3, StringComparison.Ordinal);
+                            if (endCursor > -1 && endCursor > middleCursor + 1)
                             {
                                 // Try to create a decoder for the encoding.
-                                string encodingName = header.Substring(cursor + 2, middleCursor - cursor - 2);
-                                Encoding encoding = Encoding.GetEncoding(encodingName);
+                                string charSet = header.Substring(cursor + 2, middleCursor - cursor - 2).ToUpper();
+                                Encoding encoding = Encoding.GetEncoding(charSet);
 
                                 byte[] encodedBytes = null;
-                                switch (header.Substring(middleCursor + 1, 2))
+                                switch (header.Substring(middleCursor + 1, 2).ToUpper())
                                 {
                                     case "B?":
                                         encodedBytes = Convert.FromBase64String(header.Substring(middleCursor + 3, endCursor - middleCursor - 3));
                                         break;
                                     case "Q?":
-                                        encodedBytes = Encoding.UTF8.GetBytes(Functions.FromQuotedPrintable(header.Substring(middleCursor + 3, endCursor - middleCursor - 3)));
+                                        encodedBytes = encoding.GetBytes(FromQuotedPrintable(header.Substring(middleCursor + 3, endCursor - middleCursor - 3), charSet, encoding));
                                         break;
                                     default:
-                                        encodedBytes = Encoding.UTF8.GetBytes(header.Substring(middleCursor, endCursor - middleCursor - 2));
+                                        encodedBytes = encoding.GetBytes(header.Substring(middleCursor, endCursor - middleCursor - 2));
                                         break;
                                 }
 
                                 // Append the decoded string.
-                                headerBuilder.Append(encoding.GetString(encodedBytes));
+                                headerBuilder.Append(Encoding.UTF8.GetString(Encoding.Convert(encoding, Encoding.UTF8, encodedBytes)));
 
                                 cursor = endCursor + 2;
                             }
@@ -165,6 +168,43 @@ namespace OpaqueMail.Net
             {
                 // If the header is malformed, return it as passed in.
                 return header;
+            }
+        }
+
+        /// <summary>
+        /// Return a MIME header with languages and character set information extracted.
+        /// </summary>
+        /// <param name="mimeHeader">MIME header to process.</param>
+        /// <returns>Decoded MIME header.</returns>
+        private static string DecodeMimeHeader(string mimeHeader)
+        {
+            string characterSet = "", language = "";
+            return DecodeMimeHeader(mimeHeader, out characterSet, out language);
+        }
+
+        /// <summary>
+        /// Return a MIME header with languages and character set information extracted.
+        /// </summary>
+        /// <param name="mimeHeader">MIME header to process.</param>
+        /// <param name="characterSet">Character set of the encoded MIME header.</param>
+        /// <param name="language">Language of the encoded MIME header.</param>
+        /// <returns>Decoded MIME header.</returns>
+        private static string DecodeMimeHeader(string mimeHeader, out string characterSet, out string language)
+        {
+            string[] mimeHeaderParts = mimeHeader.Split(new char[] { '\'' }, 3);
+            if (mimeHeaderParts.Length == 3)
+            {
+                // Split the MIME header parts into their components.
+                characterSet = mimeHeaderParts[0];
+                language = mimeHeaderParts[1];
+                return mimeHeaderParts[2];
+            }
+            else
+            {
+                // If no valid encoding is found, return the header as-is.
+                characterSet = null;
+                language = null;
+                return mimeHeader;
             }
         }
 
@@ -221,7 +261,7 @@ namespace OpaqueMail.Net
                                 matchingAttachmentFound = true;
                                 byte[] contentStreamBytes = ((MemoryStream)attachment.ContentStream).ToArray();
 
-                                htmlBuilder.Append(Functions.ToBase64String(contentStreamBytes, 0, contentStreamBytes.Length));
+                                htmlBuilder.Append(ToBase64String(contentStreamBytes, 0, contentStreamBytes.Length));
                             }
                         }
 
@@ -242,7 +282,7 @@ namespace OpaqueMail.Net
                                     matchingAttachmentFound = true;
                                     byte[] contentStreamBytes = ((MemoryStream)attachment.ContentStream).ToArray();
 
-                                    htmlBuilder.Append(Functions.ToBase64String(contentStreamBytes, 0, contentStreamBytes.Length));
+                                    htmlBuilder.Append(ToBase64String(contentStreamBytes, 0, contentStreamBytes.Length));
                                 }
                             }
 
@@ -286,6 +326,94 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Return an embedded MIME parameter, observing character set encoding.
+        /// </summary>
+        /// <param name="mimeHeader">MIME header containing the parameter to extract.</param>
+        /// <param name="mimeParameter">MIME parameter to extract.</param>
+        /// <returns>Extracted MIME parameter, properly formatted.</returns>
+        public static string ExtractMimeParameter(string mimeHeader, string mimeParameter)
+        {
+            int parameterPos = mimeHeader.IndexOf(mimeParameter);
+            if (parameterPos > -1)
+            {
+                int asteriskPos = mimeHeader.IndexOf("*", parameterPos + mimeParameter.Length);
+                int equalsPos = mimeHeader.IndexOf("=", parameterPos + mimeParameter.Length);
+
+                if (equalsPos > -1 && (asteriskPos == -1 || equalsPos < asteriskPos))
+                {
+                    // The parameter isn't encoded, so return it as-is.
+                    string closedMimeHeader = mimeHeader + ";";
+                    string returnValue = ReturnBefore(closedMimeHeader.Substring(equalsPos + 1), ";");
+
+                    if (returnValue.StartsWith("\"") && returnValue.EndsWith("\""))
+                        return returnValue.Substring(1, returnValue.Length - 2);
+                    else
+                        return returnValue;
+                }
+                else if (asteriskPos > -1)
+                {
+                    // The parameter is language-encoded, per RFC2184.
+                    if (asteriskPos == equalsPos - 1)
+                    {
+                        // The parameter is encoded on one line.
+                        string closedMimeHeader = mimeHeader + ";";
+
+                        string returnValue = ReturnBefore(closedMimeHeader.Substring(equalsPos + 1), ";");
+                        if (returnValue.StartsWith("\"") && returnValue.EndsWith("\""))
+                            return DecodeMimeHeader(returnValue.Substring(1, returnValue.Length - 2));
+                        else
+                            return DecodeMimeHeader(returnValue);
+                    }
+                    else
+                    {
+                        // The parameter is encoded on one or more lines.
+                        string closedMimeHeader = mimeHeader + "\r\n";
+
+                        int index = 0;
+                        int.TryParse(mimeHeader.Substring(asteriskPos + 1, equalsPos - asteriskPos - 1).Replace("*", ""), out index);
+
+                        StringBuilder outputBuilder = new StringBuilder();
+
+                        // Loop through each component of the parameter.
+                        bool incrementing = true;
+                        while (incrementing)
+                        {
+                            string indexString = index.ToString();
+
+                            asteriskPos = mimeHeader.IndexOf(mimeParameter + "*" + indexString + "*=");
+                            equalsPos = mimeHeader.IndexOf(mimeParameter + "*" + indexString + "=");
+
+                            if (asteriskPos > -1 && (asteriskPos < equalsPos || equalsPos == -1))
+                            {
+                                string encodedMimeHeader = DecodeMimeHeader(ReturnBefore(closedMimeHeader.Substring(asteriskPos + mimeParameter.Length + indexString.Length + 3), "\r\n"));
+                                if (encodedMimeHeader.StartsWith("\"") && encodedMimeHeader.EndsWith("\""))
+                                    outputBuilder.Append(encodedMimeHeader.Substring(1, encodedMimeHeader.Length - 2));
+                                else
+                                    outputBuilder.Append(encodedMimeHeader);
+                            }
+                            else if (equalsPos > -1)
+                            {
+                                string unencodedMimeHeader = ReturnBefore(closedMimeHeader.Substring(equalsPos + mimeParameter.Length + indexString.Length + 2), "\r\n");
+                                if (unencodedMimeHeader.StartsWith("\"") && unencodedMimeHeader.EndsWith("\""))
+                                    outputBuilder.Append(unencodedMimeHeader.Substring(1, unencodedMimeHeader.Length - 2));
+                                else
+                                    outputBuilder.Append(unencodedMimeHeader);
+                            }
+                            else
+                                incrementing = false;
+
+                            index++;
+                        }
+
+                        return outputBuilder.ToString();
+                    }
+                }                
+            }
+
+            return "";
+        }
+        
+        /// <summary>
         /// Returns a base-64 string representing the original input.
         /// </summary>
         /// <param name="input">The string to convert.</param>
@@ -324,6 +452,9 @@ namespace OpaqueMail.Net
                 int bracketCursor = addresses.IndexOf("[", cursor, StringComparison.Ordinal);
                 if (bracketCursor == -1)
                     bracketCursor = addresses.Length + 1;
+                int parenthesisCursor = addresses.IndexOf("(", cursor, StringComparison.Ordinal);
+                if (parenthesisCursor == -1)
+                    parenthesisCursor = addresses.Length + 1;
                 int commaCursor = addresses.IndexOf(",", cursor, StringComparison.Ordinal);
                 if (commaCursor == -1)
                     commaCursor = addresses.Length + 1;
@@ -331,7 +462,7 @@ namespace OpaqueMail.Net
                 if (semicolonCursor == -1)
                     semicolonCursor = addresses.Length + 1;
 
-                if (quoteCursor < aposCursor && quoteCursor < angleCursor && quoteCursor < bracketCursor && quoteCursor < commaCursor && quoteCursor < semicolonCursor)
+                if (quoteCursor < aposCursor && quoteCursor < angleCursor && quoteCursor < bracketCursor && quoteCursor < parenthesisCursor && quoteCursor < commaCursor && quoteCursor < semicolonCursor)
                 {
                     // The address display name is enclosed in quotes.
                     int endQuoteCursor = addresses.IndexOf("\"", quoteCursor + 1, StringComparison.Ordinal);
@@ -343,7 +474,7 @@ namespace OpaqueMail.Net
                     else
                         cursor = addresses.Length;
                 }
-                else if (aposCursor < quoteCursor && aposCursor < angleCursor && aposCursor < bracketCursor && aposCursor < commaCursor && aposCursor < semicolonCursor)
+                else if (aposCursor < angleCursor && aposCursor < bracketCursor && aposCursor < parenthesisCursor && aposCursor < commaCursor && aposCursor < semicolonCursor)
                 {
                     // The address display name may be enclosed in apostrophes.
                     int endAposCursor = addresses.IndexOf("'", aposCursor + 1, StringComparison.Ordinal);
@@ -376,7 +507,7 @@ namespace OpaqueMail.Net
                             cursor = addresses.Length;
                     }
                 }
-                else if (angleCursor < quoteCursor && angleCursor < aposCursor && angleCursor < bracketCursor && angleCursor < commaCursor && angleCursor < semicolonCursor)
+                else if (angleCursor < bracketCursor && angleCursor < parenthesisCursor && angleCursor < commaCursor && angleCursor < semicolonCursor)
                 {
                     // The address is enclosed in angle brackets.
                     int endAngleCursor = addresses.IndexOf(">", angleCursor + 1, StringComparison.Ordinal);
@@ -387,6 +518,9 @@ namespace OpaqueMail.Net
                             displayName = addresses.Substring(lastCursor, angleCursor - lastCursor).Trim();
 
                         string address = addresses.Substring(angleCursor + 1, endAngleCursor - angleCursor - 1);
+                        if (!IsValidEmailAddress(address))
+                            address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+
                         if (displayName.Length > 0)
                             addressCollection.Add(new MailAddress(address, displayName));
                         else
@@ -398,10 +532,10 @@ namespace OpaqueMail.Net
                     else
                         cursor = addresses.Length;
                 }
-                else if (bracketCursor < quoteCursor && angleCursor < aposCursor && bracketCursor < angleCursor && bracketCursor < commaCursor && bracketCursor < semicolonCursor)
+                else if (bracketCursor < parenthesisCursor && bracketCursor < commaCursor && bracketCursor < semicolonCursor)
                 {
                     // The address is enclosed in brackets.
-                    int endBracketCursor = addresses.IndexOf(">", bracketCursor + 1, StringComparison.Ordinal);
+                    int endBracketCursor = addresses.IndexOf("]", bracketCursor + 1, StringComparison.Ordinal);
                     if (endBracketCursor > -1)
                     {
                         // If we didn't find a display name between quotes or apostrophes, look at all characters prior to the bracket.
@@ -409,6 +543,9 @@ namespace OpaqueMail.Net
                             displayName = addresses.Substring(lastCursor, bracketCursor - lastCursor).Trim();
 
                         string address = addresses.Substring(bracketCursor + 1, endBracketCursor - bracketCursor - 1);
+                        if (!IsValidEmailAddress(address))
+                            address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+
                         if (displayName.Length > 0)
                             addressCollection.Add(new MailAddress(address, displayName));
                         else
@@ -420,25 +557,65 @@ namespace OpaqueMail.Net
                     else
                         cursor = addresses.Length;
                 }
-                else if (commaCursor < quoteCursor && commaCursor < aposCursor && commaCursor < angleCursor && commaCursor < bracketCursor && commaCursor < semicolonCursor)
+                else if (parenthesisCursor < commaCursor && parenthesisCursor < semicolonCursor)
+                {
+                    // The display name is enclosed in parentheses.
+                    int endParenthesisCursor = addresses.IndexOf(")", parenthesisCursor + 1, StringComparison.Ordinal);
+
+                    string address = addresses.Substring(lastCursor, parenthesisCursor - lastCursor).Trim();
+                    if (!IsValidEmailAddress(address))
+                        address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+
+                    displayName = addresses.Substring(parenthesisCursor + 1, endParenthesisCursor - parenthesisCursor - 1);
+
+                    addressCollection.Add(new MailAddress(address, displayName));
+
+                    cursor = commaCursor + 1;
+                }
+                else if (commaCursor < semicolonCursor)
                 {
                     // We've found the next address, delimited by a comma.
+                    string address = addresses.Substring(cursor, commaCursor - cursor).Trim();
+                    if (!IsValidEmailAddress(address))
+                        address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+
+                    addressCollection.Add(new MailAddress(address));
+
                     cursor = commaCursor + 1;
                 }
-                else if (semicolonCursor > -1)
+                else if (semicolonCursor < addresses.Length)
                 {
                     // We've found the next address, delimited by a semicolon.
-                    cursor = commaCursor + 1;
+                    string address = addresses.Substring(cursor, semicolonCursor - cursor).Trim();
+                    if (!IsValidEmailAddress(address))
+                        address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+                    
+                    addressCollection.Add(new MailAddress(address));
+
+                    cursor = semicolonCursor + 1;
                 }
                 else
+                {
+                    // Process any remaining address.
+                    string address = addresses.Substring(cursor).Trim();
+                    if (!IsValidEmailAddress(address))
+                        address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+
+                    addressCollection.Add(new MailAddress(address));
+
                     cursor = addresses.Length;
+                }
 
                 lastCursor = cursor;
             }
 
             // If no encoded email address was parsed, try adding the entire string.
-            if (addressCollection.Count < 1 && IsValidEmailAddress(addresses))
-                addressCollection.Add(addresses);
+            if (addressCollection.Count < 1){
+                if (IsValidEmailAddress(addresses))
+                    addressCollection.Add(addresses);
+                else
+                    addressCollection.Add(addresses.Length > 0 ? (addresses.IndexOf("@") > -1 ? "unknown@unknown" : addresses + "@unknown") : "unknown@unknown");
+            }
 
             return addressCollection;
         }
@@ -490,18 +667,30 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="input">The string to convert.</param>
         /// <returns>The decoded version of the quoted-printable string passed in.</returns>
-        public static string FromQuotedPrintable(string input)
+        public static string FromQuotedPrintable(string input, string charSet, Encoding encoding)
         {
-            try
-            {
+          //  try
+            //{
                 // Remove carriage returns because they'll be added back in for line breaks (=0A).
                 input = input.Replace("=0D", "");
 
                 // Build a new string using the following buffer.
                 StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
+                // Determine whether to use multi-byte UTF8 encoding.
+                bool useUTF8 = (string.IsNullOrEmpty(charSet) || charSet == "UTF-8");
+
                 // Buffer for holding UTF-8 encoded characters.
                 byte[] utf8Buffer = new byte[Constants.SMALLBUFFERSIZE];
+
+                // If no encoding is passed in, but a character set is specified, create the encoding.
+                if (encoding == null)
+                {
+                    if (!string.IsNullOrEmpty(charSet))
+                        encoding = Encoding.GetEncoding(charSet);
+                    else
+                        encoding = Encoding.UTF8;
+                }
 
                 // Loop through and process quoted-printable strings, denoted by equals signs.
                 int equalsPos = 0, lastPos = 0;
@@ -531,34 +720,43 @@ namespace OpaqueMail.Net
                             default:
                                 int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
 
-                                // Handle values above 7F as UTF-8 encoded character sequences.
-                                bool processed = false;
-                                if (highByte > 127 && equalsPos < input.Length - 2)
+                                if (useUTF8)
                                 {
-                                    utf8Buffer[0] = (byte)highByte;
-                                    int utf8ByteCount = 1;
-
-                                    string encodedString = afterEquals;
-                                    equalsPos += 3;
-
-                                    while (input.Substring(equalsPos, 1) == "=")
+                                    // Handle values above 7F as UTF-8 encoded character sequences.
+                                    bool processed = false;
+                                    if (highByte > 127 && equalsPos < input.Length - 2)
                                     {
-                                        // Step over a line break if that breaks up our encoded string.
-                                        if (input.Substring(equalsPos + 1, 2) != "\r\n")
-                                            utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
+                                        utf8Buffer[0] = (byte)highByte;
+                                        int utf8ByteCount = 1;
 
+                                        string encodedString = afterEquals;
                                         equalsPos += 3;
+
+                                        int inputLength = input.Length;
+                                        while (equalsPos > -1 && input.Substring(equalsPos, 1) == "=")
+                                        {
+                                            // Step over a line break if that breaks up our encoded string.
+                                            if (input.Substring(equalsPos + 1, 2) != "\r\n")
+                                                utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
+
+                                            equalsPos += 3;
+                                            if (equalsPos == inputLength)
+                                                equalsPos = -3;
+                                        }
+
+                                        outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
+
+                                        processed = true;
+                                        equalsPos -= 3;
                                     }
 
-                                    outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
-
-                                    processed = true;
-                                    equalsPos -= 3;
+                                    // Continue if we didn't run into a UTF-8 encoded character sequence.
+                                    if (!processed)
+                                        outputBuilder.Append(encoding.GetBytes(new char[] { (char)highByte }));
                                 }
+                                else
+                                    outputBuilder.Append(encoding.GetString(new byte[]{(byte)highByte}));
 
-                                // Continue if we didn't run into a UTF-8 encoded character sequence.
-                                if (!processed)
-                                    outputBuilder.Append((char)highByte);
                                 break;
                         }
 
@@ -571,12 +769,12 @@ namespace OpaqueMail.Net
                     }
                 }
                 return outputBuilder.ToString();
-            }
-            catch
-            {
+//            }
+  //          catch
+    //        {
                 // If the quoted-printable encoding is invalid, return the message as-is.
-                return input;
-            }
+//                return input;
+      //      }
         }
 
         /// <summary>
@@ -949,6 +1147,20 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Returns the string before the specified end string.
+        /// </summary>
+        /// <param name="haystack">Container string to search within.</param>
+        /// <param name="endString">String boundary.</param>
+        /// <returns>Any text found in the haystack before the specified end string.</returns>
+        public static string ReturnBefore(string haystack, string endString)
+        {
+            int pos = haystack.IndexOf(endString, StringComparison.Ordinal);
+            if (pos > -1)
+                return haystack.Substring(0, pos);
+            return "";
+        }
+
+        /// <summary>
         /// Replace the string between the first two instances of specified start and end strings.
         /// </summary>
         /// <param name="haystack">Container string to search within.</param>
@@ -1269,6 +1481,53 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Remove unneeded line breaks from headers, as were added to avoid excessive line lengths.
+        /// </summary>
+        /// <param name="input">String to unfold.</param>
+        /// <returns>Unfolded representation of input.</returns>
+        public static string UnfoldWhitespace(string input)
+        {
+            StringBuilder outputBuilder = new StringBuilder();
+            int pos = 0, lastPos = 0, inputLength = input.Length;
+            while (pos > -1)
+            {
+                pos = input.IndexOf("\r\n", lastPos);
+                if (pos > -1 && pos < (inputLength - 2))
+                {
+                    char evaluatedChar = input[pos + 2];
+                    // If the line break is followed by whitespace, ignore it.  Otherwise, include the line break.
+                    if (evaluatedChar == ' ' || evaluatedChar == '\t')
+                    {
+                        outputBuilder.Append(input.Substring(lastPos, pos - lastPos));
+
+                        pos += 2;
+                        bool inWhitespace = true;
+                        while (inWhitespace)
+                        {
+                            evaluatedChar = input[pos];
+                            if (evaluatedChar == ' ' || evaluatedChar == '\t')
+                                pos++;
+                            else
+                                inWhitespace = false;
+                        }
+                    }
+                    else
+                    {
+                        outputBuilder.Append(input.Substring(lastPos, pos + 2 - lastPos));
+                        pos += 2;
+                    }
+
+                    lastPos = pos;
+                }
+                else
+                    pos = -1;
+            }
+            outputBuilder.Append(input.Substring(lastPos));
+
+            return outputBuilder.ToString();
+        }
+
+        /// <summary>
         /// Convert a UTF-8 byte array into a Unicode string.
         /// </summary>
         /// <param name="utf8Bytes">Array of UTF-8 encoded characters.</param>
@@ -1333,7 +1592,7 @@ namespace OpaqueMail.Net
             // Process each line.
             string[] lines = input.Replace("\r", "").Split('\n');
             foreach (string line in lines)
-                outputBuilder.Append(Functions.UUDecodeLine(line));
+                outputBuilder.Append(UUDecodeLine(line));
 
             return outputBuilder.ToString();
         }

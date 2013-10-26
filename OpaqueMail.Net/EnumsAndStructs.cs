@@ -167,6 +167,7 @@ namespace OpaqueMail.Net
         None = 0,
         IncludeRawHeaders = 1,
         IncludeRawBody = 2,
+        IncludeNestedRFC822Messages = 128,
         IncludeWinMailData = 256,
         IncludeSmimeSignedData = 512,
         IncludeSmimeEncryptedEnvelopeData = 1024

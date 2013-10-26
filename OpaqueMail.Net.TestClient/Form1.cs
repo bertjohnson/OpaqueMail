@@ -267,7 +267,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                                     // If the message was deleted, null will be returned.
                                     ImapHeaders.BackColor = Color.White;
                                     ImapHeaders.Text = "";
-                                    ImapWebPreview.Document.Write("Message not found.");
+                                    ImapWebPreview.DocumentText = "Message not found.";
                                     ImapWebPreviewPanel.Refresh();
                                 }
 
@@ -377,8 +377,6 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private void LoadSettingsButton_Click(object sender, EventArgs e)
         {
-            MailAddressCollection mac = Functions.FromMailAddressString("'Toni Johnson' <toni@tonij.net>");
-
             DialogResult result = MessageBox.Show("Are you sure?  All settings will be overwritten by the contents of \"OpaqueMail.Net.TestClient.xml\".", "Confirm Load", MessageBoxButtons.OKCancel, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1);
             if (result == DialogResult.OK)
                 LoadSettings();
@@ -464,7 +462,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                                     // If the message was deleted, null will be returned.
                                     Pop3Headers.BackColor = Color.White;
                                     Pop3Headers.Text = "";
-                                    Pop3WebPreview.Document.Write("Message not found.");
+                                    Pop3WebPreview.DocumentText = "Message not found.";
                                     Pop3WebPreviewPanel.Refresh();
                                 }
                             }

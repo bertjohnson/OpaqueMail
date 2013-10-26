@@ -67,6 +67,10 @@ namespace OpaqueMail.Net
         public string InReplyTo = "";
         /// <summary>Message ID header.</summary>
         public string MessageId;
+        /// <summary>Partial message unique ID.</summary>
+        public string PartialMessageId;
+        /// <summary>Partial message unique number.</summary>
+        public int PartialMessageNumber;
         /// <summary>UIDL as specified by the POP3 server.</summary>
         public string Pop3Uidl;
         /// <summary>Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</summary>
@@ -141,27 +145,20 @@ namespace OpaqueMail.Net
             List<string> receivedChain = new List<string>();
             string receivedText = "";
 
-            // Record keeping variable to handle headers that spawn multiple lines.
-            string lastHeaderType = "";
-
-            // Loop through each line of the headers.
-            string[] headersList = headers.Replace("\r", "").Split('\n');
+            // Unfold any unneeded whitespace, then loop through each line of the headers.
+            string[] headersList = Functions.UnfoldWhitespace(headers).Replace("\r", "").Split('\n');
             foreach (string header in headersList)
             {
-                bool headerProcessed = false;
-
                 // Split header {name:value} pairs by the first colon found.
                 int colonPos = header.IndexOf(":");
                 if (colonPos > -1 && colonPos < header.Length - 1)
                 {
-                    headerProcessed = true;
-
                     string[] headerParts = new string[] { header.Substring(0, colonPos), header.Substring(colonPos + 2) };
                     string headerType = headerParts[0].ToLower();
                     string headerValue = headerParts[1];
 
                     // Set header variables for common headers.
-                    if (!string.IsNullOrEmpty(headerType) && !headerType.StartsWith("\t") && !string.IsNullOrEmpty(headerValue))
+                    if (!string.IsNullOrEmpty(headerType) && !string.IsNullOrEmpty(headerValue))
                         Headers[headerParts[0]] = headerValue;
 
                     switch (headerType)
@@ -198,7 +195,10 @@ namespace OpaqueMail.Net
                         case "content-type":
                             // If multiple content-types are passed, only process the first.
                             if (string.IsNullOrEmpty(ContentType))
-                                ContentType = headerValue;
+                            {
+                                ContentType = headerValue.Trim();
+                                CharSet = Functions.ExtractMimeParameter(ContentType, "charset");
+                            }
                             break;
                         case "date":
                             string dateString = headerValue;
@@ -293,8 +293,6 @@ namespace OpaqueMail.Net
                             bool.TryParse(headerValue, out SubjectEncryption);
                             break;
                         default:
-                            // Allow continuations if this header starts with whitespace.
-                            headerProcessed = (!header.StartsWith("\t") && !header.StartsWith(" "));
                             break;
                     }
 
@@ -303,7 +301,6 @@ namespace OpaqueMail.Net
                     {
                         ExtendedProperties = new ExtendedProperties();
 
-                        bool headerPreviouslyProcessed = headerProcessed;
                         switch (headerType)
                         {
                             case "acceptlanguage":
@@ -448,90 +445,6 @@ namespace OpaqueMail.Net
                                 ExtendedProperties.SpamScore = headerValue;
                                 break;
                             default:
-                                // Allow continuations if this header starts with whitespace.
-                                if (!headerPreviouslyProcessed)
-                                    headerProcessed = (!header.StartsWith("\t") && !header.StartsWith(" "));
-                                break;
-                        }
-                    }
-
-                    if (headerProcessed)
-                        lastHeaderType = headerType;
-                }
-
-                // Handle continuations for headers spanning multiple lines.
-                if (!headerProcessed)
-                {
-                    if (!string.IsNullOrEmpty(lastHeaderType) && !lastHeaderType.Contains(" "))
-                        Headers[lastHeaderType] += header.Replace("\t", " ");
-
-                    switch (lastHeaderType)
-                    {
-                        case "bcc":
-                            bccText += header;
-                            break;
-                        case "cc":
-                            ccText += header;
-                            break;
-                        case "content-type":
-                            ContentType += header;
-                            break;
-                        case "delivered-to":
-                            DeliveredTo += header;
-                            break;
-                        case "from":
-                            fromText += header;
-                            break;
-                        case "message-id":
-                            MessageId += header;
-                            break;
-                        case "received":
-                        case "x-received":
-                            receivedText += "\r\n" + header;
-                            break;
-                        case "reply-to":
-                            replyToText += header;
-                            break;
-                        case "subject":
-                            subjectText += header;
-                            break;
-                        case "to":
-                            toText += header;
-                            break;
-                        default:
-                            break;
-                    }
-
-                    // Set header variables for advanced headers.
-                    if (parseExtendedHeaders)
-                    {
-                        switch (lastHeaderType)
-                        {
-                            case "authentication-results":
-                                ExtendedProperties.AuthenticationResults += "\r\n" + header;
-                                break;
-                            case "dkim-signature":
-                            case "domainkey-signature":
-                            case "x-google-dkim-signature":
-                                ExtendedProperties.DomainKeySignature += "\r\n" + header;
-                                break;
-                            case "list-unsubscribe":
-                                ExtendedProperties.ListUnsubscribe += header;
-                                break;
-                            case "received-spf":
-                                ExtendedProperties.ReceivedSPF += "\r\n" + header;
-                                break;
-                            case "references":
-                                ExtendedProperties.References += "\r\n" + header;
-                                break;
-                            case "resent-from":
-                                ExtendedProperties.ResentFrom += "\r\n" + header;
-                                break;
-                            case "thread-topic":
-                                ExtendedProperties.ThreadTopic += header;
-                                break;
-                            case "x-report-abuse":
-                                ExtendedProperties.ReportAbuse += header;
                                 break;
                         }
                     }
@@ -546,7 +459,7 @@ namespace OpaqueMail.Net
             // Process the body if it's passed in.
             string body = "";
             if (cutoff > -1)
-                 body = messageText.Substring(cutoff + 4);
+                 body = messageText.Substring(cutoff + 2);
             if (!string.IsNullOrEmpty(body))
             {
                 // Set the raw body property if requested.
@@ -554,7 +467,7 @@ namespace OpaqueMail.Net
                     RawBody = body;
 
                 // Parse body into MIME parts.
-                List<MimePart> mimeParts = MimePart.ExtractMIMEParts(ContentType, ContentTransferEncoding, body, ProcessingFlags);
+                List<MimePart> mimeParts = MimePart.ExtractMIMEParts(ContentType, CharSet, ContentTransferEncoding, body, ProcessingFlags);
 
                 // Process each MIME part.
                 if (mimeParts.Count > 0)
@@ -566,6 +479,21 @@ namespace OpaqueMail.Net
                     for (int j = 0; j < mimeParts.Count; j++)
                     {
                         MimePart mimePart = mimeParts[j];
+
+                        int semicolon = mimePart.ContentType.IndexOf(";");
+                        if (semicolon > -1)
+                        {
+                            string originalContentType = mimePart.ContentType;
+                            mimePart.ContentType = mimePart.ContentType.Substring(0, semicolon);
+
+                            if (mimePart.ContentType.ToUpper() == "MESSAGE/PARTIAL")
+                            {
+                                PartialMessageId = Functions.ExtractMimeParameter(originalContentType, "id");
+                                int partialMessageNumber = 0;
+                                if (int.TryParse(Functions.ExtractMimeParameter(originalContentType, "number"), out partialMessageNumber))
+                                    PartialMessageNumber = partialMessageNumber;
+                            }
+                        }
 
                         // Extract any signing certificates.  If this MIME part isn't signed, the overall message isn't signed.
                         if (mimePart.SmimeSigned)
@@ -602,12 +530,13 @@ namespace OpaqueMail.Net
                         }
 
                         // Set the default primary body, defaulting to text/html and falling back to any text/*.
+                        string contentTypeToUpper = mimePart.ContentType.ToUpper();
                         if (Body.Length < 1)
                         {
                             // If the MIME part is of type text/*, set it as the intial message body.
-                            if (mimePart.ContentType.StartsWith("text/") || string.IsNullOrEmpty(mimePart.ContentType))
+                            if (string.IsNullOrEmpty(mimePart.ContentType) || contentTypeToUpper.StartsWith("TEXT/"))
                             {
-                                IsBodyHtml = mimePart.ContentType.StartsWith("text/html");
+                                IsBodyHtml = contentTypeToUpper.StartsWith("TEXT/HTML");
                                 Body = mimePart.Body;
                                 CharSet = mimePart.CharSet;
                                 ContentType = mimePart.ContentType;
@@ -618,7 +547,12 @@ namespace OpaqueMail.Net
                             {
                                 // If the MIME part isn't of type text/*, treat is as an attachment.
                                 MemoryStream attachmentStream = new MemoryStream(mimePart.BodyBytes);
-                                Attachment attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
+                                Attachment attachment;
+                                if (mimePart.ContentType.IndexOf("/") > -1)
+                                    attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
+                                else
+                                    attachment = new Attachment(attachmentStream, mimePart.Name);
+
                                 attachment.ContentId = mimePart.ContentID;
                                 Attachments.Add(attachment);
                             }
@@ -626,7 +560,7 @@ namespace OpaqueMail.Net
                         else
                         {
                             // If the current body isn't text/html and this is, replace the default body with the current MIME part.
-                            if (!ContentType.StartsWith("text/html") && mimePart.ContentType.StartsWith("text/html"))
+                            if (!ContentType.ToUpper().StartsWith("TEXT/HTML") && contentTypeToUpper.StartsWith("TEXT/HTML"))
                             {
                                 // Add the previous default body as an alternate view.
                                 MemoryStream alternateViewStream = new MemoryStream(Encoding.UTF8.GetBytes(Body));
@@ -646,7 +580,11 @@ namespace OpaqueMail.Net
                             {
                                 // If the MIME part isn't of type text/*, treat is as an attachment.
                                 MemoryStream attachmentStream = new MemoryStream(mimePart.BodyBytes);
-                                Attachment attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
+                                Attachment attachment;
+                                if (mimePart.ContentType.IndexOf("/") > -1)
+                                    attachment = new Attachment(attachmentStream, mimePart.Name, mimePart.ContentType);
+                                else
+                                    attachment = new Attachment(attachmentStream, mimePart.Name);
                                 attachment.ContentId = mimePart.ContentID;
                                 Attachments.Add(attachment);
                             }
