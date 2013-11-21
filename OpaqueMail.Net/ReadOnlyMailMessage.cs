@@ -81,6 +81,8 @@ namespace OpaqueMail.Net
         public HashSet<string> RawFlags = new HashSet<string>();
         /// <summary>String representation of the raw headers received.</summary>
         public string RawHeaders;
+        /// <summary>String representation of the entire raw message received.</summary>
+        public string RawMessage;
         /// <summary>Array of values of Received and X-Received headers.</summary>
         public string[] ReceivedChain;
         /// <summary>Return-Path header.</summary>
@@ -111,6 +113,10 @@ namespace OpaqueMail.Net
         /// <param name="parseExtendedHeaders">Whether to populate the ExtendedHeaders object.</param>
         public ReadOnlyMailMessage(string messageText, ReadOnlyMailMessageProcessingFlags processingFlags, bool parseExtendedHeaders)
         {
+            if (((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders) > 0)
+                && (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeRawBody) > 0)
+                RawMessage = messageText;
+
             // Remember which specialized attachments to include.
             ProcessingFlags = processingFlags;
 
@@ -165,7 +171,7 @@ namespace OpaqueMail.Net
                     {
                         case "cc":
                             if (ccText.Length > 0)
-                                ccText += "; ";
+                                ccText += ", ";
                             ccText = headerValue;
                             break;
                         case "content-transfer-encoding":
@@ -272,7 +278,7 @@ namespace OpaqueMail.Net
                             break;
                         case "to":
                             if (toText.Length > 0)
-                                toText += "; ";
+                                toText += ", ";
                             toText += headerValue;
                             break;
                         case "x-priority":

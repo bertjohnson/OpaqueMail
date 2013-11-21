@@ -318,7 +318,7 @@ namespace OpaqueMail.Net
         /// Appends a message to the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
-        /// <param name="message">The raw message to append.</param>
+        /// <param name="message">The raw message text to append.</param>
         public async Task<bool> AppendMessageAsync(string mailboxName, string message)
         {
             return await AppendMessageAsync(mailboxName, message, new string[] { }, null);
@@ -329,6 +329,16 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
         /// <param name="message">The raw message to append.</param>
+        public async Task<bool> AppendMessageAsync(string mailboxName, ReadOnlyMailMessage message)
+        {
+            return await AppendMessageAsync(mailboxName, message.RawMessage, new string[] { }, null);
+        }
+
+        /// <summary>
+        /// Appends a message to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="message">The raw message text to append.</param>
         /// <param name="flags">Optional flags to be applied for the message.</param>
         /// <param name="date">Optional date for the message.</param>
         public async Task<bool> AppendMessageAsync(string mailboxName, string message, string[] flags, DateTime? date)
@@ -385,6 +395,18 @@ namespace OpaqueMail.Net
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Appends a message to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="message">The raw message to append.</param>
+        /// <param name="flags">Optional flags to be applied for the message.</param>
+        /// <param name="date">Optional date for the message.</param>
+        public async Task<bool> AppendMessageAsync(string mailboxName, ReadOnlyMailMessage message, string[] flags, DateTime? date)
+        {
+            return await AppendMessageAsync(mailboxName, message.RawMessage, flags, date);
         }
 
         /// <summary>
@@ -493,6 +515,22 @@ namespace OpaqueMail.Net
 
                 return returnValue;
             }
+        }
+
+        /// <summary>
+        /// Appends messages to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="messages">The raw messages to append.</param>
+        /// <param name="flags">Optional flags to be applied for the message.</param>
+        /// <param name="date">Optional date for the message.</param>
+        public async Task<bool> AppendMessagesAsync(string mailboxName, ReadOnlyMailMessage[] messages, string[] flags, DateTime? date)
+        {
+            string[] rawMessages = new string[messages.Length];
+            for (int i = 0; i < messages.Length; i++)
+                rawMessages[i] = messages[i].RawMessage;
+
+            return await AppendMessagesAsync(mailboxName, rawMessages, flags, date);
         }
 
         /// <summary>

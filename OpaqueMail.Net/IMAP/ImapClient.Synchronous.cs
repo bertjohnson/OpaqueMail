@@ -50,7 +50,7 @@ namespace OpaqueMail.Net
         /// Appends a message to the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
-        /// <param name="message">The raw message to append.</param>
+        /// <param name="message">The raw message text to append.</param>
         public bool AppendMessage(string mailboxName, string message)
         {
             return Task.Run(() => AppendMessageAsync(mailboxName, message)).Result;
@@ -61,6 +61,16 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
         /// <param name="message">The raw message to append.</param>
+        public bool AppendMessage(string mailboxName, ReadOnlyMailMessage message)
+        {
+            return Task.Run(() => AppendMessageAsync(mailboxName, message)).Result;
+        }
+
+        /// <summary>
+        /// Appends a message to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="message">The raw message text to append.</param>
         /// <param name="flags">Optional flags to be applied for the message.</param>
         /// <param name="date">Optional date for the message.</param>
         public bool AppendMessage(string mailboxName, string message, string[] flags, DateTime? date)
@@ -69,10 +79,22 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Appends a message to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="message">The raw message to append.</param>
+        /// <param name="flags">Optional flags to be applied for the message.</param>
+        /// <param name="date">Optional date for the message.</param>
+        public bool AppendMessage(string mailboxName, ReadOnlyMailMessage message, string[] flags, DateTime? date)
+        {
+            return Task.Run(() => AppendMessageAsync(mailboxName, message, flags, date)).Result;
+        }
+
+        /// <summary>
         /// Appends messages to the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
-        /// <param name="messages">The raw messages to append.</param>
+        /// <param name="messages">The raw messages text to append.</param>
         public bool AppendMessages(string mailboxName, string[] messages)
         {
             return Task.Run(() => AppendMessagesAsync(mailboxName, messages, new string[] { }, null)).Result;
@@ -83,9 +105,31 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
         /// <param name="messages">The raw messages to append.</param>
-        /// <param name="flags">Optional flags to be applied for the message.</param>
-        /// <param name="date">Optional date for the message.</param>
+        public bool AppendMessages(string mailboxName, ReadOnlyMailMessage[] messages)
+        {
+            return Task.Run(() => AppendMessagesAsync(mailboxName, messages, new string[] { }, null)).Result;
+        }
+
+        /// <summary>
+        /// Appends messages to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="messages">The raw messages text to append.</param>
+        /// <param name="flags">Optional flags to be applied for all messages.</param>
+        /// <param name="date">Optional date for all messages.</param>
         public bool AppendMessages(string mailboxName, string[] messages, string[] flags, DateTime? date)
+        {
+            return Task.Run(() => AppendMessagesAsync(mailboxName, messages, flags, date)).Result;
+        }
+
+        /// <summary>
+        /// Appends messages to the specified mailbox.
+        /// </summary>
+        /// <param name="mailboxName">The name of the mailbox to append to.</param>
+        /// <param name="messages">The raw messages to append.</param>
+        /// <param name="flags">Optional flags to be applied for all messages.</param>
+        /// <param name="date">Optional date for all messages.</param>
+        public bool AppendMessages(string mailboxName, ReadOnlyMailMessage[] messages, string[] flags, DateTime? date)
         {
             return Task.Run(() => AppendMessagesAsync(mailboxName, messages, flags, date)).Result;
         }

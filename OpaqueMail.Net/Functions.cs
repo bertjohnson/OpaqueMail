@@ -172,26 +172,26 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
-        /// Return a MIME header with languages and character set information extracted.
+        /// Return a MIME parameter with languages and character set information extracted.
         /// </summary>
-        /// <param name="mimeHeader">MIME header to process.</param>
-        /// <returns>Decoded MIME header.</returns>
-        private static string DecodeMimeHeader(string mimeHeader)
+        /// <param name="mimeParameter">MIME parameter to process.</param>
+        /// <returns>Decoded MIME parameter.</returns>
+        private static string DecodeMimeParameter(string mimeParameter)
         {
-            string characterSet = "", language = "";
-            return DecodeMimeHeader(mimeHeader, out characterSet, out language);
+            string characterSet, language;
+            return DecodeMimeParameter(mimeParameter, out characterSet, out language);
         }
 
         /// <summary>
-        /// Return a MIME header with languages and character set information extracted.
+        /// Return a MIME parameter with languages and character set information extracted.
         /// </summary>
-        /// <param name="mimeHeader">MIME header to process.</param>
-        /// <param name="characterSet">Character set of the encoded MIME header.</param>
-        /// <param name="language">Language of the encoded MIME header.</param>
-        /// <returns>Decoded MIME header.</returns>
-        private static string DecodeMimeHeader(string mimeHeader, out string characterSet, out string language)
+        /// <param name="mimeParameter">MIME parameter to process.</param>
+        /// <param name="characterSet">Character set of the encoded MIME parameter.</param>
+        /// <param name="language">Language of the encoded MIME parameter.</param>
+        /// <returns>Decoded MIME parameter.</returns>
+        private static string DecodeMimeParameter(string mimeParameter, out string characterSet, out string language)
         {
-            string[] mimeHeaderParts = mimeHeader.Split(new char[] { '\'' }, 3);
+            string[] mimeHeaderParts = mimeParameter.Split(new char[] { '\'' }, 3);
             if (mimeHeaderParts.Length == 3)
             {
                 // Split the MIME header parts into their components.
@@ -204,7 +204,7 @@ namespace OpaqueMail.Net
                 // If no valid encoding is found, return the header as-is.
                 characterSet = null;
                 language = null;
-                return mimeHeader;
+                return mimeParameter;
             }
         }
 
@@ -360,9 +360,9 @@ namespace OpaqueMail.Net
 
                         string returnValue = ReturnBefore(closedMimeHeader.Substring(equalsPos + 1), ";");
                         if (returnValue.StartsWith("\"") && returnValue.EndsWith("\""))
-                            return DecodeMimeHeader(returnValue.Substring(1, returnValue.Length - 2));
+                            return DecodeMimeParameter(returnValue.Substring(1, returnValue.Length - 2));
                         else
-                            return DecodeMimeHeader(returnValue);
+                            return DecodeMimeParameter(returnValue);
                     }
                     else
                     {
@@ -385,7 +385,7 @@ namespace OpaqueMail.Net
 
                             if (asteriskPos > -1 && (asteriskPos < equalsPos || equalsPos == -1))
                             {
-                                string encodedMimeHeader = DecodeMimeHeader(ReturnBefore(closedMimeHeader.Substring(asteriskPos + mimeParameter.Length + indexString.Length + 3), "\r\n"));
+                                string encodedMimeHeader = DecodeMimeParameter(ReturnBefore(closedMimeHeader.Substring(asteriskPos + mimeParameter.Length + indexString.Length + 3), "\r\n"));
                                 if (encodedMimeHeader.StartsWith("\"") && encodedMimeHeader.EndsWith("\""))
                                     outputBuilder.Append(encodedMimeHeader.Substring(1, encodedMimeHeader.Length - 2));
                                 else
@@ -570,27 +570,33 @@ namespace OpaqueMail.Net
 
                     addressCollection.Add(new MailAddress(address, displayName));
 
-                    cursor = commaCursor + 1;
+                    cursor = parenthesisCursor + 1;
                 }
                 else if (commaCursor < semicolonCursor)
                 {
-                    // We've found the next address, delimited by a comma.
-                    string address = addresses.Substring(cursor, commaCursor - cursor).Trim();
-                    if (!IsValidEmailAddress(address))
-                        address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+                    if (commaCursor > lastCursor)
+                    {
+                        // We've found the next address, delimited by a comma.
+                        string address = addresses.Substring(cursor, commaCursor - cursor).Trim();
+                        if (!IsValidEmailAddress(address))
+                            address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
-                    addressCollection.Add(new MailAddress(address));
+                        addressCollection.Add(new MailAddress(address));
+                    }
 
                     cursor = commaCursor + 1;
                 }
                 else if (semicolonCursor < addresses.Length)
                 {
-                    // We've found the next address, delimited by a semicolon.
-                    string address = addresses.Substring(cursor, semicolonCursor - cursor).Trim();
-                    if (!IsValidEmailAddress(address))
-                        address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
-                    
-                    addressCollection.Add(new MailAddress(address));
+                    if (semicolonCursor > lastCursor)
+                    {
+                        // We've found the next address, delimited by a semicolon.
+                        string address = addresses.Substring(cursor, semicolonCursor - cursor).Trim();
+                        if (!IsValidEmailAddress(address))
+                            address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+
+                        addressCollection.Add(new MailAddress(address));
+                    }
 
                     cursor = semicolonCursor + 1;
                 }
@@ -1430,9 +1436,9 @@ namespace OpaqueMail.Net
             foreach (MailAddress address in addresses)
             {
                 if (!string.IsNullOrEmpty(address.DisplayName))
-                    addressString.Append(address.DisplayName + " <" + address.Address + ">; ");
+                    addressString.Append(address.DisplayName + " <" + address.Address + ">, ");
                 else
-                    addressString.Append(address.Address + "; ");
+                    addressString.Append(address.Address + ", ");
             }
             if (addressString.Length > 0)
                 addressString.Remove(addressString.Length - 2, 2);

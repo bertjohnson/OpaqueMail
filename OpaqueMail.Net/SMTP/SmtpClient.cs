@@ -38,6 +38,11 @@ namespace OpaqueMail.Net
     {
         #region Public Members
         /// <summary>
+        /// OID representing the encryption algorthim(s) to be used.
+        /// </summary>
+        /// <remarks>Defaults to using the AES 256-bit algorithm with CBC.</remarks>
+        public AlgorithmIdentifier SmimeAlgorithmIdentifier = new AlgorithmIdentifier(new Oid("2.16.840.1.101.3.4.1.42"));
+        /// <summary>
         /// Collection of certificates to be used when searching for recipient public keys.
         /// If not specified, SmtpClient will use the current Windows user's certificate store.
         /// </summary>
@@ -482,9 +487,7 @@ namespace OpaqueMail.Net
 
             // Prepare the encryption envelope.
             ContentInfo contentInfo = new ContentInfo(contentBytes);
-
-            // Default to using the AES 256-bit alogorithm with CBC.
-            EnvelopedCms envelope = new EnvelopedCms(contentInfo, new AlgorithmIdentifier(new Oid("2.16.840.1.101.3.4.1.42")));
+            EnvelopedCms envelope = new EnvelopedCms(contentInfo, SmimeAlgorithmIdentifier);
 
             // Encrypt the symmetric session key using each recipient's public key.
             foreach (string addressWithPublicKey in addressesWithPublicKeys)

@@ -146,29 +146,30 @@ namespace OpaqueMail.Net
 
                     if (boundaryName.StartsWith("\"") && boundaryName.EndsWith("\""))
                         boundaryName = boundaryName.Substring(1, boundaryName.Length - 2);
+                    else
+                    {
+                        // Remove linear whitespace from boundary names.
+                        boundaryName = boundaryName.Trim();
+                    }
                 }
-
-                // Remove linear whitespace from boundary names.
-                boundaryName = boundaryName.Trim();
+                int boundaryNameLength = boundaryName.Length;
 
                 // Variables used for record keeping with signed S/MIME parts.
                 int signatureBlock = -1;
                 List<string> mimeBlocks = new List<string>();
 
-                cursor = 0;
+                cursor = body.IndexOf("\r\n--" + boundaryName, 0, StringComparison.Ordinal);
                 while (cursor > -1)
                 {
-                    // Move cursor to the next boundary.
-                    cursor = body.IndexOf("\r\n--" + boundaryName, cursor, StringComparison.Ordinal);
-
-                    if (cursor > -1)
+                    // Calculate the end boundary of the current MIME part.
+                    int mimeStartPosition = cursor + boundaryNameLength + 4;
+                    int mimeEndPosition = body.IndexOf("\r\n--" + boundaryName, mimeStartPosition, StringComparison.Ordinal);
+                    if (mimeEndPosition > -1)
                     {
-                        // Calculate the end boundary of the current MIME part.
-                        int mimeStartPosition = cursor + boundaryName.Length + 4;
-                        int boundaryEnd = body.IndexOf("\r\n--" + boundaryName, mimeStartPosition, StringComparison.Ordinal);
-                        if (boundaryEnd > -1)
+                        string afterBoundaryEnd = body.Substring(mimeEndPosition + 4 + boundaryNameLength, 2);
+                        if (afterBoundaryEnd == "\r\n" || afterBoundaryEnd == "--")
                         {
-                            string mimeContents = body.Substring(mimeStartPosition, boundaryEnd - mimeStartPosition);
+                            string mimeContents = body.Substring(mimeStartPosition, mimeEndPosition - mimeStartPosition);
 
                             // Extract the header portion of the current MIME part.
                             int mimeDivider = mimeContents.IndexOf("\r\n\r\n");
@@ -203,132 +204,127 @@ namespace OpaqueMail.Net
                                 }
                             }
 
-//                            if (mimeHeaders.Length > 0)
-//                            {
-                                mimeBlocks.Add(mimeContents);
+                            mimeBlocks.Add(mimeContents);
 
-                                // Divide the MIME part's headers into its components.
-                                string mimeCharSet = "", mimeContentDisposition = "", mimeContentID = "", mimeContentType = "", mimeContentTransferEncoding = "", mimeFileName = "";
-                                ExtractMimeHeaders(mimeHeaders, out mimeContentType, out mimeCharSet, out mimeContentTransferEncoding, out mimeContentDisposition, out mimeFileName, out mimeContentID);
+                            // Divide the MIME part's headers into its components.
+                            string mimeCharSet = "", mimeContentDisposition = "", mimeContentID = "", mimeContentType = "", mimeContentTransferEncoding = "", mimeFileName = "";
+                            ExtractMimeHeaders(mimeHeaders, out mimeContentType, out mimeCharSet, out mimeContentTransferEncoding, out mimeContentDisposition, out mimeFileName, out mimeContentID);
 
-                                string mimeContentTypeToUpper = mimeContentType.ToUpper();
-                                if (mimeContentTypeToUpper.StartsWith("MULTIPART/"))
+                            string mimeContentTypeToUpper = mimeContentType.ToUpper();
+                            if (mimeContentTypeToUpper.StartsWith("MULTIPART/"))
+                            {
+                                // Recurse through embedded MIME parts.
+                                List<MimePart> returnedMIMEParts = ExtractMIMEParts(mimeContentType, mimeCharSet, mimeContentTransferEncoding, mimeBody, processingFlags);
+                                foreach (MimePart returnedMIMEPart in returnedMIMEParts)
+                                    mimeParts.Add(returnedMIMEPart);
+                            }
+                            else
+                            {
+                                // Keep track of whether this MIME part's body has already been processed.
+                                bool processed = false;
+
+                                if (mimeContentTypeToUpper.StartsWith("APPLICATION/PKCS7-SIGNATURE") || mimeContentTypeToUpper.StartsWith("APPLICATION/X-PKCS7-SIGNATURE"))
                                 {
-                                    // Recurse through embedded MIME parts.
-                                    List<MimePart> returnedMIMEParts = ExtractMIMEParts(mimeContentType, mimeCharSet, mimeContentTransferEncoding, mimeBody, processingFlags);
-                                    foreach (MimePart returnedMIMEPart in returnedMIMEParts)
-                                        mimeParts.Add(returnedMIMEPart);
+                                    // Unless a flag has been set to include this *.p7s block, exclude it from attachments.
+                                    if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeSignedData) == 0)
+                                        processed = true;
+
+                                    // Remember the signature block to use for later verification.
+                                    signatureBlock = mimeBlocks.Count() - 1;
                                 }
-                                else
+                                else if (mimeContentTypeToUpper.StartsWith("APPLICATION/PKCS7-MIME") || mimeContentType.StartsWith("APPLICATION/X-PKCS7-MIME"))
                                 {
-                                    // Keep track of whether this MIME part's body has already been processed.
-                                    bool processed = false;
+                                    // Unless a flag has been set to include this *.p7m block, exclude it from attachments.
+                                    processed = (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) == 0;
 
-                                    if (mimeContentTypeToUpper.StartsWith("APPLICATION/PKCS7-SIGNATURE") || mimeContentTypeToUpper.StartsWith("APPLICATION/X-PKCS7-SIGNATURE"))
+                                    // Decrypt the MIME part and recurse through embedded MIME parts.
+                                    List<MimePart> returnedMIMEParts = ReturnDecryptedMimeParts(mimeContentType, mimeContentTransferEncoding, mimeBody, processingFlags);
+                                    if (returnedMIMEParts != null)
                                     {
-                                        // Unless a flag has been set to include this *.p7s block, exclude it from attachments.
-                                        if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeSignedData) == 0)
-                                            processed = true;
-
-                                        // Remember the signature block to use for later verification.
-                                        signatureBlock = mimeBlocks.Count() - 1;
+                                        foreach (MimePart returnedMIMEPart in returnedMIMEParts)
+                                            mimeParts.Add(returnedMIMEPart);
                                     }
-                                    else if (mimeContentTypeToUpper.StartsWith("APPLICATION/PKCS7-MIME") || mimeContentType.StartsWith("APPLICATION/X-PKCS7-MIME"))
+                                    else
                                     {
-                                        // Unless a flag has been set to include this *.p7m block, exclude it from attachments.
-                                        processed = (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) == 0;
+                                        // If we were unable to decrypt, return this MIME part as-is.
+                                        processed = false;
+                                    }
+                                }
+                                else if (mimeContentTypeToUpper.StartsWith("APPLICATION/MS-TNEF") || mimeFileName.ToUpper() == "WINMAIL.DAT")
+                                {
+                                    // Process the TNEF encoded message.
+                                    processed = true;
+                                    TnefEncoding tnef = new TnefEncoding(Convert.FromBase64String(mimeBody));
 
-                                        // Decrypt the MIME part and recurse through embedded MIME parts.
-                                        List<MimePart> returnedMIMEParts = ReturnDecryptedMimeParts(mimeContentType, mimeContentTransferEncoding, mimeBody, processingFlags);
-                                        if (returnedMIMEParts != null)
+                                    // If we were unable to extract content from this MIME, include it as an attachment.
+                                    if ((tnef.Body.Length < 1 && tnef.MimeAttachments.Count < 1) || (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
+                                        processed = false;
+                                    else
+                                    {
+                                        // Unless a flag has been set to include this winmail.dat block, exclude it from attachments.
+                                        if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
                                         {
+                                            if (!string.IsNullOrEmpty(tnef.Body))
+                                                mimeParts.Add(new MimePart("winmail.dat", tnef.ContentType, "", "", mimeContentTransferEncoding, Encoding.UTF8.GetBytes(tnef.Body)));
+                                        }
+
+                                        foreach (MimePart mimePart in tnef.MimeAttachments)
+                                            mimeParts.Add(mimePart);
+                                    }
+                                }
+                                else if (mimeContentTypeToUpper == "MESSAGE/RFC822")
+                                {
+                                    if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeNestedRFC822Messages) > 0)
+                                    {
+                                        // Recurse through the RFC822 container.
+                                        processed = true;
+
+                                        mimeDivider = mimeBody.IndexOf("\r\n\r\n");
+                                        if (mimeDivider > -1)
+                                        {
+                                            mimeHeaders = Functions.UnfoldWhitespace(mimeBody.Substring(0, mimeDivider));
+                                            mimeBody = mimeBody.Substring(mimeDivider + 4);
+
+                                            mimeContentType = Functions.ReturnBetween(mimeHeaders, "Content-Type:", "\r\n").Trim();
+                                            mimeContentTransferEncoding = Functions.ReturnBetween(mimeHeaders, "Content-Transfer-Encoding:", "\r\n").Trim();
+                                            mimeCharSet = Functions.ExtractMimeParameter(mimeContentType, "charset");
+
+                                            List<MimePart> returnedMIMEParts = ExtractMIMEParts(mimeContentType, mimeCharSet, mimeContentTransferEncoding, mimeBody, processingFlags);
                                             foreach (MimePart returnedMIMEPart in returnedMIMEParts)
                                                 mimeParts.Add(returnedMIMEPart);
                                         }
-                                        else
-                                        {
-                                            // If we were unable to decrypt, return this MIME part as-is.
-                                            processed = false;
-                                        }
-                                    }
-                                    else if (mimeContentTypeToUpper.StartsWith("APPLICATION/MS-TNEF") || mimeFileName.ToUpper() == "WINMAIL.DAT")
-                                    {
-                                        // Process the TNEF encoded message.
-                                        processed = true;
-                                        TnefEncoding tnef = new TnefEncoding(Convert.FromBase64String(mimeBody));
-
-                                        // If we were unable to extract content from this MIME, include it as an attachment.
-                                        if ((tnef.Body.Length < 1 && tnef.MimeAttachments.Count < 1) || (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
-                                            processed = false;
-                                        else
-                                        {
-                                            // Unless a flag has been set to include this winmail.dat block, exclude it from attachments.
-                                            if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
-                                            {
-                                                if (!string.IsNullOrEmpty(tnef.Body))
-                                                    mimeParts.Add(new MimePart("winmail.dat", tnef.ContentType, "", "", mimeContentTransferEncoding, Encoding.UTF8.GetBytes(tnef.Body)));
-                                            }
-
-                                            foreach (MimePart mimePart in tnef.MimeAttachments)
-                                                mimeParts.Add(mimePart);
-                                        }
-                                    }
-                                    else if (mimeContentTypeToUpper == "MESSAGE/RFC822")
-                                    {
-                                        if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeNestedRFC822Messages) > 0)
-                                        {
-                                            // Recurse through the RFC822 container.
-                                            processed = true;
-
-                                            mimeDivider = mimeBody.IndexOf("\r\n\r\n");
-                                            if (mimeDivider > -1)
-                                            {
-                                                mimeHeaders = Functions.UnfoldWhitespace(mimeBody.Substring(0, mimeDivider));
-                                                mimeBody = mimeBody.Substring(mimeDivider + 4);
-
-                                                mimeContentType = Functions.ReturnBetween(mimeHeaders, "Content-Type:", "\r\n").Trim();
-                                                mimeContentTransferEncoding = Functions.ReturnBetween(mimeHeaders, "Content-Transfer-Encoding:", "\r\n").Trim();
-                                                mimeCharSet = Functions.ExtractMimeParameter(mimeContentType, "charset");
-
-                                                List<MimePart> returnedMIMEParts = ExtractMIMEParts(mimeContentType, mimeCharSet, mimeContentTransferEncoding, mimeBody, processingFlags);
-                                                foreach (MimePart returnedMIMEPart in returnedMIMEParts)
-                                                    mimeParts.Add(returnedMIMEPart);
-                                            }
-                                        }
-                                    }
-
-                                    if (!processed)
-                                    {
-                                        // Decode and add the message to the MIME parts collection.
-                                        switch (mimeContentTransferEncoding.ToLower())
-                                        {
-                                            case "base64":
-                                                mimeBody = mimeBody.Replace("\r\n", "");
-                                                if (mimeBody.Length % 4 != 0)
-                                                    mimeBody = new String('0', 4 - (mimeBody.Length % 4)) + mimeBody;
-
-                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, Convert.FromBase64String(mimeBody)));
-                                                break;
-                                            case "quoted-printable":
-                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, Functions.FromQuotedPrintable(mimeBody, mimeCharSet, null)));
-                                                break;
-                                            case "binary":
-                                            case "7bit":
-                                            case "8bit":
-                                            default:
-                                                mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, mimeBody));
-                                                break;
-                                        }
                                     }
                                 }
-                                cursor += boundaryName.Length;
-//                            }
-//                            else
-//                                cursor = -1;
+
+                                if (!processed)
+                                {
+                                    // Decode and add the message to the MIME parts collection.
+                                    switch (mimeContentTransferEncoding.ToLower())
+                                    {
+                                        case "base64":
+                                            mimeBody = mimeBody.Replace("\r\n", "");
+                                            if (mimeBody.Length % 4 != 0)
+                                                mimeBody += new String('=', 4 - (mimeBody.Length % 4));
+
+                                            mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, Convert.FromBase64String(mimeBody)));
+                                            break;
+                                        case "quoted-printable":
+                                            mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, Functions.FromQuotedPrintable(mimeBody, mimeCharSet, null)));
+                                            break;
+                                        case "binary":
+                                        case "7bit":
+                                        case "8bit":
+                                        default:
+                                            mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, mimeBody));
+                                            break;
+                                    }
+                                }
+                            }
                         }
-                        else
-                            cursor = -1;
+                        cursor = mimeEndPosition;
                     }
+                    else
+                        cursor = -1;
                 }
 
                 // If a PKCS signature was found and there's one other MIME part, verify the signature.
