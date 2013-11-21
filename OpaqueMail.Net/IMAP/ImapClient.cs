@@ -331,7 +331,7 @@ namespace OpaqueMail.Net
         /// <param name="message">The raw message to append.</param>
         public async Task<bool> AppendMessageAsync(string mailboxName, ReadOnlyMailMessage message)
         {
-            return await AppendMessageAsync(mailboxName, message.RawMessage, new string[] { }, null);
+            return await AppendMessageAsync(mailboxName, message.RawMessage, message.RawFlags.ToArray(), message.Date);
         }
 
         /// <summary>
