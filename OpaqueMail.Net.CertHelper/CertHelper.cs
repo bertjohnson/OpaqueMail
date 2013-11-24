@@ -143,6 +143,9 @@ namespace OpaqueMail.Net
             CX509ExtensionAlternativeNames alternativeNamesExtension = new CX509ExtensionAlternativeNames();
             alternativeNamesExtension.InitializeEncode(sanAlternativeNames);
 
+            CX509ExtensionSmimeCapabilities smimeCapabilities = new CX509ExtensionSmimeCapabilities();
+            smimeCapabilities.SmimeCapabilities.AddAvailableSmimeCapabilities(false);
+
             // Create the self-signing request.
             CX509CertificateRequestCertificate cert = new CX509CertificateRequestCertificate();
             cert.InitializeFromPrivateKey(X509CertificateEnrollmentContext.ContextMachine, privateKey, "");
@@ -153,6 +156,7 @@ namespace OpaqueMail.Net
             cert.X509Extensions.Add((CX509Extension)keyUsage);
             cert.X509Extensions.Add((CX509Extension)enhancedKeyUsages);
             cert.X509Extensions.Add((CX509Extension)alternativeNamesExtension);
+            cert.X509Extensions.Add((CX509Extension)smimeCapabilities);
             cert.HashAlgorithm = hashAlgorithm;
             cert.Encode();
 

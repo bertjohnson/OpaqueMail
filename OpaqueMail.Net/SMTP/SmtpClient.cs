@@ -487,7 +487,13 @@ namespace OpaqueMail.Net
 
             // Prepare the encryption envelope.
             ContentInfo contentInfo = new ContentInfo(contentBytes);
-            EnvelopedCms envelope = new EnvelopedCms(contentInfo, SmimeAlgorithmIdentifier);
+            EnvelopedCms envelope;
+
+            // If a specific algorithm is specified, choose that.  Otherwise, negotiate which algorithm to use.
+            if (SmimeAlgorithmIdentifier != null)
+                envelope = new EnvelopedCms(contentInfo, SmimeAlgorithmIdentifier);
+            else
+                envelope = new EnvelopedCms(contentInfo);
 
             // Encrypt the symmetric session key using each recipient's public key.
             foreach (string addressWithPublicKey in addressesWithPublicKeys)
@@ -636,7 +642,7 @@ namespace OpaqueMail.Net
                 Pkcs9SigningTime signingTime = new Pkcs9SigningTime();
                 signer.SignedAttributes.Add(signingTime);
             }
-            
+
             // Encode the signed message.
             signedCms.ComputeSignature(signer);
             byte[] signedBytes = signedCms.Encode();
