@@ -232,7 +232,7 @@ namespace OpaqueMail.Net
                                     // Remember the signature block to use for later verification.
                                     signatureBlock = mimeBlocks.Count() - 1;
                                 }
-                                else if (mimeContentTypeToUpper.StartsWith("APPLICATION/PKCS7-MIME") || mimeContentType.StartsWith("APPLICATION/X-PKCS7-MIME"))
+                                else if (mimeContentTypeToUpper.StartsWith("APPLICATION/PKCS7-MIME") || mimeContentTypeToUpper.StartsWith("APPLICATION/X-PKCS7-MIME"))
                                 {
                                     // Unless a flag has been set to include this *.p7m block, exclude it from attachments.
                                     processed = (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) == 0;
@@ -362,7 +362,7 @@ namespace OpaqueMail.Net
                 foreach (MimePart mimePart in tnef.MimeAttachments)
                     mimeParts.Add(mimePart);
             }
-            else if (contentTypeToUpper.StartsWith("APPLICATION/PKCS7-MIME") || contentType.StartsWith("APPLICATION/X-PKCS7-MIME"))
+            else if (contentTypeToUpper.StartsWith("APPLICATION/PKCS7-MIME") || contentTypeToUpper.StartsWith("APPLICATION/X-PKCS7-MIME"))
             {
                 // Don't attempt to decrypt if this is a signed message only.
                 if (contentType.IndexOf("smime-type=signed-data") < 0)
