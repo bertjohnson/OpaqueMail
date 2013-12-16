@@ -88,7 +88,7 @@ namespace OpaqueMail.Net
             ContentType = contentType;
             ContentID = contentID;
             CharSet = charset;
-            Name = name;
+            Name = Functions.DecodeMailHeader(name).Replace("\r", "").Replace("\n", "");
 
             switch (contentTransferEncoding.ToLower())
             {

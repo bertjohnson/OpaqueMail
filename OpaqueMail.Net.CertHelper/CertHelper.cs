@@ -13,6 +13,7 @@
  * 
  */
 
+// Depending on environment, the statement below may need to be changed to "using CERTCLIENTLib".
 using CERTCLILib;
 using CERTENROLLLib;
 using System;

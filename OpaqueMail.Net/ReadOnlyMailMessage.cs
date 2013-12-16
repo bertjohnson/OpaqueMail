@@ -159,7 +159,7 @@ namespace OpaqueMail.Net
                 int colonPos = header.IndexOf(":");
                 if (colonPos > -1 && colonPos < header.Length - 1)
                 {
-                    string[] headerParts = new string[] { header.Substring(0, colonPos), header.Substring(colonPos + 2) };
+                    string[] headerParts = new string[] { header.Substring(0, colonPos), header.Substring(colonPos + 1).TrimStart(new char[] { ' ' }) };
                     string headerType = headerParts[0].ToLower();
                     string headerValue = headerParts[1];
 
