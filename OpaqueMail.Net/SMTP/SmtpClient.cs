@@ -633,7 +633,7 @@ namespace OpaqueMail.Net
             ContentInfo contentInfo = new ContentInfo(Encoding.UTF8.GetBytes(unsignedMessageBuilder.ToString()));
             SignedCms signedCms = new SignedCms(contentInfo, true);
 
-            CmsSigner signer = new CmsSigner(SubjectIdentifierType.IssuerAndSerialNumber, message.SmimeSigningCertificate);
+            CmsSigner signer = new CmsSigner(message.SubjectIdentifierType, message.SmimeSigningCertificate);
             signer.IncludeOption = X509IncludeOption.WholeChain;
 
             // Sign the current time.

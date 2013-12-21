@@ -21,6 +21,7 @@ using System.Linq;
 using System.Net.Mail;
 using System.Net.Mime;
 using System.Security.Cryptography;
+using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -76,6 +77,9 @@ namespace OpaqueMail.Net
         }
         /// <summary>Encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
         public bool SmimeEncryptedEnvelope = false;
+        /// <summary>Type of subject identifier to use.</summary>
+        /// <remarks>The default of "IssuerAndSerialNumber" is recommended for most use cases.</remarks>
+        public SubjectIdentifierType SubjectIdentifierType = SubjectIdentifierType.IssuerAndSerialNumber;
         /// <summary>Determine how the S/MIME envelope will be encrypted.</summary>
         public SmimeEncryptionOptionFlags SmimeEncryptionOptionFlags = SmimeEncryptionOptionFlags.RequireCertificateVerification;
         /// <summary>Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</summary>
