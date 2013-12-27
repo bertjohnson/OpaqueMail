@@ -518,13 +518,13 @@ namespace OpaqueMail.Net
                             displayName = addresses.Substring(lastCursor, angleCursor - lastCursor).Trim();
 
                         string address = addresses.Substring(angleCursor + 1, endAngleCursor - angleCursor - 1);
-                        if (!IsValidEmailAddress(address))
-                            address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
-
-                        if (displayName.Length > 0)
-                            addressCollection.Add(new MailAddress(address, displayName));
-                        else
-                            addressCollection.Add(new MailAddress(address));
+                        if (IsValidEmailAddress(address))
+                        {
+                            if (displayName.Length > 0)
+                                addressCollection.Add(new MailAddress(address, displayName));
+                            else
+                                addressCollection.Add(new MailAddress(address));
+                        }
 
                         displayName = "";
                         cursor = endAngleCursor + 1;
@@ -543,13 +543,13 @@ namespace OpaqueMail.Net
                             displayName = addresses.Substring(lastCursor, bracketCursor - lastCursor).Trim();
 
                         string address = addresses.Substring(bracketCursor + 1, endBracketCursor - bracketCursor - 1);
-                        if (!IsValidEmailAddress(address))
-                            address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
-
-                        if (displayName.Length > 0)
-                            addressCollection.Add(new MailAddress(address, displayName));
-                        else
-                            addressCollection.Add(new MailAddress(address));
+                        if (IsValidEmailAddress(address))
+                        {
+                            if (displayName.Length > 0)
+                                addressCollection.Add(new MailAddress(address, displayName));
+                            else
+                                addressCollection.Add(new MailAddress(address));
+                        }
 
                         displayName = "";
                         cursor = endBracketCursor + 1;
@@ -563,12 +563,12 @@ namespace OpaqueMail.Net
                     int endParenthesisCursor = addresses.IndexOf(")", parenthesisCursor + 1, StringComparison.Ordinal);
 
                     string address = addresses.Substring(lastCursor, parenthesisCursor - lastCursor).Trim();
-                    if (!IsValidEmailAddress(address))
-                        address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
+                    if (IsValidEmailAddress(address))
+                    {
+                        displayName = addresses.Substring(parenthesisCursor + 1, endParenthesisCursor - parenthesisCursor - 1);
 
-                    displayName = addresses.Substring(parenthesisCursor + 1, endParenthesisCursor - parenthesisCursor - 1);
-
-                    addressCollection.Add(new MailAddress(address, displayName));
+                        addressCollection.Add(new MailAddress(address, displayName));
+                    }
 
                     cursor = parenthesisCursor + 1;
                 }
@@ -578,10 +578,12 @@ namespace OpaqueMail.Net
                     {
                         // We've found the next address, delimited by a comma.
                         string address = addresses.Substring(cursor, commaCursor - cursor).Trim();
-                        if (!IsValidEmailAddress(address))
+                        if (IsValidEmailAddress(address))
+                        {
                             address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
-                        addressCollection.Add(new MailAddress(address));
+                            addressCollection.Add(new MailAddress(address));
+                        }
                     }
 
                     cursor = commaCursor + 1;
@@ -592,10 +594,12 @@ namespace OpaqueMail.Net
                     {
                         // We've found the next address, delimited by a semicolon.
                         string address = addresses.Substring(cursor, semicolonCursor - cursor).Trim();
-                        if (!IsValidEmailAddress(address))
+                        if (IsValidEmailAddress(address))
+                        {
                             address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
-                        addressCollection.Add(new MailAddress(address));
+                            addressCollection.Add(new MailAddress(address));
+                        }
                     }
 
                     cursor = semicolonCursor + 1;
@@ -604,10 +608,8 @@ namespace OpaqueMail.Net
                 {
                     // Process any remaining address.
                     string address = addresses.Substring(cursor).Trim();
-                    if (!IsValidEmailAddress(address))
-                        address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
-
-                    addressCollection.Add(new MailAddress(address));
+                    if (IsValidEmailAddress(address))
+                        addressCollection.Add(new MailAddress(address));
 
                     cursor = addresses.Length;
                 }
@@ -684,7 +686,7 @@ namespace OpaqueMail.Net
                 StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
                 // Determine whether to use multi-byte UTF8 encoding.
-                bool useUTF8 = (string.IsNullOrEmpty(charSet) || charSet == "UTF-8");
+                bool useUTF8 = (string.IsNullOrEmpty(charSet) || charSet.ToUpper() == "UTF-8");
 
                 // Buffer for holding UTF-8 encoded characters.
                 byte[] utf8Buffer = new byte[Constants.SMALLBUFFERSIZE];
@@ -758,7 +760,7 @@ namespace OpaqueMail.Net
 
                                     // Continue if we didn't run into a UTF-8 encoded character sequence.
                                     if (!processed)
-                                        outputBuilder.Append(encoding.GetBytes(new char[] { (char)highByte }));
+                                        outputBuilder.Append(new char[] { (char)highByte });
                                 }
                                 else
                                     outputBuilder.Append(encoding.GetString(new byte[]{(byte)highByte}));

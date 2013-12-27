@@ -476,7 +476,12 @@ namespace OpaqueMail.Net
                     mimeContentType = contentType;
                 }
                 else
-                    body = body.Substring(mimeDivider + 4);
+                {
+                    if (body.Length > (mimeDivider + 4))
+                        body = body.Substring(mimeDivider + 4);
+                    else
+                        body = "";
+                }
 
                 // Add the message to the MIME parts collection.
                 mimeParts.Add(new MimePart(mimeFileName, mimeContentType, mimeCharSet, mimeContentID, mimeContentTransferEncoding, body));
