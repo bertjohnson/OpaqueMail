@@ -38,16 +38,18 @@ namespace OpaqueMail.Net.TestClient
     public partial class Form1 : Form
     {
         #region Private Members
+        /// <summary>Current mailbox selected.</summary>
+        private string mailbox = "INBOX";
         /// <summary>Collection of mailbox/UID pairs for messages loaded over IMAP.</summary>
-        private Tuple<string, int>[] ImapMessageIDs;
+        private Tuple<string, int>[] imapMessageIDs;
         /// <summary>List of message IDs for messages loaded over POP3.</summary>
-        private List<int> Pop3MessageIDs;
+        private List<int> pop3MessageIDs;
         /// <summary>An OpaqueMail.ImapClient to be reused across operations.</summary>
-        ImapClient myImapClient;
+        private ImapClient myImapClient;
         /// <summary>An OpaqueMail.Pop3Client to be reused across operations.</summary>
-        Pop3Client myPop3Client;
+        private Pop3Client myPop3Client;
         /// <summary>A file dialog box to be used when loading or saving *.eml files.</summary>
-        OpenFileDialog FileDialog = new OpenFileDialog();
+        private OpenFileDialog FileDialog = new OpenFileDialog();
         #endregion Private Members
 
         #region Event Handlers
@@ -97,9 +99,9 @@ namespace OpaqueMail.Net.TestClient
         }
 
         /// <summary>
-        /// Append a sample message to the Inbox.
+        /// Append a sample message to the current mailbox.
         /// </summary>
-        private void ImapAppendMessageButton_Click(object sender, EventArgs e)
+        private async void ImapAppendMessageButton_Click(object sender, EventArgs e)
         {
             // If we're not currently connected to the IMAP server, connect and authenticate.
             if (myImapClient == null)
@@ -124,7 +126,11 @@ namespace OpaqueMail.Net.TestClient
                 }
             }
 
-            myImapClient.AppendMessage("INBOX",
+            // Stop idling to resume commands.
+            if (myImapClient.IsIdle)
+                await myImapClient.IdleStopAsync();
+
+            myImapClient.AppendMessage(mailbox,
 @"Date: " + DateTime.Now.ToString("dd-MM-yyyy hh:mm:ss zzzz") + @"
 From: Test User <testuser@example.com>
 To: Me <" + ImapUsername.Text + @">
@@ -134,6 +140,9 @@ MIME-Version: 1.0
 Content-Type: Text/Plain; Charset=US-ASCII
 
 This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now);
+
+            // Resume idling.
+            await myImapClient.IdleStartAsync();
         }
 
         /// <summary>
@@ -163,13 +172,13 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private async void ImapDeleteMessageButton_Click(object sender, EventArgs e)
         {
-            await myImapClient.DeleteMessageUidAsync(ImapMessageIDs[ImapMessageList.SelectedIndex].Item1, ImapMessageIDs[ImapMessageList.SelectedIndex].Item2);
+            await myImapClient.DeleteMessageUidAsync(imapMessageIDs[ImapMessageList.SelectedIndex].Item1, imapMessageIDs[ImapMessageList.SelectedIndex].Item2);
             ImapDeleteMessageButton.Enabled = false;
-            await RefreshImapMessages();
+            await RefreshImapMessages(false);
         }
 
         /// <summary>
-        /// Retrieve the overall quota and the quota for the users Inbox.
+        /// Retrieve the overall quota and the quota for the current mailbox.
         /// </summary>
         private async void ImapGetQuotaButton_Click(object sender, EventArgs e)
         {
@@ -196,18 +205,26 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 }
             }
 
+            // Stop idling to resume commands.
+            if (myImapClient.IsIdle)
+                await myImapClient.IdleStopAsync();
+
             StringBuilder messageBuilder = new StringBuilder();
 
             QuotaUsage totalUsage = await myImapClient.GetQuotaAsync("");
-            QuotaUsage inboxUsage = await myImapClient.GetQuotaRootAsync("INBOX");
+            QuotaUsage mailboxUsage = await myImapClient.GetQuotaRootAsync(mailbox);
 
-            messageBuilder.Append("Overall quota information:\r\n\r\nUsed: " + totalUsage.Usage + "\r\nTotal: " + totalUsage.QuotaMaximum + "\r\n\r\nINBOX quota information:\r\n\r\nUsed: " + inboxUsage.Usage + "\r\nTotal: " + inboxUsage.QuotaMaximum);
+            messageBuilder.Append("Overall quota information:\r\n\r\nUsed: " + totalUsage.Usage + "\r\nTotal: " + totalUsage.QuotaMaximum + "\r\n\r\n" + mailbox + " quota information:\r\n\r\nUsed: " + mailboxUsage.Usage + "\r\nTotal: " + mailboxUsage.QuotaMaximum);
 
-            string[] mailboxes = await myImapClient.ListMailboxNamesAsync(true);
-            messageBuilder.Append("\r\n\r\nFolders (" + mailboxes.Length.ToString() + " Total):\r\n");
+            string[] mailboxNames = await myImapClient.ListMailboxNamesAsync(true);
 
-            foreach (string mailbox in mailboxes)
-                messageBuilder.Append("\r\n" + mailbox);
+            // Resume idling.
+            await myImapClient.IdleStartAsync();
+
+            messageBuilder.Append("\r\n\r\nFolders (" + mailboxNames.Length.ToString() + " Total):\r\n");
+
+            foreach (string mailboxName in mailboxNames)
+                messageBuilder.Append("\r\n" + mailboxName);
 
             MessageBox.Show(messageBuilder.ToString(), "Quota and Mailbox Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -229,6 +246,22 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         }
 
         /// <summary>
+        /// When the selected mailbox has changed, reload the message list.
+        /// </summary>
+        private async void ImapMailboxList_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (ImapMailboxList.Enabled && ImapMailboxList.SelectedIndex > -1)
+            {
+                string newMailbox = ImapMailboxList.SelectedItem.ToString();
+                if (newMailbox != mailbox)
+                {
+                    mailbox = newMailbox;
+                    await RefreshImapMessages(false);
+                }
+            }
+        }
+
+        /// <summary>
         /// When a message has been selected, attempt to load its preview.
         /// </summary>
         private async void ImapMessageList_SelectedIndexChanged(object sender, EventArgs e)
@@ -236,11 +269,11 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             ImapDeleteMessageButton.Enabled = ImapMessageList.SelectedIndex > -1;
             if (ImapMessageList.SelectedIndex > -1)
             {
-                if (myImapClient != null && ImapMessageIDs != null)
+                if (myImapClient != null && imapMessageIDs != null)
                 {
-                    if (ImapMessageList.SelectedIndex < ImapMessageIDs.Length)
+                    if (ImapMessageList.SelectedIndex < imapMessageIDs.Length)
                     {
-                        if (ImapMessageIDs[ImapMessageList.SelectedIndex].Item2 > 0)
+                        if (imapMessageIDs[ImapMessageList.SelectedIndex].Item2 > 0)
                         {
                             // If our connection has timed out or been closed, reconnect.
                             if (!myImapClient.IsConnected)
@@ -251,11 +284,15 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
                             if (myImapClient.IsConnected)
                             {
+                                // Stop idling to resume commands.
                                 if (myImapClient.IsIdle)
                                     await myImapClient.IdleStopAsync();
 
                                 // Retrieve the selected message.
-                                ReadOnlyMailMessage message = myImapClient.GetMessageUid(ImapMessageIDs[ImapMessageList.SelectedIndex].Item1, ImapMessageIDs[ImapMessageList.SelectedIndex].Item2);
+                                ReadOnlyMailMessage message = myImapClient.GetMessageUid(imapMessageIDs[ImapMessageList.SelectedIndex].Item1, imapMessageIDs[ImapMessageList.SelectedIndex].Item2);
+
+                                // Resume idling.
+                                await myImapClient.IdleStartAsync();
 
                                 if (message != null)
                                 {
@@ -270,8 +307,6 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                                     ImapWebPreview.DocumentText = "Message not found.";
                                     ImapWebPreviewPanel.Refresh();
                                 }
-
-                                await myImapClient.IdleStartAsync();
                             }
                         }
                     }
@@ -291,9 +326,9 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         private async void ImapRetrieveMessagesButton_Click(object sender, EventArgs e)
         {
             ImapRetrieveMessagesButton.Enabled = false;
-            ImapMessageList.Enabled = false;
-            await RefreshImapMessages();
-            ImapMessageList.Enabled = true;
+            ImapMailboxList.Enabled = false;
+            await RefreshImapMessages(true);
+            ImapMailboxList.Enabled = true;
             ImapRetrieveMessagesButton.Enabled = true;
         }
 
@@ -340,17 +375,24 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 {
                     if (myImapClient.IsConnected)
                     {
-                        await myImapClient.SelectMailboxAsync("INBOX");
+                        // Stop idling to resume commands.
+                        if (myImapClient.IsIdle)
+                            await myImapClient.IdleStopAsync();
+
+                        await myImapClient.SelectMailboxAsync(mailbox);
                         List<ReadOnlyMailMessage> messages = await myImapClient.SearchAsync("TEXT \"" + ImapSearchText.Text + "\"");
 
-                        ImapMessageIDs = new Tuple<string, int>[messages.Count];
+                        // Resume idling.
+                        await myImapClient.IdleStartAsync();
+
+                        imapMessageIDs = new Tuple<string, int>[messages.Count];
 
                         // Repopulate the message list with the subjects of messages retrieved.
                         ImapMessageList.Items.Clear();
                         for (int i = 0; i < messages.Count; i++)
                         {
                             ImapMessageList.Items.Add(messages[i].Subject);
-                            ImapMessageIDs[i] = new Tuple<string, int>(messages[i].Mailbox, messages[i].ImapUid);
+                            imapMessageIDs[i] = new Tuple<string, int>(messages[i].Mailbox, messages[i].ImapUid);
                         }
 
                         // Reset the preview viewport.
@@ -409,7 +451,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private async void Pop3DeleteMessageButton_Click(object sender, EventArgs e)
         {
-            await myPop3Client.DeleteMessageAsync(Pop3MessageIDs[Pop3MessageList.SelectedIndex]);
+            await myPop3Client.DeleteMessageAsync(pop3MessageIDs[Pop3MessageList.SelectedIndex]);
             Pop3DeleteMessageButton.Enabled = false;
             await RefreshPop3Messages();
         }
@@ -434,11 +476,11 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             Pop3DeleteMessageButton.Enabled = Pop3MessageList.SelectedIndex > -1;
             if (Pop3MessageList.SelectedIndex > -1)
             {
-                if (myPop3Client != null && Pop3MessageIDs != null)
+                if (myPop3Client != null && pop3MessageIDs != null)
                 {
-                    if (Pop3MessageList.SelectedIndex < Pop3MessageIDs.Count)
+                    if (Pop3MessageList.SelectedIndex < pop3MessageIDs.Count)
                     {
-                        if (Pop3MessageIDs[Pop3MessageList.SelectedIndex] > -1)
+                        if (pop3MessageIDs[Pop3MessageList.SelectedIndex] > -1)
                         {
                             // If our connection has timed out or been closed, reconnect.
                             if (!myPop3Client.IsConnected)
@@ -450,7 +492,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                             if (myPop3Client.IsConnected)
                             {
                                 // Retrieve the selected message.
-                                ReadOnlyMailMessage message = await myPop3Client.GetMessageAsync(Pop3MessageIDs[Pop3MessageList.SelectedIndex]);
+                                ReadOnlyMailMessage message = await myPop3Client.GetMessageAsync(pop3MessageIDs[Pop3MessageList.SelectedIndex]);
 
                                 if (message != null)
                                 {
@@ -706,8 +748,15 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// <summary>
         /// Attempt to retrieve up to 25 IMAP messages and populate the list of messages.
         /// </summary>
-        private async Task RefreshImapMessages()
+        /// <param name="repopulateMailboxes">Whether to refresh the list of mailboxes.</param>
+        private async Task RefreshImapMessages(bool repopulateMailboxes)
         {
+            // Reset the preview viewport.
+            ImapHeaders.BackColor = Color.White;
+            ImapHeaders.Text = "";
+            ImapWebPreview.DocumentText = "Please select a message from the left-hand panel.";
+            ImapWebPreviewPanel.Refresh();
+
             if (string.IsNullOrEmpty(ImapHost.Text) || string.IsNullOrEmpty(ImapPort.Text) || string.IsNullOrEmpty(ImapUsername.Text) || string.IsNullOrEmpty(ImapPassword.Text))
             {
                 MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -738,32 +787,50 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 }
             }
 
+            // Stop idling to resume commands.
+            if (myImapClient.IsIdle)
+                await myImapClient.IdleStopAsync();
+
             // Alert if the connection is throttled.
             myImapClient.ImapClientThrottleEvent += myImapClient_ImapClientThrottleEvent;
 
+            // If connecting for the first time, repopulate the list of mailboxes.
+            if (repopulateMailboxes)
+            {
+                ImapMailboxList.Items.Clear();
+                string[] mailboxNames = await myImapClient.ListMailboxNamesAsync(true);
+
+                // Repopulate the mailbox list.
+                string mailboxToUpper = mailbox.ToUpper();
+                for (int i = 0; i < mailboxNames.Length; i++)
+                {
+                    ImapMailboxList.Items.Add(mailboxNames[i]);
+
+                    string currentMailboxToUpper = mailboxNames[i].ToUpper();
+                    if (currentMailboxToUpper == mailboxToUpper)
+                        ImapMailboxList.SelectedIndex = i;
+                }
+            }
+
             // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
-            await myImapClient.SelectMailboxAsync("INBOX");
-            List<ReadOnlyMailMessage> messages = await myImapClient.GetMessagesAsync("INBOX", 25, 1, true, true, false);
-            ImapMessageIDs = new Tuple<string, int>[messages.Count];
+            ImapMessageList.Items.Clear();
+            ImapMessageList.Enabled = false;
+            await myImapClient.SelectMailboxAsync(mailbox);
+            List<ReadOnlyMailMessage> messages = await myImapClient.GetMessagesAsync(mailbox, 25, 1, true, true, false);
+            imapMessageIDs = new Tuple<string, int>[messages.Count];
 
             // Repopulate the message list with the subjects of messages retrieved.
-            ImapMessageList.Items.Clear();
             for (int i = 0; i < messages.Count; i++)
             {
                 ImapMessageList.Items.Add(messages[i].Subject);
-                ImapMessageIDs[i] = new Tuple<string, int>(messages[i].Mailbox, messages[i].ImapUid);
+                imapMessageIDs[i] = new Tuple<string, int>(messages[i].Mailbox, messages[i].ImapUid);
             }
+            ImapMessageList.Enabled = true;
 
             // Start checking for messages on a regular basis.
             myImapClient.ImapClientNewMessageEvent += myImapClient_ImapClientNewMessageEvent;
             myImapClient.ImapClientMessageExpungeEvent += myImapClient_ImapClientMessageExpungeEvent;
             await myImapClient.IdleStartAsync();
-
-            // Reset the preview viewport.
-            ImapHeaders.BackColor = Color.White;
-            ImapHeaders.Text = "";
-            ImapWebPreview.DocumentText = "Please select a message from the left-hand panel.";
-            ImapWebPreviewPanel.Refresh();
         }
 
         /// <summary>
@@ -827,14 +894,14 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
             List<ReadOnlyMailMessage> messages = await myPop3Client.GetMessagesAsync(25, 1, false, true);
-            Pop3MessageIDs = new List<int>();
+            pop3MessageIDs = new List<int>();
 
             // Repopulate the message list with the subjects of messages retrieved.
             Pop3MessageList.Items.Clear();
             for (int i = 0; i < messages.Count; i++)
             {
                 Pop3MessageList.Items.Add(messages[i].Subject);
-                Pop3MessageIDs.Add(messages[i].Index);
+                pop3MessageIDs.Add(messages[i].Index);
             }
 
             // Reset the preview viewport.
@@ -911,10 +978,25 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             else
                 headerTextBox.BackColor = Color.White;
 
-            if (message.IsBodyHtml)
-                bodyWebBrowser.DocumentText = Functions.EmbedAttachments(Functions.RemoveScriptTags(message.Body), message.Attachments);
+            // If in a SPAM or JUNK folder, don't embed attachments;
+            bool isJunkFolder = false;
+            string mailboxName = mailbox.ToUpper();
+            if (mailboxName.IndexOf("JUNK") > -1 || mailboxName.IndexOf("SPAM") > -1)
+                isJunkFolder = true;
+
+            string bodyHtml = Functions.RemoveScriptTags(message.Body);
+
+            if (isJunkFolder)
+                bodyHtml = bodyHtml.Replace("://", "://spam.");
             else
-                bodyWebBrowser.DocumentText = Functions.EmbedAttachments(Functions.ConvertPlainTextToHTML(Functions.RemoveScriptTags(message.Body)), null);
+            {
+                if (message.IsBodyHtml)
+                    bodyHtml = Functions.EmbedAttachments(bodyHtml, message.Attachments);
+                else
+                    bodyHtml = Functions.EmbedAttachments(bodyHtml, null);
+            }
+
+            bodyWebBrowser.DocumentText = bodyHtml;
             bodyWebBrowserPanel.Refresh();
         }
         
@@ -936,7 +1018,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             ImapTestGroup.Width = this.Width - 42;
             ImapMessageGroup.Height = this.Height - 156;
-            ImapMessageList.Height = this.Height - 209;
+            ImapMessageList.Height = this.Height - 235;
             ImapDeleteMessageButton.Top = this.Height - 188;
             ImapHeaders.Width = this.Width - 246;
             ImapPreviewGroup.Width = this.Width - 232;

@@ -1466,9 +1466,13 @@ namespace OpaqueMail.Net
             char[] space = " ".ToCharArray();
             foreach (string responseLine in responseLines)
             {
-                string[] responseLineParts = responseLine.Split(space, 5);
-                if (responseLineParts.Length > 4)
-                    mailboxNames.Add(Functions.FromModifiedUTF7(responseLineParts[4].Replace("\"", "")));
+                int lastParenthesis = responseLine.IndexOf(") ");
+                if (lastParenthesis > -1)
+                {
+                    string[] responseLineParts = responseLine.Substring(lastParenthesis + 2).Split(space, 2);
+                    if (responseLineParts.Length > 1)
+                        mailboxNames.Add(Functions.FromModifiedUTF7(responseLineParts[1].Replace("\"", "")));
+                }
             }
 
             return mailboxNames.ToArray();
@@ -2373,22 +2377,25 @@ namespace OpaqueMail.Net
                         responseBuilder.Append(responseLine + "\r\n");
 
                     // Handle status notifications.
-                    if (responseLine.StartsWith("* "))
+                    if (SessionIsIdle)
                     {
-                        responseParts = responseLine.Split(new char[] { ' ' }, 4);
-
-                        if (responseParts.Length > 2)
+                        if (responseLine.StartsWith("* "))
                         {
-                            switch (responseParts[2])
+                            responseParts = responseLine.Split(new char[] { ' ' }, 4);
+
+                            if (responseParts.Length > 2)
                             {
-                                case "EXISTS":
-                                    if (ImapClientNewMessageEvent != null)
-                                        OnImapClientNewMessageEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
-                                    break;
-                                case "EXPUNGE":
-                                    if (ImapClientMessageExpungeEvent != null)
-                                        OnImapClientMessageExpungeEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
-                                    break;
+                                switch (responseParts[2])
+                                {
+                                    case "EXISTS":
+                                        if (ImapClientNewMessageEvent != null)
+                                            OnImapClientNewMessageEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                        break;
+                                    case "EXPUNGE":
+                                        if (ImapClientMessageExpungeEvent != null)
+                                            OnImapClientMessageExpungeEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                        break;
+                                }
                             }
                         }
                     }
