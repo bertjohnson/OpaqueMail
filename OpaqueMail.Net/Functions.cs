@@ -677,112 +677,104 @@ namespace OpaqueMail.Net
         /// <returns>The decoded version of the quoted-printable string passed in.</returns>
         public static string FromQuotedPrintable(string input, string charSet, Encoding encoding)
         {
-          //  try
-            //{
-                // Remove carriage returns because they'll be added back in for line breaks (=0A).
-                input = input.Replace("=0D", "");
+            // Remove carriage returns because they'll be added back in for line breaks (=0A).
+            input = input.Replace("=0D", "");
 
-                // Build a new string using the following buffer.
-                StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
+            // Build a new string using the following buffer.
+            StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
-                // Determine whether to use multi-byte UTF8 encoding.
-                bool useUTF8 = (string.IsNullOrEmpty(charSet) || charSet.ToUpper() == "UTF-8");
+            // Determine whether to use multi-byte UTF8 encoding.
+            bool useUTF8 = (string.IsNullOrEmpty(charSet) || charSet.ToUpper() == "UTF-8");
 
-                // Buffer for holding UTF-8 encoded characters.
-                byte[] utf8Buffer = new byte[Constants.SMALLBUFFERSIZE];
+            // Buffer for holding UTF-8 encoded characters.
+            byte[] utf8Buffer = new byte[Constants.SMALLBUFFERSIZE];
 
-                // If no encoding is passed in, but a character set is specified, create the encoding.
-                if (encoding == null)
+            // If no encoding is passed in, but a character set is specified, create the encoding.
+            if (encoding == null)
+            {
+                if (!string.IsNullOrEmpty(charSet))
+                    encoding = Encoding.GetEncoding(charSet);
+                else
+                    encoding = Encoding.UTF8;
+            }
+
+            // Loop through and process quoted-printable strings, denoted by equals signs.
+            int equalsPos = 0, lastPos = 0;
+            while (equalsPos > -1)
+            {
+                lastPos = equalsPos;
+                equalsPos = input.IndexOf("=", equalsPos, StringComparison.Ordinal);
+                if (equalsPos > -1 && equalsPos < input.Length - 2)
                 {
-                    if (!string.IsNullOrEmpty(charSet))
-                        encoding = Encoding.GetEncoding(charSet);
-                    else
-                        encoding = Encoding.UTF8;
-                }
+                    outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
 
-                // Loop through and process quoted-printable strings, denoted by equals signs.
-                int equalsPos = 0, lastPos = 0;
-                while (equalsPos > -1)
-                {
-                    lastPos = equalsPos;
-                    equalsPos = input.IndexOf("=", equalsPos, StringComparison.Ordinal);
-                    if (equalsPos > -1 && equalsPos < input.Length - 2)
+                    string afterEquals = input.Substring(equalsPos + 1, 2);
+
+                    switch (afterEquals)
                     {
-                        outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
+                        case "\r\n":
+                            break;
+                        case "09":
+                            outputBuilder.Append("\t");
+                            break;
+                        case "0A":
+                            outputBuilder.Append("\r\n");
+                            break;
+                        case "20":
+                            outputBuilder.Append(" ");
+                            break;
+                        default:
+                            int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
 
-                        string afterEquals = input.Substring(equalsPos + 1, 2);
-
-                        switch (afterEquals)
-                        {
-                            case "\r\n":
-                                break;
-                            case "09":
-                                outputBuilder.Append("\t");
-                                break;
-                            case "0A":
-                                outputBuilder.Append("\r\n");
-                                break;
-                            case "20":
-                                outputBuilder.Append(" ");
-                                break;
-                            default:
-                                int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
-
-                                if (useUTF8)
+                            if (useUTF8)
+                            {
+                                // Handle values above 7F as UTF-8 encoded character sequences.
+                                bool processed = false;
+                                if (highByte > 127 && equalsPos < input.Length - 2)
                                 {
-                                    // Handle values above 7F as UTF-8 encoded character sequences.
-                                    bool processed = false;
-                                    if (highByte > 127 && equalsPos < input.Length - 2)
+                                    utf8Buffer[0] = (byte)highByte;
+                                    int utf8ByteCount = 1;
+
+                                    string encodedString = afterEquals;
+                                    equalsPos += 3;
+
+                                    int inputLength = input.Length;
+                                    while (equalsPos > -1 && input.Substring(equalsPos, 1) == "=")
                                     {
-                                        utf8Buffer[0] = (byte)highByte;
-                                        int utf8ByteCount = 1;
+                                        // Step over a line break if that breaks up our encoded string.
+                                        if (input.Substring(equalsPos + 1, 2) != "\r\n")
+                                            utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
 
-                                        string encodedString = afterEquals;
                                         equalsPos += 3;
-
-                                        int inputLength = input.Length;
-                                        while (equalsPos > -1 && input.Substring(equalsPos, 1) == "=")
-                                        {
-                                            // Step over a line break if that breaks up our encoded string.
-                                            if (input.Substring(equalsPos + 1, 2) != "\r\n")
-                                                utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
-
-                                            equalsPos += 3;
-                                            if (equalsPos == inputLength)
-                                                equalsPos = -3;
-                                        }
-
-                                        outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
-
-                                        processed = true;
-                                        equalsPos -= 3;
+                                        if (equalsPos == inputLength)
+                                            equalsPos = -3;
                                     }
 
-                                    // Continue if we didn't run into a UTF-8 encoded character sequence.
-                                    if (!processed)
-                                        outputBuilder.Append(new char[] { (char)highByte });
+                                    outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
+
+                                    processed = true;
+                                    equalsPos -= 3;
                                 }
-                                else
-                                    outputBuilder.Append(encoding.GetString(new byte[]{(byte)highByte}));
 
-                                break;
-                        }
+                                // Continue if we didn't run into a UTF-8 encoded character sequence.
+                                if (!processed)
+                                    outputBuilder.Append(new char[] { (char)highByte });
+                            }
+                            else
+                                outputBuilder.Append(encoding.GetString(new byte[] { (byte)highByte }));
 
-                        equalsPos += 3;
+                            break;
                     }
-                    else
-                    {
-                        outputBuilder.Append(input.Substring(lastPos));
-                        equalsPos = -1;
-                    }
+
+                    equalsPos += 3;
                 }
-                return outputBuilder.ToString();
-//            }
-  //          catch
-    //        {
-                // If the quoted-printable encoding is invalid, return the message as-is.
-//                return input;
-      //      }
+                else
+                {
+                    outputBuilder.Append(input.Substring(lastPos));
+                    equalsPos = -1;
+                }
+            }
+            return outputBuilder.ToString();
         }
 
         /// <summary>

@@ -9,7 +9,7 @@ Includes a fully-featured test client that allows browsing and searching of IMAP
 
 Inherits from System.Net.Mail.MailMessage and System.Net.Mail.SmtpClient for simplified upgrades of existing code.  Implements .NET 4.5 async and await.
 
-Thoroughly documented.  Designed for security, portability, and performance.
+Thoroughly documented.  Optimized for security, usability, and performance.
 
 Supporting documentation and tutorials available at (http://opaquemail.org/library/).
 

@@ -432,7 +432,7 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the APPEND command.");
 
-            // If the server supports MULTIAPPEND, piepline the append statements.
+            // If the server supports MULTIAPPEND, pipeline the append statements.
             if (ServerSupportsMultiAppend)
             {
                 bool firstMessage = true;
@@ -1660,6 +1660,138 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Read the last response from the IMAP server tied to a specific command tag.
+        /// </summary>
+        /// <param name="commandTag">Command tag identifying the command and its response.</param>
+        /// <param name="previousCommand">The previous command issued to the server.</param>
+        public async Task<string> ReadDataAsync(string commandTag, string previousCommand)
+        {
+            StringBuilder responseBuilder = new StringBuilder();
+
+            // Exclusively lock the IMAP stream reader.
+            using (await ImapStreamLock.LockAsync())
+            {
+                // Loop until the anticipated result is received.
+                while (true)
+                {
+                    // Check if another reader instance already found this command tag's response.
+                    if (SwitchBoard.ContainsKey(commandTag))
+                    {
+                        string returnValue = SwitchBoard[commandTag];
+                        SwitchBoard.Remove(commandTag);
+                        return returnValue;
+                    }
+
+                    // If this is a poll during an IDLE command, time out after 5 seconds.
+                    if (previousCommand == "IDLE")
+                    {
+                        if (!ImapTcpClient.Client.Poll(5000, SelectMode.SelectRead))
+                            return "";
+                    }
+
+                    string responseLine = await ImapStreamReader.ReadLineAsync();
+
+                    // Split the line into its components and check if this is a tagged response.
+                    string[] responseParts = responseLine.Split(new char[] { ' ' }, 3);
+
+                    if (responseParts.Length > 1)
+                    {
+                        // If it's a tagged response and it matches the tag we're expecting, return the proper result.
+                        switch (responseParts[1])
+                        {
+                            // Handle successes.
+                            case "OK":
+                                string result = "";
+                                if (responseBuilder.Length > 0)
+                                    result = responseBuilder.ToString();
+                                else if (responseParts.Length > 2)
+                                    result = responseParts[2];
+
+                                // If the result matches our expected tag, return it; otherwise, save it for later and continue with the next result.
+                                if (responseParts[0] == commandTag || previousCommand == "DONE")
+                                {
+                                    LastCommandResult = true;
+                                    return result;
+                                }
+                                else if (responseParts[0] != "*")
+                                {
+                                    SwitchBoard[responseParts[0]] = result;
+                                    continue;
+                                }
+                                else
+                                {
+                                    responseBuilder.Append(responseLine + "\r\n");
+                                    continue;
+                                }
+
+                            // Handle errors.
+                            case "BAD":
+                            case "NO":
+                                if (responseParts.Length > 2)
+                                    LastErrorMessage = responseParts[2];
+
+                                if (responseParts[0] == commandTag)
+                                {
+                                    LastCommandResult = false;
+                                    return "";
+                                }
+                                else
+                                {
+                                    SwitchBoard[responseParts[0]] = "";
+                                    continue;
+                                }
+
+                            // Handle explicit server disconnections by raising the "Disconnect" event.
+                            case "BYE":
+                                LastCommandResult = false;
+                                if (ImapClientDisconnectEvent != null)
+                                    OnImapClientDisconnectEvent();
+                                Disconnect();
+                                return "";
+
+                            // If not a known response, return it verbatim.
+                            default:
+                                result = responseLine.Substring(responseLine.IndexOf(" ") + 1); ;
+
+                                if (responseParts[0] == commandTag || responseParts[0] == "+")
+                                    return result;
+                                else
+                                    responseBuilder.Append(responseLine + "\r\n");
+
+                                break;
+                        }
+                    }
+                    else
+                        responseBuilder.Append(responseLine + "\r\n");
+
+                    // Handle status notifications.
+                    if (SessionIsIdle)
+                    {
+                        if (responseLine.StartsWith("* "))
+                        {
+                            responseParts = responseLine.Split(new char[] { ' ' }, 4);
+
+                            if (responseParts.Length > 2)
+                            {
+                                switch (responseParts[2])
+                                {
+                                    case "EXISTS":
+                                        if (ImapClientNewMessageEvent != null)
+                                            OnImapClientNewMessageEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                        break;
+                                    case "EXPUNGE":
+                                        if (ImapClientMessageExpungeEvent != null)
+                                            OnImapClientMessageExpungeEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Remove one or more flags from a message, referenced by its index.
         /// </summary>
         /// <param name="mailboxName">Mailbox containing the message to update.</param>
@@ -1802,6 +1934,33 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Send a message to the IMAP server.
+        /// Should always be followed by GetImapStreamString.
+        /// </summary>
+        /// <param name="command">Text to transmit.</param>
+        public async Task SendCommandAsync(string command)
+        {
+            await SendCommandAsync(SessionCommandTag, command);
+        }
+
+        /// <summary>
+        /// Send a message to the IMAP server, specifying a unique command tag.
+        /// Should always be followed by GetImapStreamString.
+        /// </summary>
+        /// <param name="commandTag">Command tag identifying the command and its response</param>
+        /// <param name="command">Text to transmit.</param>
+        public async Task SendCommandAsync(string commandTag, string command)
+        {
+            if (!string.IsNullOrEmpty(commandTag))
+            {
+                LastCommandIssued = commandTag + " " + command;
+                await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, commandTag + " " + command);
+            }
+            else
+                await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, command);
+        }
+
+        /// <summary>
         /// Set a quota for the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">Name of the mailbox to work with.</param>
@@ -1919,6 +2078,14 @@ namespace OpaqueMail.Net
             string response = await ReadDataAsync(commandTag, "SUBSCRIBE");
 
             return LastCommandResult;
+        }
+
+        /// <summary>
+        /// Iterates the command tag counter and returns a new ID for uniquely identifying commands.
+        /// </summary>
+        public string UniqueCommandTag()
+        {
+            return (++CommandTagCounter).ToString();
         }
 
         /// <summary>
@@ -2272,165 +2439,6 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
-        /// Read the last response from the IMAP server tied to a specific command tag.
-        /// </summary>
-        /// <param name="commandTag">Command tag identifying the command and its response.</param>
-        /// <param name="previousCommand">The previous command issued to the server.</param>
-        private async Task<string> ReadDataAsync(string commandTag, string previousCommand)
-        {
-            StringBuilder responseBuilder = new StringBuilder();
-
-            // Exclusively lock the IMAP stream reader.
-            using (await ImapStreamLock.LockAsync())
-            {
-                // Loop until the anticipated result is received.
-                while (true)
-                {
-                    // Check if another reader instance already found this command tag's response.
-                    if (SwitchBoard.ContainsKey(commandTag))
-                    {
-                        string returnValue = SwitchBoard[commandTag];
-                        SwitchBoard.Remove(commandTag);
-                        return returnValue;
-                    }
-
-                    // If this is a poll during an IDLE command, time out after 5 seconds.
-                    if (previousCommand == "IDLE")
-                    {
-                        if (!ImapTcpClient.Client.Poll(5000, SelectMode.SelectRead))
-                            return "";
-                    }
-
-                    string responseLine = await ImapStreamReader.ReadLineAsync();
-
-                    // Split the line into its components and check if this is a tagged response.
-                    string[] responseParts = responseLine.Split(new char[] { ' ' }, 3);
-
-                    if (responseParts.Length > 1)
-                    {
-                        // If it's a tagged response and it matches the tag we're expecting, return the proper result.
-                        switch (responseParts[1])
-                        {
-                            // Handle successes.
-                            case "OK":
-                                string result = "";
-                                if (responseBuilder.Length > 0)
-                                    result = responseBuilder.ToString();
-                                else if (responseParts.Length > 2)
-                                    result = responseParts[2];
-
-                                // If the result matches our expected tag, return it; otherwise, save it for later and continue with the next result.
-                                if (responseParts[0] == commandTag || previousCommand == "DONE")
-                                {
-                                    LastCommandResult = true;
-                                    return result;
-                                }
-                                else if (responseParts[0] != "*")
-                                {
-                                    SwitchBoard[responseParts[0]] = result;
-                                    continue;
-                                }
-                                else
-                                {
-                                    responseBuilder.Append(responseLine + "\r\n");
-                                    continue;
-                                }
-
-                            // Handle errors.
-                            case "BAD":
-                            case "NO":
-                                if (responseParts.Length > 2)
-                                    LastErrorMessage = responseParts[2];
-
-                                if (responseParts[0] == commandTag)
-                                {
-                                    LastCommandResult = false;
-                                    return "";
-                                }
-                                else
-                                {
-                                    SwitchBoard[responseParts[0]] = "";
-                                    continue;
-                                }
-
-                            // Handle explicit server disconnections by raising the "Disconnect" event.
-                            case "BYE":
-                                LastCommandResult = false;
-                                if (ImapClientDisconnectEvent != null)
-                                    OnImapClientDisconnectEvent();
-                                Disconnect();
-                                return "";
-
-                            // If not a known response, return it verbatim.
-                            default:
-                                result = responseLine.Substring(responseLine.IndexOf(" ") + 1); ;
-
-                                if (responseParts[0] == commandTag || responseParts[0] == "+")
-                                    return result;
-                                else
-                                    responseBuilder.Append(responseLine + "\r\n");
-
-                                break;
-                        }
-                    }
-                    else
-                        responseBuilder.Append(responseLine + "\r\n");
-
-                    // Handle status notifications.
-                    if (SessionIsIdle)
-                    {
-                        if (responseLine.StartsWith("* "))
-                        {
-                            responseParts = responseLine.Split(new char[] { ' ' }, 4);
-
-                            if (responseParts.Length > 2)
-                            {
-                                switch (responseParts[2])
-                                {
-                                    case "EXISTS":
-                                        if (ImapClientNewMessageEvent != null)
-                                            OnImapClientNewMessageEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
-                                        break;
-                                    case "EXPUNGE":
-                                        if (ImapClientMessageExpungeEvent != null)
-                                            OnImapClientMessageExpungeEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
-                                        break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Send a message to the IMAP server.
-        /// Should always be followed by GetImapStreamString.
-        /// </summary>
-        /// <param name="command">Text to transmit.</param>
-        private async Task SendCommandAsync(string command)
-        {
-            await SendCommandAsync(SessionCommandTag, command);
-        }
-
-        /// <summary>
-        /// Send a message to the IMAP server, specifying a unique command tag.
-        /// Should always be followed by GetImapStreamString.
-        /// </summary>
-        /// <param name="commandTag">Command tag identifying the command and its response</param>
-        /// <param name="command">Text to transmit.</param>
-        private async Task SendCommandAsync(string commandTag, string command)
-        {
-            if (!string.IsNullOrEmpty(commandTag))
-            {
-                LastCommandIssued = commandTag + " " + command;
-                await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, commandTag + " " + command);
-            }
-            else
-                await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, command);
-        }
-
-        /// <summary>
         /// Update the flags associated with a message, referenced by its UID.
         /// </summary>
         /// <param name="mailboxName">Mailbox containing the message to update.</param>
@@ -2494,14 +2502,6 @@ namespace OpaqueMail.Net
 
             string response = await ReadDataAsync(commandTag, "STORE");
             return LastCommandResult;
-        }
-
-        /// <summary>
-        /// Iterates the command tag counter and returns a new ID for uniquely identifying commands.
-        /// </summary>
-        private string UniqueCommandTag()
-        {
-            return (++CommandTagCounter).ToString();
         }
         #endregion Private Methods
     }

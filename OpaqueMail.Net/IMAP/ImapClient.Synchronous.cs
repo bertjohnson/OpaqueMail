@@ -590,6 +590,16 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Read the last response from the IMAP server tied to a specific command tag.
+        /// </summary>
+        /// <param name="commandTag">Command tag identifying the command and its response</param>
+        /// <param name="previousCommand">The previous command issued to the server.</param>
+        public string ReadData(string commandTag, string previousCommand)
+        {
+            return Task.Run(() => ReadDataAsync(commandTag, previousCommand)).Result;
+        }
+
+        /// <summary>
         /// Remove one or more flags from a message, referenced by its index.
         /// </summary>
         /// <param name="mailboxName">Mailbox containing the message to update.</param>
@@ -650,6 +660,28 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Send a message to the IMAP server.
+        /// Should always be followed by GetImapStreamString.
+        /// </summary>
+        /// <param name="command">Text to transmit.</param>
+        public void SendCommand(string command)
+        {
+            SendCommand(SessionCommandTag, command);
+        }
+
+        /// <summary>
+        /// Send a message to the IMAP server, specifying a unique command tag.
+        /// Should always be followed by GetImapStreamString.
+        /// </summary>
+        /// <param name="commandTag">Command tag identifying the command and its response</param>
+        /// <param name="command">Text to transmit.</param>
+        public void SendCommand(string commandTag, string command)
+        {
+            LastCommandIssued = commandTag + " " + command;
+            Functions.SendStreamString(ImapStream, InternalBuffer, commandTag + " " + command);
+        }
+
+        /// <summary>
         /// Set a quota for the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">Name of the mailbox to work with.</param>
@@ -699,38 +731,5 @@ namespace OpaqueMail.Net
             return Task.Run(() => UnsubscribeMailboxAsync(mailboxName)).Result;
         }
         #endregion Public Methods
-
-        #region Private Methods
-        /// <summary>
-        /// Read the last response from the IMAP server tied to a specific command tag.
-        /// </summary>
-        /// <param name="commandTag">Command tag identifying the command and its response</param>
-        /// <param name="previousCommand">The previous command issued to the server.</param>
-        private string ReadData(string commandTag, string previousCommand)
-        {
-            return Task.Run(() => ReadDataAsync(commandTag, previousCommand)).Result;
-        }
-        /// <summary>
-        /// Send a message to the IMAP server.
-        /// Should always be followed by GetImapStreamString.
-        /// </summary>
-        /// <param name="command">Text to transmit.</param>
-        private void SendCommand(string command)
-        {
-            SendCommand(SessionCommandTag, command);
-        }
-
-        /// <summary>
-        /// Send a message to the IMAP server, specifying a unique command tag.
-        /// Should always be followed by GetImapStreamString.
-        /// </summary>
-        /// <param name="commandTag">Command tag identifying the command and its response</param>
-        /// <param name="command">Text to transmit.</param>
-        private void SendCommand(string commandTag, string command)
-        {
-            LastCommandIssued = commandTag + " " + command;
-            Functions.SendStreamString(ImapStream, InternalBuffer, commandTag + " " + command);
-        }
-        #endregion Private Methods
     }
 }
