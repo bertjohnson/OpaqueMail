@@ -35,7 +35,10 @@ namespace OpaqueMail.Net
         {
             get
             {
-                return Encoding.UTF8.GetString(BodyBytes);
+                if (!string.IsNullOrEmpty(CharSet))
+                    return Encoding.GetEncoding(CharSet).GetString(BodyBytes);
+                else
+                    return Encoding.UTF8.GetString(BodyBytes);
             }
         }
         /// <summary>Raw contents of the MIME part's body.</summary>
@@ -539,11 +542,16 @@ namespace OpaqueMail.Net
         /// <param name="signingCertificates">Collection of certificates to be used when signing.</param>
         public static bool VerifySignature(string signatureBlock, string body, out X509Certificate2Collection signingCertificates)
         {
-            // Ignore MIME headers for the signature block;
+            // Ignore MIME headers for the signature block.
             signatureBlock = signatureBlock.Substring(signatureBlock.IndexOf("\r\n\r\n") + 4);
 
+            // Bypass any leading carriage returns and line feeds in the body.
+            int bodyOffset = 0;
+            while (body.Substring(bodyOffset).StartsWith("\r\n"))
+                bodyOffset += 2;
+
             // Hydrate the signature CMS object.
-            ContentInfo contentInfo = new ContentInfo(Encoding.UTF8.GetBytes(body));
+            ContentInfo contentInfo = new ContentInfo(Encoding.UTF8.GetBytes(body.Substring(bodyOffset)));
             SignedCms signedCms = new SignedCms(contentInfo, true);
 
             try

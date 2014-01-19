@@ -286,7 +286,7 @@ namespace OpaqueMail.Net
         {
             X509Store store = new X509Store(location);
             store.Open(OpenFlags.OpenExistingOnly | OpenFlags.ReadOnly);
-            X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindBySerialNumber, serialNumber, true);
+            X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindBySerialNumber, serialNumber.Replace(" ", "").ToUpper(), true);
             store.Close();
 
             // If no certificate is found, return null;

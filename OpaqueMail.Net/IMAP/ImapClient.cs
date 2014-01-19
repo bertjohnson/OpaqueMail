@@ -145,8 +145,10 @@ namespace OpaqueMail.Net
         private Mailbox CurrentMailbox;
         /// <summary>Name of the remote IMAP mailbox currently being accessed.</summary>
         private string CurrentMailboxName = "INBOX";
-        /// <summary>Timer to listen for IDLE notifications.</summary>
-        private Timer IdleTimer;
+        /// <summary>When our idle loop started.</summary>
+        private DateTime IdleInitializedTime;
+        /// <summary>Thread where we listen for messages from the server.</summary>
+        private Thread IdleThread;
         /// <summary>Connection to the remote IMAP server.</summary>
         private TcpClient ImapTcpClient;
         /// <summary>Stream for communicating with the IMAP server.</summary>
@@ -221,14 +223,14 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="sender">The event's sender.</param>
         /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
-        public delegate void ImapClientMessageExpungeHandler(object sender, ImapClientEventArgs e);
+        public delegate void ImapClientMessageExpungeHandler(object sender, ImapClientMessageExpungeEventArgs e);
 
         /// <summary>
         /// Represents the event handler that will handle ImapClientNewMessageEvents.
         /// </summary>
         /// <param name="sender">The event's sender.</param>
         /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
-        public delegate void ImapClientNewMessageHandler(object sender, ImapClientEventArgs e);
+        public delegate void ImapClientNewMessageHandler(object sender, ImapClientNewMessageEventArgs e);
 
         /// <summary>
         /// Represents the event handler that will handle ImapClientThrottleEvents.
@@ -268,7 +270,7 @@ namespace OpaqueMail.Net
         /// Raises an event indicating a message being expunged.
         /// </summary>
         /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
-        protected void OnImapClientMessageExpungeEvent(ImapClientEventArgs e)
+        protected void OnImapClientMessageExpungeEvent(ImapClientMessageExpungeEventArgs e)
         {
             ImapClientMessageExpungeEvent(this, e);
         }
@@ -277,7 +279,7 @@ namespace OpaqueMail.Net
         /// Raises an event indicating a new message being received.
         /// </summary>
         /// <param name="e">An ImapClientEventArgs that contains the event data.</param>
-        protected void OnImapClientNewMessageEvent(ImapClientEventArgs e)
+        protected void OnImapClientNewMessageEvent(ImapClientNewMessageEventArgs e)
         {
             ImapClientNewMessageEvent(this, e);
         }
@@ -1335,9 +1337,10 @@ namespace OpaqueMail.Net
                 string response = await ReadDataAsync(commandTag, "IDLE");
 
                 SessionIsIdle = LastCommandResult;
-                
-                if (SessionIsIdle)
-                    IdleTimer = new Timer(new TimerCallback(CheckIdle), null, (int)IdleFrequency.TotalMilliseconds, (int)IdleFrequency.TotalMilliseconds);
+
+                IdleInitializedTime = DateTime.Now;
+                IdleThread = new Thread(new ParameterizedThreadStart(CheckIdle));
+                IdleThread.Start(IdleInitializedTime);
 
                 return LastCommandResult;
             }
@@ -1353,14 +1356,12 @@ namespace OpaqueMail.Net
             // Ensure that we've already entered the IDLE state.
             if (SessionIsIdle)
             {
+                IdleThread.Join();
+                IdleInitializedTime = DateTime.Now;
                 SessionIsIdle = false;
 
                 await SendCommandAsync("", "DONE\r\n");
                 string response = await ReadDataAsync("", "DONE");
-
-                // Abort and dispose of the IDLE thread.
-                if (IdleTimer != null)
-                    IdleTimer.Dispose();
             }
 
             return true;
@@ -1777,11 +1778,11 @@ namespace OpaqueMail.Net
                                 {
                                     case "EXISTS":
                                         if (ImapClientNewMessageEvent != null)
-                                            OnImapClientNewMessageEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                            OnImapClientNewMessageEvent(new ImapClientNewMessageEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
                                         break;
                                     case "EXPUNGE":
                                         if (ImapClientMessageExpungeEvent != null)
-                                            OnImapClientMessageExpungeEvent(new ImapClientEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                            OnImapClientMessageExpungeEvent(new ImapClientMessageExpungeEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
                                         break;
                                 }
                             }
@@ -2148,9 +2149,11 @@ namespace OpaqueMail.Net
         /// <summary>
         /// Periodically check for message notifications.
         /// </summary>
-        private async void CheckIdle(object stateInfo)
+        private async void CheckIdle(object idleInitializedTimeObject)
         {
-            if (SessionIsIdle)
+            DateTime idleInitializedTime = (DateTime)idleInitializedTimeObject;
+            
+            while (IdleInitializedTime == idleInitializedTime)
                 await ReadDataAsync("", "IDLE");
         }
 
@@ -2507,9 +2510,33 @@ namespace OpaqueMail.Net
     }
 
     /// <summary>
-    /// Provides data for ImapClient events.
+    /// Provides data for ImapClient "EXISTS" events.
     /// </summary>
-    public class ImapClientEventArgs : EventArgs
+    public class ImapClientNewMessageEventArgs : EventArgs
+    {
+        /// <summary>Name of the mailbox containing the message to be processed.</summary>
+        public string MailboxName;
+        /// <summary>ID of the message to be processed.</summary>
+        public int MessageId;
+        /// <summary>Number of messages in the mailbox.</summary>
+        public int MessageCount;
+
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
+        /// <param name="mailboxName">Name of the mailbox containing the message to be processed.</param>
+        /// <param name="messageCount">Number of messages in the mailbox.</param>
+        public ImapClientNewMessageEventArgs(string mailboxName, int messageCount)
+        {
+            MailboxName = mailboxName;
+            MessageCount = messageCount;
+        }
+    }
+
+    /// <summary>
+    /// Provides data for ImapClient "EXPUNGE" events.
+    /// </summary>
+    public class ImapClientMessageExpungeEventArgs : EventArgs
     {
         /// <summary>Name of the mailbox containing the message to be processed.</summary>
         public string MailboxName;
@@ -2520,8 +2547,8 @@ namespace OpaqueMail.Net
         /// Default constructor.
         /// </summary>
         /// <param name="mailboxName">Name of the mailbox containing the message to be processed.</param>
-        /// <param name="messageId">ID of the message to be processed.</param>
-        public ImapClientEventArgs(string mailboxName, int messageId)
+        /// <param name="messageCount">ID of the message to be processed.</param>
+        public ImapClientMessageExpungeEventArgs(string mailboxName, int messageId)
         {
             MailboxName = mailboxName;
             MessageId = messageId;

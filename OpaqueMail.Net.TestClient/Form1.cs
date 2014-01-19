@@ -558,26 +558,31 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             X509Certificate2 signingCertificate = null;
             if (SmtpSmimeSign.Checked || SmtpSmimeTripleWrap.Checked)
             {
-                // If S/MIME signing the message, attempt to look up a certificate from the Windows certificate store matching the serial number specified.
-                if (SmtpSmimeSerialNumber.Text.Length < 1)
+                // If S/MIME signing the message, attempt to look up a certificate from the Windows certificate store.
+                if (SmtpSmimeSerialNumber.Text.Length > 0)
                 {
-                    MessageBox.Show("SMTP send exception:\r\n\r\nA signing certificate must be passed prior to signing.", "SMTP send exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    SmtpSmimeSerialNumber.Focus();
-                    return;
+
+                    // Try looking the certificate up by its serial number, falling back to finding it by its subject name.
+                    signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.CurrentUser, SmtpSmimeSerialNumber.Text);
+                    if (signingCertificate == null)
+                        signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.LocalMachine, SmtpSmimeSerialNumber.Text);
+                    if (signingCertificate == null)
+                        signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, SmtpSmimeSerialNumber.Text);
+                    if (signingCertificate == null)
+                        signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, SmtpSmimeSerialNumber.Text);
                 }
 
-                // Try first looking the certificate up by its serial number, falling back to finding it by its subject name.
-                signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.CurrentUser, SmtpSmimeSerialNumber.Text);
                 if (signingCertificate == null)
-                    signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.LocalMachine, SmtpSmimeSerialNumber.Text);
-                if (signingCertificate == null)
-                    signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, SmtpSmimeSerialNumber.Text);
-                if (signingCertificate == null)
-                    signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, SmtpSmimeSerialNumber.Text);
+                {
+                    // Check if there's a matching certificate based on the sender's address.
+                    signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, SmtpFrom.Text);
+                    if (signingCertificate == null)
+                        signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, SmtpFrom.Text);
+                }
 
                 if (signingCertificate == null)
                 {
-                    MessageBox.Show("Certificate with serial # \"" + SmtpSmimeSerialNumber.Text + "\" not found.");
+                    MessageBox.Show("Certificate not found.");
                     SmtpSmimeSerialNumber.Focus();
                     return;
                 }
@@ -844,17 +849,17 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// <summary>
         /// Notify the user of messages expunged while IDLE.
         /// </summary>
-        void myImapClient_ImapClientMessageExpungeEvent(object sender, ImapClientEventArgs e)
+        void myImapClient_ImapClientMessageExpungeEvent(object sender, ImapClientMessageExpungeEventArgs e)
         {
-            MessageBox.Show("Message expunged.\r\n\r\nMailbox: " + e.MailboxName + "\r\nMessage ID: " + e.MessageId, "Message expunged.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Message expunged.\r\n\r\nMailbox: " + e.MailboxName + "\r\nMessage Count: " + e.MessageId, "Message expunged.", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         /// <summary>
         /// Notify the user of new messages received while IDLE.
         /// </summary>
-        void myImapClient_ImapClientNewMessageEvent(object sender, ImapClientEventArgs e)
+        void myImapClient_ImapClientNewMessageEvent(object sender, ImapClientNewMessageEventArgs e)
         {
-            MessageBox.Show("New message received.\r\n\r\nMailbox: " + e.MailboxName + "\r\nMessage ID: " + e.MessageId, "New message received", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("New message received.\r\n\r\nMailbox: " + e.MailboxName + "\r\nMessage Count: " + e.MessageCount, "New message received", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         /// <summary>
