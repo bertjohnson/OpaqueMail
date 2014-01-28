@@ -290,7 +290,7 @@ namespace OpaqueMail.Net
 
                                             mimeContentType = Functions.ReturnBetween(mimeHeaders, "Content-Type:", "\r\n").Trim();
                                             mimeContentTransferEncoding = Functions.ReturnBetween(mimeHeaders, "Content-Transfer-Encoding:", "\r\n").Trim();
-                                            mimeCharSet = Functions.ExtractMimeParameter(mimeContentType, "charset");
+                                            mimeCharSet = Functions.ExtractMimeParameter(mimeContentType, "charset").Replace("\"", "");
 
                                             List<MimePart> returnedMIMEParts = ExtractMIMEParts(mimeContentType, mimeCharSet, mimeContentTransferEncoding, mimeBody, processingFlags);
                                             foreach (MimePart returnedMIMEPart in returnedMIMEParts)
