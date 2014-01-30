@@ -1754,7 +1754,7 @@ namespace OpaqueMail.Net
                             default:
                                 result = responseLine.Substring(responseLine.IndexOf(" ") + 1); ;
 
-                                if (responseParts[0] == commandTag || responseParts[0] == "+")
+                                if (responseParts[0] == commandTag || (responseParts[0] == "+" && responseBuilder.Length == 0))
                                     return result;
                                 else
                                     responseBuilder.Append(responseLine + "\r\n");

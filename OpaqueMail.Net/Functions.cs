@@ -578,7 +578,7 @@ namespace OpaqueMail.Net
                     {
                         // We've found the next address, delimited by a comma.
                         string address = addresses.Substring(cursor, commaCursor - cursor).Trim();
-                        if (IsValidEmailAddress(address))
+                        if (!IsValidEmailAddress(address))
                         {
                             address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
@@ -594,7 +594,7 @@ namespace OpaqueMail.Net
                     {
                         // We've found the next address, delimited by a semicolon.
                         string address = addresses.Substring(cursor, semicolonCursor - cursor).Trim();
-                        if (IsValidEmailAddress(address))
+                        if (!IsValidEmailAddress(address))
                         {
                             address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
@@ -722,6 +722,9 @@ namespace OpaqueMail.Net
                             break;
                         case "20":
                             outputBuilder.Append(" ");
+                            break;
+                        case "A0":
+                            outputBuilder.Append("\u00A0");
                             break;
                         default:
                             int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
