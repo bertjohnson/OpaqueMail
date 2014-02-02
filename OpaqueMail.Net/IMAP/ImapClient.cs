@@ -1356,7 +1356,6 @@ namespace OpaqueMail.Net
             // Ensure that we've already entered the IDLE state.
             if (SessionIsIdle)
             {
-                IdleThread.Join();
                 IdleInitializedTime = DateTime.Now;
                 SessionIsIdle = false;
 

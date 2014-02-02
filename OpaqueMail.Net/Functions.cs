@@ -129,7 +129,7 @@ namespace OpaqueMail.Net
                             if (endCursor > -1 && endCursor > middleCursor + 1)
                             {
                                 // Try to create a decoder for the encoding.
-                                string charSet = header.Substring(cursor + 2, middleCursor - cursor - 2).ToUpper();
+                                string charSet = header.Substring(cursor + 2, middleCursor - cursor - 2).ToUpper().Replace("\"", "");
                                 Encoding encoding = Encoding.GetEncoding(charSet);
 
                                 byte[] encodedBytes = null;
@@ -343,7 +343,7 @@ namespace OpaqueMail.Net
                 {
                     // The parameter isn't encoded, so return it as-is.
                     string closedMimeHeader = mimeHeader + ";";
-                    string returnValue = ReturnBefore(closedMimeHeader.Substring(equalsPos + 1), ";");
+                    string returnValue = ReturnBefore(closedMimeHeader.Substring(equalsPos + 1), ";").Trim();
 
                     if (returnValue.StartsWith("\"") && returnValue.EndsWith("\""))
                         return returnValue.Substring(1, returnValue.Length - 2);
@@ -579,11 +579,9 @@ namespace OpaqueMail.Net
                         // We've found the next address, delimited by a comma.
                         string address = addresses.Substring(cursor, commaCursor - cursor).Trim();
                         if (!IsValidEmailAddress(address))
-                        {
                             address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
-                            addressCollection.Add(new MailAddress(address));
-                        }
+                        addressCollection.Add(new MailAddress(address));
                     }
 
                     cursor = commaCursor + 1;
@@ -595,11 +593,9 @@ namespace OpaqueMail.Net
                         // We've found the next address, delimited by a semicolon.
                         string address = addresses.Substring(cursor, semicolonCursor - cursor).Trim();
                         if (!IsValidEmailAddress(address))
-                        {
                             address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
-                            addressCollection.Add(new MailAddress(address));
-                        }
+                        addressCollection.Add(new MailAddress(address));
                     }
 
                     cursor = semicolonCursor + 1;

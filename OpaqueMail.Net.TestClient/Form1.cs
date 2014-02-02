@@ -991,6 +991,12 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             string bodyHtml = Functions.RemoveScriptTags(message.Body);
 
+            // If HTML, correct rendering of non-breaking spaces in the WebBrowser control.  Otherwise, cast to HTML.
+            if (message.IsBodyHtml)
+                bodyHtml = bodyHtml.Replace(char.ConvertFromUtf32(194).ToString(), "&nbsp;").Replace(char.ConvertFromUtf32(256).ToString(), "&nbsp;");
+            else
+                bodyHtml = Functions.ConvertPlainTextToHTML(bodyHtml);
+
             if (isJunkFolder)
                 bodyHtml = bodyHtml.Replace("://", "://spam.");
             else
