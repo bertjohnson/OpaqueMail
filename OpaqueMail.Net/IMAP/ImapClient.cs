@@ -1915,9 +1915,9 @@ namespace OpaqueMail.Net
             string commandTag = UniqueCommandTag();
 
             if (!string.IsNullOrEmpty(qResyncParameters))
-                await SendCommandAsync(commandTag, "SELECT " + mailboxName + " (QRESYNC (" + qResyncParameters + "))\r\n");
+                await SendCommandAsync(commandTag, "SELECT " + Functions.QuoteMailboxName(mailboxName) + " (QRESYNC (" + qResyncParameters + "))\r\n");
             else
-                await SendCommandAsync(commandTag, "SELECT " + mailboxName + "\r\n");
+                await SendCommandAsync(commandTag, "SELECT " + Functions.QuoteMailboxName(mailboxName) + "\r\n");
 
             string response = await ReadDataAsync(commandTag, "SELECT");
 

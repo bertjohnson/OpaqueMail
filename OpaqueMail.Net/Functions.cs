@@ -1620,6 +1620,19 @@ namespace OpaqueMail.Net
 
             return outputBuilder.ToString();
         }
+
+        /// <summary>
+        /// Quotes the name of the mailbox if it contains spaces.
+        /// </summary>
+        /// <param name="mailboxName">Name of the mailbox.</param>
+        /// <returns></returns>
+        public static string QuoteMailboxName(string mailboxName)
+        {
+            if (mailboxName.IndexOf(' ') < 0)
+                return mailboxName;
+            return "\"" + mailboxName + "\"";
+        }
+
         #endregion Public Methods
 
         #region Private Methods
