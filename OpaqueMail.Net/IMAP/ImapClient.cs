@@ -1174,7 +1174,7 @@ namespace OpaqueMail.Net
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the FETCH command.");
 
             if (mailboxName != CurrentMailboxName)
-                await SelectMailboxAsync(mailboxName);
+                await EnsureSelectMailboxAsync(mailboxName);
 
             List<ReadOnlyMailMessage> messages = new List<ReadOnlyMailMessage>();
             int numMessages = await GetMessageCountAsync();
@@ -2171,7 +2171,7 @@ namespace OpaqueMail.Net
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the FETCH command.");
 
             if (mailboxName != CurrentMailboxName)
-                await SelectMailboxAsync(mailboxName);
+                await EnsureSelectMailboxAsync(mailboxName);
 
             string uidPrefix = isUid ? "UID " : "";
 
@@ -2413,7 +2413,7 @@ namespace OpaqueMail.Net
 
             // Ensure we're working with the right mailbox.
             if (sourceMailboxName != CurrentMailboxName)
-                await SelectMailboxAsync(sourceMailboxName);
+                await EnsureSelectMailboxAsync(sourceMailboxName);
 
             string uidPrefix = isUid ? "UID " : "";
 
@@ -2505,6 +2505,14 @@ namespace OpaqueMail.Net
             string response = await ReadDataAsync(commandTag, "STORE");
             return LastCommandResult;
         }
+
+        private async Task EnsureSelectMailboxAsync(string mailboxName)
+        {
+            var mailbox = await this.SelectMailboxAsync(mailboxName);
+            if (mailbox == null)
+                throw new ImapException(string.Format("Failed to select mailbox '{0}'", mailboxName));
+        }        
+
         #endregion Private Methods
     }
 
