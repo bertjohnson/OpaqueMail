@@ -578,10 +578,8 @@ namespace OpaqueMail.Net
                     {
                         // We've found the next address, delimited by a comma.
                         string address = addresses.Substring(cursor, commaCursor - cursor).Trim();
-                        if (!IsValidEmailAddress(address))
-                            address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
-                        addressCollection.Add(new MailAddress(address));
+                        addressCollection.Add(MakeAnAddress(address));
                     }
 
                     cursor = commaCursor + 1;
@@ -592,10 +590,8 @@ namespace OpaqueMail.Net
                     {
                         // We've found the next address, delimited by a semicolon.
                         string address = addresses.Substring(cursor, semicolonCursor - cursor).Trim();
-                        if (!IsValidEmailAddress(address))
-                            address = address.Length > 0 ? (address.IndexOf("@") > -1 ? "unknown@unknown" : address + "@unknown") : "unknown@unknown";
 
-                        addressCollection.Add(new MailAddress(address));
+                        addressCollection.Add(MakeAnAddress(address));
                     }
 
                     cursor = semicolonCursor + 1;
@@ -618,10 +614,38 @@ namespace OpaqueMail.Net
                 if (IsValidEmailAddress(addresses))
                     addressCollection.Add(addresses);
                 else
-                    addressCollection.Add(addresses.Length > 0 ? (addresses.IndexOf("@") > -1 ? "unknown@unknown" : addresses + "@unknown") : "unknown@unknown");
+                    addressCollection.Add(MakeAnAddress(addresses));
             }
 
             return addressCollection;
+        }
+
+        /// <summary>
+        /// Make an MailAddress without exception throws. Use this method as a fallback to make an address, avoiding program crashes for bad addresses
+        /// </summary>
+        /// <param name="address">A string address, probably a bad address</param>
+        /// <returns></returns>
+        private static MailAddress MakeAnAddress(string address)
+        {
+            MailAddress ma = null;
+            try
+            {
+                // first assume the address is a valid address, maybe with a DisplayName
+                ma = new MailAddress(address);
+            }
+            catch
+            {
+                try
+                {
+                    // so it's not a valid address, try to treat it as the DisplayName
+                    ma = new MailAddress("unknown@unknown", address);
+                }
+                catch
+                {
+                    ma = new MailAddress("unknown@unknown");
+                }
+            }
+            return ma;
         }
 
         /// <summary>
@@ -679,11 +703,10 @@ namespace OpaqueMail.Net
             // Build a new string using the following buffer.
             StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
-            // Determine whether to use multi-byte UTF8 encoding.
-            bool useUTF8 = (string.IsNullOrEmpty(charSet) || charSet.ToUpper() == "UTF-8");
-
-            // Buffer for holding UTF-8 encoded characters.
-            byte[] utf8Buffer = new byte[Constants.SMALLBUFFERSIZE];
+            // buffer for holding bytes of non-ASCII characters
+            byte[] byteBuffer = new byte[Constants.SMALLBUFFERSIZE];
+            // total count of bytes stored in byteBuffer
+            int byteBufferLength = 0;
 
             // If no encoding is passed in, but a character set is specified, create the encoding.
             if (encoding == null)
@@ -705,10 +728,13 @@ namespace OpaqueMail.Net
                     outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
 
                     string afterEquals = input.Substring(equalsPos + 1, 2);
+                    // when byteBufferEnd, decode string from byteBuffer
+                    bool byteBufferEnd = true;
 
                     switch (afterEquals)
                     {
                         case "\r\n":
+                            byteBufferEnd = false;
                             break;
                         case "09":
                             outputBuilder.Append("\t");
@@ -723,48 +749,23 @@ namespace OpaqueMail.Net
                             outputBuilder.Append("\u00A0");
                             break;
                         default:
-                            int highByte = int.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
+                            byte theByte = Byte.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
+                            byteBuffer[byteBufferLength++] = theByte;
 
-                            if (useUTF8)
+                            if (byteBufferLength < byteBuffer.Length &&
+                                equalsPos < input.Length - 6 && input[equalsPos + 3] == '=')
                             {
-                                // Handle values above 7F as UTF-8 encoded character sequences.
-                                bool processed = false;
-                                if (highByte > 127 && equalsPos < input.Length - 2)
-                                {
-                                    utf8Buffer[0] = (byte)highByte;
-                                    int utf8ByteCount = 1;
-
-                                    string encodedString = afterEquals;
-                                    equalsPos += 3;
-
-                                    int inputLength = input.Length;
-                                    while (equalsPos > -1 && input.Substring(equalsPos, 1) == "=")
-                                    {
-                                        // Step over a line break if that breaks up our encoded string.
-                                        if (input.Substring(equalsPos + 1, 2) != "\r\n")
-                                            utf8Buffer[utf8ByteCount++] = (byte)int.Parse(input.Substring(equalsPos + 1, 2), NumberStyles.HexNumber);
-
-                                        equalsPos += 3;
-                                        if (equalsPos == inputLength)
-                                            equalsPos = -3;
-                                    }
-
-                                    outputBuilder.Append(Utf8toUnicode(utf8Buffer, utf8ByteCount));
-
-                                    processed = true;
-                                    equalsPos -= 3;
-                                }
-
-                                // Continue if we didn't run into a UTF-8 encoded character sequence.
-                                if (!processed)
-                                    outputBuilder.Append(new char[] { (char)highByte });
+                                byteBufferEnd = false;
                             }
-                            else
-                                outputBuilder.Append(encoding.GetString(new byte[] { (byte)highByte }));
 
                             break;
                     }
 
+                    if (byteBufferEnd && byteBufferLength > 0)
+                    {
+                        outputBuilder.Append(encoding.GetString(byteBuffer, 0, byteBufferLength));
+                        byteBufferLength = 0;
+                    }
                     equalsPos += 3;
                 }
                 else

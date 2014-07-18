@@ -30,15 +30,23 @@ namespace OpaqueMail.Net
     public class MimePart
     {
         #region Public Members
+        // add this field for two reasons: 
+        // first, let constructor can set it directly,
+        // secondly, play as cache
+        private string _body = null;
         /// <summary>Return the string representation of the body.</summary>
         public string Body
         {
             get
             {
-                if (!string.IsNullOrEmpty(CharSet))
-                    return Encoding.GetEncoding(CharSet).GetString(BodyBytes);
-                else
-                    return Encoding.UTF8.GetString(BodyBytes);
+                if (_body == null)
+                {
+                    if (!string.IsNullOrEmpty(CharSet))
+                        _body = Encoding.GetEncoding(CharSet).GetString(BodyBytes);
+                    else
+                        _body = Encoding.UTF8.GetString(BodyBytes);
+                }
+                return _body;
             }
         }
         /// <summary>Raw contents of the MIME part's body.</summary>
@@ -74,7 +82,18 @@ namespace OpaqueMail.Net
         /// <param name="contentTransferEncoding">Content Transfer Encoding string of the MIME part.</param>
         /// <param name="body">String representation of the MIME part's body.</param>
         public MimePart(string name, string contentType, string charset, string contentID, string contentTransferEncoding, string body)
-            : this(name, contentType, charset, contentID, contentTransferEncoding, Encoding.UTF8.GetBytes(body)) { }
+            : this(name, contentType, charset, contentID, contentTransferEncoding, (byte[])null)
+        {
+            Encoding encoding = Encoding.UTF8;
+            try
+            {
+                encoding = Encoding.GetEncoding(charset);
+            }
+            catch
+            {
+            }
+            BodyBytes = encoding.GetBytes(body);
+        }
 
         /// <summary>
         /// Instantiate a MIME part based on its body's byte array.
