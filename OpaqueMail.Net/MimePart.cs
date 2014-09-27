@@ -29,6 +29,15 @@ namespace OpaqueMail.Net
     /// </summary>
     public class MimePart
     {
+
+        #region Encoding Alias
+        private static Dictionary<string, string> EncodingAlias = new Dictionary<string, string>() { 
+            {
+                "ansi_x3.110-1983","iso-8859-1"
+            }
+        };
+        #endregion
+
         #region Public Members
         /// <summary>Return the string representation of the body.</summary>
         public string Body
@@ -36,7 +45,13 @@ namespace OpaqueMail.Net
             get
             {
                 if (!string.IsNullOrEmpty(CharSet))
+                {
+                    string vcs;
+                    if (EncodingAlias.TryGetValue(CharSet, out vcs)) {
+                        CharSet = vcs;
+                    }
                     return Encoding.GetEncoding(CharSet).GetString(BodyBytes);
+                }
                 else
                     return Encoding.UTF8.GetString(BodyBytes);
             }
