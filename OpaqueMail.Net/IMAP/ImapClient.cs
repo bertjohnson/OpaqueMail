@@ -592,10 +592,10 @@ namespace OpaqueMail.Net
                 return false;
 
             // If capabilities are returned while logging in, remember them.
-            if (response.StartsWith("* CAPABILITY "))
+            if (response.StartsWith("* CAPABILITY ") || response.StartsWith("* OK CAPABILITY "))
             {
                 // Strip the capability prefix.
-                response = response.Substring(13);
+                response = response.Replace("* OK", "*").Substring(13);
 
                 int firstSpace = response.IndexOf(" ");
                 string[] capabilitiesList = response.Substring(firstSpace + 1).Split(' ');
@@ -954,7 +954,7 @@ namespace OpaqueMail.Net
             string commandTag = UniqueCommandTag();
 
             SendCommand(commandTag, "CAPABILITY\r\n");
-            string response = ReadData(commandTag, "CAPABILITY");
+            string response = ReadData(commandTag, "CAPABILITY").Replace("* OK", "*");
 
             imapVersion = "";
             if (response.StartsWith("* CAPABILITY "))
