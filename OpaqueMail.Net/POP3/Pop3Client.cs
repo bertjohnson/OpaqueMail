@@ -850,32 +850,35 @@ namespace OpaqueMail.Net
         /// <param name="endMarker">A string indicating the end of the current message.</param>
         public async Task<string> ReadDataAsync(string endMarker)
         {
-            string response = "";
+            StringBuilder responseBuilder = new StringBuilder();
 
             LastCommandResult = false;
             bool receivingMessage = true, firstResponse = true;
             while (receivingMessage)
             {
                 int bytesRead = await Pop3Stream.ReadAsync(InternalBuffer, 0, Constants.LARGEBUFFERSIZE);
-                response += Encoding.UTF8.GetString(InternalBuffer, 0, bytesRead);
+                string responseChunk = Encoding.UTF8.GetString(InternalBuffer, 0, bytesRead);
+                responseBuilder.Append(responseChunk);
 
                 // Deal with bad commands and responses with errors.
-                if (firstResponse && response.StartsWith("-"))
+                if (firstResponse && responseBuilder[0] == '-')
                 {
+                    string response = responseBuilder.ToString();
                     LastErrorMessage = response.Substring(0, response.Length - 2).Substring(response.IndexOf(" ") + 1);
                     return "";
                 }
 
                 // Check if the last sequence received ends with a line break, possibly indicating an end of message.
-                if (response.EndsWith("\r\n"))
+                if (responseChunk.EndsWith("\r\n"))
                 {
                     if (endMarker.Length > 0)
                     {
-                        if (response.EndsWith(endMarker))
+                        if (responseChunk.EndsWith(endMarker))
                         {
                             receivingMessage = false;
 
                             // Strip start +OK message.
+                            string response = responseBuilder.ToString();
                             if (response.StartsWith("+OK\r\n"))
                                 response = response.Substring(5);
                             else
@@ -883,21 +886,27 @@ namespace OpaqueMail.Net
 
                             // Strip end POP3 padding.
                             response = response.Substring(0, response.Length - endMarker.Length);
+
+                            LastCommandResult = true;
+                            return response;
                         }
                     }
                     else
                     {
                         // Check if the message includes a POP3 "OK" signature, signifying the message is complete.
                         // Eliminate POP3 message padding.
+                        string response = responseBuilder.ToString();
                         if (response.StartsWith("+OK\r\n"))
                         {
                             receivingMessage = false;
-                            response = response.Substring(5);
+                            LastCommandResult = true;
+                            return response.Substring(5);
                         }
                         else if (response.StartsWith("+OK"))
                         {
                             receivingMessage = false;
-                            response = response.Substring(4, response.Length - 6);
+                            LastCommandResult = true;
+                            return response.Substring(4, response.Length - 6);
                         }
                     }
                 }
@@ -905,8 +914,8 @@ namespace OpaqueMail.Net
                 firstResponse = false;
             }
 
-            LastCommandResult = true;
-            return response;
+            LastCommandResult = false;
+            return "";
         }
 
         /// <summary>
