@@ -40,9 +40,7 @@ namespace OpaqueMail.Net
                 {
                     if (!string.IsNullOrEmpty(CharSet))
                     {
-                        if (CharSet.ToUpper() == "CP1252")
-                            CharSet = "windows-1252";
-                        return Encoding.GetEncoding(CharSet).GetString(bodyBytes);
+                        return Encoding.GetEncoding(Functions.NormalizeCharSet(CharSet)).GetString(bodyBytes);
                     }
                     else
                         return Encoding.UTF8.GetString(bodyBytes);
@@ -63,9 +61,7 @@ namespace OpaqueMail.Net
                 {
                     if (!string.IsNullOrEmpty(CharSet))
                     {
-                        if (CharSet.ToUpper() == "CP1252")
-                            CharSet = "windows-1252";
-                        return Encoding.GetEncoding(CharSet).GetBytes(body);
+                        return Encoding.GetEncoding(Functions.NormalizeCharSet(CharSet)).GetBytes(body);
                     }
                     else
                         return Encoding.UTF8.GetBytes(body);
@@ -524,10 +520,7 @@ namespace OpaqueMail.Net
                 else
                 {
                     // If the content type contains a character set, extract it.
-                    charSet = Functions.ExtractMimeParameter(contentType, "charset");
-
-                    if (charSet.ToUpper() == "CP1252")
-                        charSet = "windows-1252";
+                    charSet = Functions.NormalizeCharSet(Functions.ExtractMimeParameter(contentType, "charset"));
 
                     int semicolonPos = contentType.IndexOf(";");
                     if (semicolonPos > -1)
@@ -619,7 +612,9 @@ namespace OpaqueMail.Net
                 return false;
             }
         }
+        #endregion Public Methods
 
+        #region Private Methods
         /// <summary>
         /// Divide a MIME part's headers into its components.
         /// </summary>
@@ -687,6 +682,6 @@ namespace OpaqueMail.Net
 
             mimeCharSet = Functions.ExtractMimeParameter(mimeContentType, "charset");
         }
-        #endregion Public Methods
+        #endregion Private Methods
     }
 }

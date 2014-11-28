@@ -749,8 +749,11 @@ namespace OpaqueMail.Net
                         default:
                             byte theByte = Byte.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
                             byteBuffer[byteBufferLength++] = theByte;
-                            if (byteBufferLength < byteBuffer.Length && equalsPos < input.Length - 6 && input[equalsPos + 3] == '=')
-                                byteBufferEnd = false;
+                            if (byteBufferLength < byteBuffer.Length && equalsPos < input.Length - 6)
+                            {
+                                if (input[equalsPos + 3] == '=' && input[equalsPos + 4] != '\r')
+                                    byteBufferEnd = false;
+                            }                        
                             break;
                     }
 
@@ -864,6 +867,23 @@ namespace OpaqueMail.Net
                 hashBuilder.Append(Convert.ToString(hb[i], 16).PadLeft(2, '0'));
 
             return hashBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Replace aliased character sets with their more common representation.
+        /// </summary>
+        /// <param name="charSet">Character set alias to check.</param>
+        /// <returns>Normalized character set name.</returns>
+        public static string NormalizeCharSet(string charSet)
+        {
+            switch (charSet.ToUpper())
+            {
+                case "ANSI_X3.110-1983":
+                    return "iso-8859-1";
+                case "CP1252":
+                    return "windows-1252";
+            }
+            return charSet;
         }
 
         /// <summary>
