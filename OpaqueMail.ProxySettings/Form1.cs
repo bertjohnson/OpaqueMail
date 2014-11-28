@@ -65,7 +65,7 @@ namespace OpaqueMail.Proxy.Settings
 
         #region Protected Methods
         /// <summary>
-        /// Handle the F5 keypress by reloading the e-mail accounts list and certificate choices.
+        /// Handle the F5 keypress by reloading the email accounts list and certificate choices.
         /// </summary>
         /// <param name="msg"></param>
         /// <param name="keyData"></param>
@@ -123,7 +123,7 @@ namespace OpaqueMail.Proxy.Settings
             AccountsLabel.Links.Add(AboutLabel.Text.IndexOf("http://opaquemail.org/"), 22, "http://opaquemail.org/");
             AccountsLabel.LinkClicked += Label_LinkClicked;
 
-            // Load the e-mail accounts list and certificate choices.
+            // Load the email accounts list and certificate choices.
             PopulateAccounts();
 
             SmimeOperations.SelectedIndex = 3;
@@ -306,7 +306,7 @@ namespace OpaqueMail.Proxy.Settings
         }
 
         /// <summary>
-        /// Populate the gridview with appropriate e-mail account and certificate choices.
+        /// Populate the gridview with appropriate email account and certificate choices.
         /// </summary>
         private void PopulateAccounts()
         {
@@ -720,7 +720,7 @@ namespace OpaqueMail.Proxy.Settings
         }
 
         /// <summary>
-        /// Track e-mail account settings.
+        /// Track email account settings.
         /// </summary>
         private class ProxyAccount
         {

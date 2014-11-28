@@ -47,7 +47,6 @@ namespace OpaqueMail.Net.TestClient
             this.TabsControl = new System.Windows.Forms.TabControl();
             this.SettingsTab = new System.Windows.Forms.TabPage();
             this.SmtpSettingsGroup = new System.Windows.Forms.GroupBox();
-            this.button1 = new System.Windows.Forms.Button();
             this.SmtpCopyImapButton = new System.Windows.Forms.Button();
             this.SmtpCopyPop3Button = new System.Windows.Forms.Button();
             this.SmtpSslLabel = new System.Windows.Forms.Label();
@@ -98,6 +97,9 @@ namespace OpaqueMail.Net.TestClient
             this.ImapLoadFileButton = new System.Windows.Forms.Button();
             this.ImapRetrieveMessagesButton = new System.Windows.Forms.Button();
             this.ImapMessageGroup = new System.Windows.Forms.GroupBox();
+            this.ImapFirst1k = new System.Windows.Forms.CheckBox();
+            this.ImapIncludeBody = new System.Windows.Forms.CheckBox();
+            this.ImapIncludeHeaders = new System.Windows.Forms.CheckBox();
             this.ImapMailboxList = new System.Windows.Forms.ComboBox();
             this.ImapDeleteMessageButton = new System.Windows.Forms.Button();
             this.ImapMessageList = new System.Windows.Forms.ListBox();
@@ -184,7 +186,6 @@ namespace OpaqueMail.Net.TestClient
             // 
             // SmtpSettingsGroup
             // 
-            this.SmtpSettingsGroup.Controls.Add(this.button1);
             this.SmtpSettingsGroup.Controls.Add(this.SmtpCopyImapButton);
             this.SmtpSettingsGroup.Controls.Add(this.SmtpCopyPop3Button);
             this.SmtpSettingsGroup.Controls.Add(this.SmtpSslLabel);
@@ -203,15 +204,6 @@ namespace OpaqueMail.Net.TestClient
             this.SmtpSettingsGroup.TabIndex = 3;
             this.SmtpSettingsGroup.TabStop = false;
             this.SmtpSettingsGroup.Text = "SMTP Settings";
-            // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(156, 67);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
-            this.button1.TabIndex = 12;
-            this.button1.Text = "button1";
-            this.button1.UseVisualStyleBackColor = true;
             // 
             // SmtpCopyImapButton
             // 
@@ -706,6 +698,9 @@ namespace OpaqueMail.Net.TestClient
             // 
             // ImapMessageGroup
             // 
+            this.ImapMessageGroup.Controls.Add(this.ImapFirst1k);
+            this.ImapMessageGroup.Controls.Add(this.ImapIncludeBody);
+            this.ImapMessageGroup.Controls.Add(this.ImapIncludeHeaders);
             this.ImapMessageGroup.Controls.Add(this.ImapMailboxList);
             this.ImapMessageGroup.Controls.Add(this.ImapDeleteMessageButton);
             this.ImapMessageGroup.Controls.Add(this.ImapMessageList);
@@ -715,6 +710,40 @@ namespace OpaqueMail.Net.TestClient
             this.ImapMessageGroup.TabIndex = 0;
             this.ImapMessageGroup.TabStop = false;
             this.ImapMessageGroup.Text = "IMAP Messages";
+            // 
+            // ImapFirst1k
+            // 
+            this.ImapFirst1k.AutoSize = true;
+            this.ImapFirst1k.Location = new System.Drawing.Point(8, 284);
+            this.ImapFirst1k.Name = "ImapFirst1k";
+            this.ImapFirst1k.Size = new System.Drawing.Size(125, 17);
+            this.ImapFirst1k.TabIndex = 6;
+            this.ImapFirst1k.Text = "First 1000 Bytes Only";
+            this.ImapFirst1k.UseVisualStyleBackColor = true;
+            // 
+            // ImapIncludeBody
+            // 
+            this.ImapIncludeBody.AutoSize = true;
+            this.ImapIncludeBody.Checked = true;
+            this.ImapIncludeBody.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.ImapIncludeBody.Location = new System.Drawing.Point(8, 261);
+            this.ImapIncludeBody.Name = "ImapIncludeBody";
+            this.ImapIncludeBody.Size = new System.Drawing.Size(88, 17);
+            this.ImapIncludeBody.TabIndex = 5;
+            this.ImapIncludeBody.Text = "Include Body";
+            this.ImapIncludeBody.UseVisualStyleBackColor = true;
+            // 
+            // ImapIncludeHeaders
+            // 
+            this.ImapIncludeHeaders.AutoSize = true;
+            this.ImapIncludeHeaders.Checked = true;
+            this.ImapIncludeHeaders.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.ImapIncludeHeaders.Location = new System.Drawing.Point(8, 238);
+            this.ImapIncludeHeaders.Name = "ImapIncludeHeaders";
+            this.ImapIncludeHeaders.Size = new System.Drawing.Size(104, 17);
+            this.ImapIncludeHeaders.TabIndex = 4;
+            this.ImapIncludeHeaders.Text = "Include Headers";
+            this.ImapIncludeHeaders.UseVisualStyleBackColor = true;
             // 
             // ImapMailboxList
             // 
@@ -729,7 +758,7 @@ namespace OpaqueMail.Net.TestClient
             // ImapDeleteMessageButton
             // 
             this.ImapDeleteMessageButton.Enabled = false;
-            this.ImapDeleteMessageButton.Location = new System.Drawing.Point(6, 272);
+            this.ImapDeleteMessageButton.Location = new System.Drawing.Point(6, 211);
             this.ImapDeleteMessageButton.Name = "ImapDeleteMessageButton";
             this.ImapDeleteMessageButton.Size = new System.Drawing.Size(172, 23);
             this.ImapDeleteMessageButton.TabIndex = 3;
@@ -742,7 +771,7 @@ namespace OpaqueMail.Net.TestClient
             this.ImapMessageList.FormattingEnabled = true;
             this.ImapMessageList.Location = new System.Drawing.Point(6, 45);
             this.ImapMessageList.Name = "ImapMessageList";
-            this.ImapMessageList.Size = new System.Drawing.Size(172, 225);
+            this.ImapMessageList.Size = new System.Drawing.Size(172, 160);
             this.ImapMessageList.TabIndex = 2;
             this.ImapMessageList.SelectedIndexChanged += new System.EventHandler(this.ImapMessageList_SelectedIndexChanged);
             // 
@@ -1142,6 +1171,7 @@ namespace OpaqueMail.Net.TestClient
             this.ImapTestGroup.ResumeLayout(false);
             this.ImapTestGroup.PerformLayout();
             this.ImapMessageGroup.ResumeLayout(false);
+            this.ImapMessageGroup.PerformLayout();
             this.Pop3Tab.ResumeLayout(false);
             this.Pop3PreviewGroup.ResumeLayout(false);
             this.Pop3PreviewGroup.PerformLayout();
@@ -1248,8 +1278,10 @@ namespace OpaqueMail.Net.TestClient
         private System.Windows.Forms.Button ImapAppendMessageButton;
         private System.Windows.Forms.Button ImapGetQuotaButton;
         private System.Windows.Forms.TextBox ImapSearchText;
-        private System.Windows.Forms.Button button1;
         private System.Windows.Forms.ComboBox ImapMailboxList;
+        private System.Windows.Forms.CheckBox ImapFirst1k;
+        private System.Windows.Forms.CheckBox ImapIncludeBody;
+        private System.Windows.Forms.CheckBox ImapIncludeHeaders;
     }
 }
 

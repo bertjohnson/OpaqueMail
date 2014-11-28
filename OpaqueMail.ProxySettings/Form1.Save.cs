@@ -855,7 +855,7 @@ namespace OpaqueMail.Proxy.Settings
                             streamWriter.WriteElementString("SubjectName", account.SmtpCertificateSubjectName);
                             streamWriter.WriteEndElement();
 
-                            streamWriter.WriteComment("Send e-mail reminders when a signing certificate is due to expire within 30 days.");
+                            streamWriter.WriteComment("Send email reminders when a signing certificate is due to expire within 30 days.");
                             streamWriter.WriteElementString("SendCertificateReminders", account.SendCertificateReminders.ToString());
 
                             streamWriter.WriteComment("Whether all outgoing messages require the S/MIME settings specified below.");
@@ -863,11 +863,11 @@ namespace OpaqueMail.Proxy.Settings
                             streamWriter.WriteComment("When set to \"BestEffort\", OpaqueMail Proxy will attempt to sign and/or encrypt messages but still forward any that can't be.");
                             streamWriter.WriteElementString("SMIMESettingsMode", SmimeSettingsMode.SelectedIndex > 0 ? "RequireExactSettings" : "BestEffort");
 
-                            streamWriter.WriteComment("Whether to sign the e-mail.  When true, signing is the first S/MIME operation.");
+                            streamWriter.WriteComment("Whether to sign the email.  When true, signing is the first S/MIME operation.");
                             streamWriter.WriteElementString("SMIMESign", SmimeOperations.SelectedIndex > 0 ? "True" : "False");
-                            streamWriter.WriteComment("Whether to encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.");
+                            streamWriter.WriteComment("Whether to encrypt the email's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.");
                             streamWriter.WriteElementString("SMIMEEncrypt", SmimeOperations.SelectedIndex > 1 ? "True" : "False");
-                            streamWriter.WriteComment("Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.");
+                            streamWriter.WriteComment("Triple-wrap the email by signing, then encrypting the envelope, then signing the encrypted envelope.");
                             streamWriter.WriteElementString("SMIMETripleWrap", SmimeOperations.SelectedIndex > 2 ? "True" : "False");
 
                             streamWriter.WriteComment("Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.");

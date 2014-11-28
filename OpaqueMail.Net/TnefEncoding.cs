@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 namespace OpaqueMail.Net
 {
     /// <summary>
-    /// Represents an e-mail encoded using Microsoft's TNEF format.
+    /// Represents an email encoded using Microsoft's TNEF format.
     /// </summary>
     public class TnefEncoding
     {

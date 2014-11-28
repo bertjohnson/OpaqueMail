@@ -29,7 +29,7 @@ using System.Threading.Tasks;
 namespace OpaqueMail.Net
 {
     /// <summary>
-    /// Allows applications to retrieve and manage e-mail by using the Internet Message Access Protocol (IMAP).
+    /// Allows applications to retrieve and manage email by using the Internet Message Access Protocol (IMAP).
     /// </summary>
     /// <remarks>Includes OpaqueMail extensions to facilitate processing of secure S/MIME messages.</remarks>
     public partial class ImapClient : IDisposable
@@ -43,7 +43,7 @@ namespace OpaqueMail.Net
         public bool EnableSsl;
         /// <summary>Gets or sets the name or IP address of the host used for IMAP transactions.</summary>
         public string Host;
-        /// <summary>Frequency of sending NOOP commands to check for mailbox notifications.</summary>
+        /// <summary>Frequency of checking for mailbox notifications.</summary>
         public TimeSpan IdleFrequency = new TimeSpan(0, 1, 0);
         /// <summary>Version of IMAP reported by the server.</summary>
         public string ImapVersion = "";
@@ -200,6 +200,8 @@ namespace OpaqueMail.Net
         /// </summary>
         ~ImapClient()
         {
+            IdleInitializedTime = DateTime.Now;
+
             if (ImapStreamWriter != null)
                 ImapStreamWriter.Dispose();
             if (ImapStreamReader != null)
@@ -331,7 +333,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
         /// <param name="message">The raw message to append.</param>
-        public async Task<bool> AppendMessageAsync(string mailboxName, ReadOnlyMailMessage message)
+        public async Task<bool> AppendMessageAsync(string mailboxName, MailMessage message)
         {
             return await AppendMessageAsync(mailboxName, message.RawMessage, message.RawFlags.ToArray(), message.Date);
         }
@@ -406,7 +408,7 @@ namespace OpaqueMail.Net
         /// <param name="message">The raw message to append.</param>
         /// <param name="flags">Optional flags to be applied for the message.</param>
         /// <param name="date">Optional date for the message.</param>
-        public async Task<bool> AppendMessageAsync(string mailboxName, ReadOnlyMailMessage message, string[] flags, DateTime? date)
+        public async Task<bool> AppendMessageAsync(string mailboxName, MailMessage message, string[] flags, DateTime? date)
         {
             return await AppendMessageAsync(mailboxName, message.RawMessage, flags, date);
         }
@@ -526,7 +528,7 @@ namespace OpaqueMail.Net
         /// <param name="messages">The raw messages to append.</param>
         /// <param name="flags">Optional flags to be applied for the message.</param>
         /// <param name="date">Optional date for the message.</param>
-        public async Task<bool> AppendMessagesAsync(string mailboxName, ReadOnlyMailMessage[] messages, string[] flags, DateTime? date)
+        public async Task<bool> AppendMessagesAsync(string mailboxName, MailMessage[] messages, string[] flags, DateTime? date)
         {
             string[] rawMessages = new string[messages.Length];
             for (int i = 0; i < messages.Length; i++)
@@ -987,9 +989,9 @@ namespace OpaqueMail.Net
         /// Load an instance of a message based on its index.
         /// </summary>
         /// <param name="index">The index of the message to load.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageAsync(int index)
+        public async Task<MailMessage> GetMessageAsync(int index)
         {
-            return await GetMessageHelper(CurrentMailboxName, index, false, false, false);
+            return await GetMessageHelper(CurrentMailboxName, index, false, false, -1, -1, false);
         }
 
         /// <summary>
@@ -997,20 +999,9 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The mailbox to load from.</param>
         /// <param name="index">The index of the message to load.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageAsync(string mailboxName, int index)
+        public async Task<MailMessage> GetMessageAsync(string mailboxName, int index)
         {
-            return await GetMessageHelper(mailboxName, index, false, false, false);
-        }
-
-        /// <summary>
-        /// Load an instance of a message in a specified mailbox based on its index, optionally returning only headers.
-        /// </summary>
-        /// <param name="mailboxName">The mailbox to load from.</param>
-        /// <param name="index">The index of the message to load.</param>
-        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
-        public async Task<ReadOnlyMailMessage> GetMessageAsync(string mailboxName, int index, bool headersOnly)
-        {
-            return await GetMessageHelper(mailboxName, index, headersOnly, false, false);
+            return await GetMessageHelper(mailboxName, index, false, false, -1, -1, false);
         }
 
         /// <summary>
@@ -1020,9 +1011,11 @@ namespace OpaqueMail.Net
         /// <param name="index">The index of the message to load.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageAsync(string mailboxName, int index, bool headersOnly, bool setSeenFlag)
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        public async Task<MailMessage> GetMessageAsync(string mailboxName, int index, bool headersOnly = false, bool setSeenFlag = true, int seekStart = -1, int seekEnd = -1)
         {
-            return await GetMessageHelper(mailboxName, index, headersOnly, setSeenFlag, false);
+            return await GetMessageHelper(mailboxName, index, headersOnly, setSeenFlag, seekStart, seekEnd, false);
         }
 
         /// <summary>
@@ -1063,9 +1056,9 @@ namespace OpaqueMail.Net
         /// Load an instance of a message based on its UID.
         /// </summary>
         /// <param name="uid">The UID of the message to load.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageUidAsync(int uid)
+        public async Task<MailMessage> GetMessageUidAsync(int uid)
         {
-            return await GetMessageHelper(CurrentMailboxName, uid, false, false, true);
+            return await GetMessageHelper(CurrentMailboxName, uid, false, false, -1, -1, true);
         }
 
         /// <summary>
@@ -1073,20 +1066,9 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The mailbox to load from.</param>
         /// <param name="uid">The UID of the message to load.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageUidAsync(string mailboxName, int uid)
+        public async Task<MailMessage> GetMessageUidAsync(string mailboxName, int uid)
         {
-            return await GetMessageHelper(mailboxName, uid, false, false, true);
-        }
-
-        /// <summary>
-        /// Load an instance of a message in a specified mailbox based on its UID, optionally returning only headers.
-        /// </summary>
-        /// <param name="mailboxName">The mailbox to load from.</param>
-        /// <param name="uid">The UID of the message to load.</param>
-        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
-        public async Task<ReadOnlyMailMessage> GetMessageUidAsync(string mailboxName, int uid, bool headersOnly)
-        {
-            return await GetMessageHelper(mailboxName, uid, headersOnly, false, true);
+            return await GetMessageHelper(mailboxName, uid, false, false, -1, -1, true);
         }
 
         /// <summary>
@@ -1096,15 +1078,17 @@ namespace OpaqueMail.Net
         /// <param name="uid">The UID of the message to load.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageUidAsync(string mailboxName, int uid, bool headersOnly, bool setSeenFlag)
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        public async Task<MailMessage> GetMessageUidAsync(string mailboxName, int uid, bool headersOnly, bool setSeenFlag, int seekStart = -1, int seekEnd = -1)
         {
-            return await GetMessageHelper(mailboxName, uid, headersOnly, setSeenFlag, true);
+            return await GetMessageHelper(mailboxName, uid, headersOnly, setSeenFlag, seekStart, seekEnd, true);
         }
 
         /// <summary>
         /// Retrieve up to 25 of the most recent messages from the current mailbox.
         /// </summary>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync()
+        public async Task<List<MailMessage>> GetMessagesAsync()
         {
             return await GetMessagesAsync(CurrentMailboxName, 25, 1, false, false, false);
         }
@@ -1113,7 +1097,7 @@ namespace OpaqueMail.Net
         /// Retrieve up to 25 of the most recent messages from the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(string mailboxName)
+        public async Task<List<MailMessage>> GetMessagesAsync(string mailboxName)
         {
             return await GetMessagesAsync(mailboxName, 25, 1, false, false, false);
         }
@@ -1122,7 +1106,7 @@ namespace OpaqueMail.Net
         /// Retrieve up to count of the most recent messages from the current mailbox.
         /// </summary>
         /// <param name="count">The maximum number of messages to return.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(int count)
+        public async Task<List<MailMessage>> GetMessagesAsync(int count)
         {
             return await GetMessagesAsync(CurrentMailboxName, count, 1, false, false, false);
         }
@@ -1132,7 +1116,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         /// <param name="count">The maximum number of messages to return.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(string mailboxName, int count)
+        public async Task<List<MailMessage>> GetMessagesAsync(string mailboxName, int count)
         {
             return await GetMessagesAsync(mailboxName, count, 1, false, false, false);
         }
@@ -1142,7 +1126,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(int count, bool headersOnly)
+        public async Task<List<MailMessage>> GetMessagesAsync(int count, bool headersOnly)
         {
             return await GetMessagesAsync(CurrentMailboxName, count, 1, false, headersOnly, false);
         }
@@ -1153,7 +1137,7 @@ namespace OpaqueMail.Net
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(string mailboxName, int count, bool headersOnly)
+        public async Task<List<MailMessage>> GetMessagesAsync(string mailboxName, int count, bool headersOnly)
         {
             return await GetMessagesAsync(mailboxName, count, 1, false, headersOnly, false);
         }
@@ -1167,7 +1151,7 @@ namespace OpaqueMail.Net
         /// <param name="reverseOrder">Whether to return messages in descending order.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
         /// <param name="setSeenFlag">Whether to update the message's flag as having been seen.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(string mailboxName, int count, int startIndex, bool reverseOrder, bool headersOnly, bool setSeenFlag)
+        public async Task<List<MailMessage>> GetMessagesAsync(string mailboxName, int count, int startIndex, bool reverseOrder, bool headersOnly, bool setSeenFlag)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated || string.IsNullOrEmpty(mailboxName))
@@ -1176,7 +1160,7 @@ namespace OpaqueMail.Net
             if (mailboxName != CurrentMailboxName)
                 await SelectMailboxAsync(mailboxName);
 
-            List<ReadOnlyMailMessage> messages = new List<ReadOnlyMailMessage>();
+            List<MailMessage> messages = new List<MailMessage>();
             int numMessages = await GetMessageCountAsync();
 
             int messagesReturned = 0;
@@ -1186,7 +1170,7 @@ namespace OpaqueMail.Net
             int loopIterations = 0;
             for (int i = loopStartIndex; loopIterations < numMessages; i += loopIterateCount)
             {
-                ReadOnlyMailMessage message = await GetMessageHelper(mailboxName, i, headersOnly, setSeenFlag, false);
+                MailMessage message = await GetMessageHelper(mailboxName, i, headersOnly, setSeenFlag, -1, -1, false);
 
                 if (message != null)
                 {
@@ -1691,98 +1675,101 @@ namespace OpaqueMail.Net
 
                     string responseLine = await ImapStreamReader.ReadLineAsync();
 
-                    // Split the line into its components and check if this is a tagged response.
-                    string[] responseParts = responseLine.Split(new char[] { ' ' }, 3);
-
-                    if (responseParts.Length > 1)
+                    if (responseLine != null)
                     {
-                        // If it's a tagged response and it matches the tag we're expecting, return the proper result.
-                        switch (responseParts[1])
+                        // Split the line into its components and check if this is a tagged response.
+                        string[] responseParts = responseLine.Split(new char[] { ' ' }, 3);
+
+                        if (responseParts.Length > 1)
                         {
-                            // Handle successes.
-                            case "OK":
-                                string result = "";
-                                if (responseBuilder.Length > 0)
-                                    result = responseBuilder.ToString();
-                                else if (responseParts.Length > 2)
-                                    result = responseParts[2];
-
-                                // If the result matches our expected tag, return it; otherwise, save it for later and continue with the next result.
-                                if (responseParts[0] == commandTag || previousCommand == "DONE")
-                                {
-                                    LastCommandResult = true;
-                                    return result;
-                                }
-                                else if (responseParts[0] != "*")
-                                {
-                                    SwitchBoard[responseParts[0]] = result;
-                                    continue;
-                                }
-                                else
-                                {
-                                    responseBuilder.Append(responseLine + "\r\n");
-                                    continue;
-                                }
-
-                            // Handle errors.
-                            case "BAD":
-                            case "NO":
-                                if (responseParts.Length > 2)
-                                    LastErrorMessage = responseParts[2];
-
-                                if (responseParts[0] == commandTag)
-                                {
-                                    LastCommandResult = false;
-                                    return "";
-                                }
-                                else
-                                {
-                                    SwitchBoard[responseParts[0]] = "";
-                                    continue;
-                                }
-
-                            // Handle explicit server disconnections by raising the "Disconnect" event.
-                            case "BYE":
-                                LastCommandResult = false;
-                                if (ImapClientDisconnectEvent != null)
-                                    OnImapClientDisconnectEvent();
-                                Disconnect();
-                                return "";
-
-                            // If not a known response, return it verbatim.
-                            default:
-                                result = responseLine.Substring(responseLine.IndexOf(" ") + 1); ;
-
-                                if (responseParts[0] == commandTag || (responseParts[0] == "+" && responseBuilder.Length == 0))
-                                    return result;
-                                else
-                                    responseBuilder.Append(responseLine + "\r\n");
-
-                                break;
-                        }
-                    }
-                    else
-                        responseBuilder.Append(responseLine + "\r\n");
-
-                    // Handle status notifications.
-                    if (SessionIsIdle)
-                    {
-                        if (responseLine.StartsWith("* "))
-                        {
-                            responseParts = responseLine.Split(new char[] { ' ' }, 4);
-
-                            if (responseParts.Length > 2)
+                            // If it's a tagged response and it matches the tag we're expecting, return the proper result.
+                            switch (responseParts[1])
                             {
-                                switch (responseParts[2])
+                                // Handle successes.
+                                case "OK":
+                                    string result = "";
+                                    if (responseBuilder.Length > 0)
+                                        result = responseBuilder.ToString();
+                                    else if (responseParts.Length > 2)
+                                        result = responseParts[2];
+
+                                    // If the result matches our expected tag, return it; otherwise, save it for later and continue with the next result.
+                                    if (responseParts[0] == commandTag || previousCommand == "DONE")
+                                    {
+                                        LastCommandResult = true;
+                                        return result;
+                                    }
+                                    else if (responseParts[0] != "*")
+                                    {
+                                        SwitchBoard[responseParts[0]] = result;
+                                        continue;
+                                    }
+                                    else
+                                    {
+                                        responseBuilder.Append(responseLine + "\r\n");
+                                        continue;
+                                    }
+
+                                // Handle errors.
+                                case "BAD":
+                                case "NO":
+                                    if (responseParts.Length > 2)
+                                        LastErrorMessage = responseParts[2];
+
+                                    if (responseParts[0] == commandTag)
+                                    {
+                                        LastCommandResult = false;
+                                        return "";
+                                    }
+                                    else
+                                    {
+                                        SwitchBoard[responseParts[0]] = "";
+                                        continue;
+                                    }
+
+                                // Handle explicit server disconnections by raising the "Disconnect" event.
+                                case "BYE":
+                                    LastCommandResult = false;
+                                    if (ImapClientDisconnectEvent != null)
+                                        OnImapClientDisconnectEvent();
+                                    Disconnect();
+                                    return "";
+
+                                // If not a known response, return it verbatim.
+                                default:
+                                    result = responseLine.Substring(responseLine.IndexOf(" ") + 1); ;
+
+                                    if (responseParts[0] == commandTag || (responseParts[0] == "+" && responseBuilder.Length == 0))
+                                        return result;
+                                    else
+                                        responseBuilder.Append(responseLine + "\r\n");
+
+                                    break;
+                            }
+                        }
+                        else
+                            responseBuilder.Append(responseLine + "\r\n");
+
+                        // Handle status notifications.
+                        if (SessionIsIdle)
+                        {
+                            if (responseLine.StartsWith("* "))
+                            {
+                                responseParts = responseLine.Split(new char[] { ' ' }, 4);
+
+                                if (responseParts.Length > 2)
                                 {
-                                    case "EXISTS":
-                                        if (ImapClientNewMessageEvent != null)
-                                            OnImapClientNewMessageEvent(new ImapClientNewMessageEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
-                                        break;
-                                    case "EXPUNGE":
-                                        if (ImapClientMessageExpungeEvent != null)
-                                            OnImapClientMessageExpungeEvent(new ImapClientMessageExpungeEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
-                                        break;
+                                    switch (responseParts[2])
+                                    {
+                                        case "EXISTS":
+                                            if (ImapClientNewMessageEvent != null)
+                                                OnImapClientNewMessageEvent(new ImapClientNewMessageEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                            break;
+                                        case "EXPUNGE":
+                                            if (ImapClientMessageExpungeEvent != null)
+                                                OnImapClientMessageExpungeEvent(new ImapClientMessageExpungeEventArgs(CurrentMailboxName, int.Parse(responseParts[1])));
+                                            break;
+                                    }
                                 }
                             }
                         }
@@ -1845,7 +1832,7 @@ namespace OpaqueMail.Net
         /// Perform a search in the current mailbox and return all matching messages.
         /// </summary>
         /// <param name="searchQuery">Well-formatted IMAP search criteria.</param>
-        public async Task<List<ReadOnlyMailMessage>> SearchAsync(string searchQuery)
+        public async Task<List<MailMessage>> SearchAsync(string searchQuery)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -1865,7 +1852,7 @@ namespace OpaqueMail.Net
 
             if (LastCommandResult)
             {
-                List<ReadOnlyMailMessage> messages = new List<ReadOnlyMailMessage>();
+                List<MailMessage> messages = new List<MailMessage>();
 
                 if (response.StartsWith("* SEARCH "))
                 {
@@ -1875,7 +1862,7 @@ namespace OpaqueMail.Net
                         int numericMessageID = -1;
                         if (int.TryParse(messageID, out numericMessageID))
                         {
-                            ReadOnlyMailMessage message = await GetMessageAsync(int.Parse(messageID));
+                            MailMessage message = await GetMessageAsync(int.Parse(messageID));
                             if (message != null)
                                 messages.Add(message);
                         }
@@ -1885,7 +1872,7 @@ namespace OpaqueMail.Net
                 return messages;
             }
 
-            return new List<ReadOnlyMailMessage>();
+            return new List<MailMessage>();
         }
 
         /// <summary>
@@ -2151,9 +2138,19 @@ namespace OpaqueMail.Net
         private async void CheckIdle(object idleInitializedTimeObject)
         {
             DateTime idleInitializedTime = (DateTime)idleInitializedTimeObject;
-            
+
             while (IdleInitializedTime == idleInitializedTime)
-                await ReadDataAsync("", "IDLE");
+            {
+                // Deal with errors by stopping idle.
+                try
+                {
+                    await ReadDataAsync("", "IDLE");
+                }
+                catch (Exception)
+                {
+                    IdleInitializedTime = DateTime.Now;
+                }
+            }
         }
 
         /// <summary>
@@ -2164,7 +2161,9 @@ namespace OpaqueMail.Net
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
         /// <param name="isUid">Whether the identifer is an UID.</param>
-        private async Task<ReadOnlyMailMessage> GetMessageHelper(string mailboxName, int id, bool headersOnly, bool setSeenFlag, bool isUid)
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        private async Task<MailMessage> GetMessageHelper(string mailboxName, int id, bool headersOnly, bool setSeenFlag, int seekStart, int seekEnd, bool isUid)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -2178,21 +2177,43 @@ namespace OpaqueMail.Net
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            // Format the command depending on whether we want headers only and whether we want to mark messages as seen.
+            // Format the command depending on whether we want headers only,
+            //      whether this is a partial request, and
+            //      whether we want to mark messages as seen.
             if (headersOnly)
                 await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[HEADER] UID)\r\n");
             else
             {
                 if (setSeenFlag)
-                    await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[] UID FLAGS)\r\n");
+                {
+                    if (seekStart > -1)
+                    {
+                        if (seekEnd > -1)
+                            await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[]<" + seekStart + "> UID FLAGS)\r\n");
+                        else
+                            await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[]<" + seekStart + "." + seekEnd + "> UID FLAGS)\r\n");
+                    }
+                    else
+                        await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[] UID FLAGS)\r\n");
+                }
                 else
-                    await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[] UID FLAGS)\r\n");
+                {
+                    if (seekStart > -1)
+                    {
+                        if (seekEnd > -1)
+                            await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[]<" + seekStart + "> UID FLAGS)\r\n");
+                        else
+                            await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[]<" + seekStart + "." + seekEnd + "> UID FLAGS)\r\n");
+                    }
+                    else
+                        await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[] UID FLAGS)\r\n");
+                }
             }
 
             string response = await ReadDataAsync(commandTag, "FETCH");
 
             // Ensure the message was actually found.
-            if (response.IndexOf("\r\n", StringComparison.Ordinal) > -1)
+            if (response.IndexOf("\r\n") > -1)
             {
                 // Read the message's UID and flags.
                 int uid = 0;
@@ -2201,9 +2222,9 @@ namespace OpaqueMail.Net
 
                 // Strip IMAP response padding.
                 response = response.Substring(response.IndexOf("\r\n") + 2);
-                response = response.Substring(0, response.Length - 3);
+                response = response.Substring(0, response.Length - 2);
 
-                ReadOnlyMailMessage message = new ReadOnlyMailMessage(response, ProcessingFlags);
+                MailMessage message = new MailMessage(response, ProcessingFlags);
                 message.ImapUid = uid;
                 message.Mailbox = mailboxName;
                 message.ParseFlagsString(flagsString);

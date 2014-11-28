@@ -52,7 +52,7 @@ namespace OpaqueMail.Proxy
         }
 
         /// <summary>
-        /// Process special characters in an exported e-mail file name.
+        /// Process special characters in an exported email file name.
         /// </summary>
         /// <param name="directory">The base directory to export messages to.</param>
         /// <param name="messageId">ID of the message.</param>
@@ -98,6 +98,10 @@ namespace OpaqueMail.Proxy
         /// <returns>The final log file name, with full path, to be used.</returns>
         public static string GetLogFileName(string fileName, int instanceId, string localIPAddress, string remoteServerHostName, int localPort, int remoteServerPort)
         {
+            // If no filename is passed, default to the local server IP address and port.
+            if (string.IsNullOrEmpty(fileName))
+                fileName = "{localIpAddress}-{localPort}.log";
+
             // Replace the {#} token with the proxy instance number.
             if (instanceId == 1)
                 fileName = fileName.Replace("{#}", "");

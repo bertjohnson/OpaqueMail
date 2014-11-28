@@ -21,7 +21,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Mail;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -172,9 +172,16 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// </summary>
         private async void ImapDeleteMessageButton_Click(object sender, EventArgs e)
         {
+            // Stop idling to resume commands.
+            if (myImapClient.IsIdle)
+                await myImapClient.IdleStopAsync();
+
             await myImapClient.DeleteMessageUidAsync(imapMessageIDs[ImapMessageList.SelectedIndex].Item1, imapMessageIDs[ImapMessageList.SelectedIndex].Item2);
             ImapDeleteMessageButton.Enabled = false;
             await RefreshImapMessages(false);
+
+            // Resume idling.
+            await myImapClient.IdleStartAsync();
         }
 
         /// <summary>
@@ -240,7 +247,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             if (FileDialog.ShowDialog() == DialogResult.OK)
             {
-                ReadOnlyMailMessage message = ReadOnlyMailMessage.LoadFile(FileDialog.FileName);
+                MailMessage message = MailMessage.LoadFile(FileDialog.FileName);
                 RenderMessage(message, ImapHeaders, ImapWebPreview, ImapWebPreviewPanel);
             }
         }
@@ -289,7 +296,21 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                                     await myImapClient.IdleStopAsync();
 
                                 // Retrieve the selected message.
-                                ReadOnlyMailMessage message = myImapClient.GetMessageUid(imapMessageIDs[ImapMessageList.SelectedIndex].Item1, imapMessageIDs[ImapMessageList.SelectedIndex].Item2);
+                                MailMessage message = null;
+                                if (!ImapIncludeBody.Checked)
+                                {
+                                    if (ImapIncludeHeaders.Checked)
+                                        message = myImapClient.GetMessageUid(imapMessageIDs[ImapMessageList.SelectedIndex].Item1, imapMessageIDs[ImapMessageList.SelectedIndex].Item2, true);
+                                    else
+                                        return;
+                                }
+                                else
+                                {
+                                    if (ImapFirst1k.Checked)
+                                        message = myImapClient.GetMessageUid(imapMessageIDs[ImapMessageList.SelectedIndex].Item1, imapMessageIDs[ImapMessageList.SelectedIndex].Item2, setSeenFlag: true, seekStart: 0, seekEnd: 1000);
+                                    else
+                                        message = myImapClient.GetMessageUid(imapMessageIDs[ImapMessageList.SelectedIndex].Item1, imapMessageIDs[ImapMessageList.SelectedIndex].Item2, setSeenFlag: true);
+                                }
 
                                 // Resume idling.
                                 await myImapClient.IdleStartAsync();
@@ -369,6 +390,8 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                         MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
+
+                    await myImapClient.IdentifyAsync(new ImapIdentification("OpaqueMail", Assembly.GetExecutingAssembly().GetName().Version.ToString(), Environment.OSVersion.VersionString, "Microsoft", "OpaqueMail", "http://opaquemail.org/", "", DateTime.Now.ToShortDateString(), "", "", ""));
                 }
 
                 if (myImapClient != null)
@@ -380,8 +403,11 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                             await myImapClient.IdleStopAsync();
 
                         await myImapClient.SelectMailboxAsync(mailbox);
-                        List<ReadOnlyMailMessage> messages = await myImapClient.SearchAsync("TEXT \"" + ImapSearchText.Text + "\"");
-
+                        List<MailMessage> messages;
+                        if (ImapSearchText.Text.StartsWith("MESSAGE ") || ImapSearchText.Text.StartsWith("HEADER "))
+                            messages = await myImapClient.SearchAsync(ImapSearchText.Text);
+                        else
+                            messages = await myImapClient.SearchAsync("TEXT \"" + ImapSearchText.Text + "\"");
                         // Resume idling.
                         await myImapClient.IdleStartAsync();
 
@@ -492,7 +518,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                             if (myPop3Client.IsConnected)
                             {
                                 // Retrieve the selected message.
-                                ReadOnlyMailMessage message = await myPop3Client.GetMessageAsync(pop3MessageIDs[Pop3MessageList.SelectedIndex]);
+                                MailMessage message = await myPop3Client.GetMessageAsync(pop3MessageIDs[Pop3MessageList.SelectedIndex]);
 
                                 if (message != null)
                                 {
@@ -551,7 +577,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         }
 
         /// <summary>
-        /// Send an e-mail using the SMTP settings specified.
+        /// Send an email using the SMTP settings specified.
         /// </summary>
         private async void SmtpSendButton_Click(object sender, EventArgs e)
         {
@@ -603,21 +629,21 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 // Parse all addresses provided into MailAddress objects.
                 if (SmtpTo.Text.Length > 0)
                 {
-                    MailAddressCollection toAddresses = Functions.FromMailAddressString(SmtpTo.Text);
+                    MailAddressCollection toAddresses = MailAddressCollection.Parse(SmtpTo.Text);
                     foreach (MailAddress toAddress in toAddresses)
                         message.To.Add(toAddress);
                 }
 
                 if (SmtpCC.Text.Length > 0)
                 {
-                    MailAddressCollection ccAddresses = Functions.FromMailAddressString(SmtpCC.Text);
+                    MailAddressCollection ccAddresses = MailAddressCollection.Parse(SmtpCC.Text);
                     foreach (MailAddress ccAddress in ccAddresses)
                         message.CC.Add(ccAddress);
                 }
 
                 if (SmtpBcc.Text.Length > 0)
                 {
-                    MailAddressCollection bccAddresses = Functions.FromMailAddressString(SmtpBcc.Text);
+                    MailAddressCollection bccAddresses = MailAddressCollection.Parse(SmtpBcc.Text);
                     foreach (MailAddress bccAddress in bccAddresses)
                         message.Bcc.Add(bccAddress);
                 }
@@ -821,7 +847,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             ImapMessageList.Items.Clear();
             ImapMessageList.Enabled = false;
             await myImapClient.SelectMailboxAsync(mailbox);
-            List<ReadOnlyMailMessage> messages = await myImapClient.GetMessagesAsync(mailbox, 25, 1, true, true, false);
+            List<MailMessage> messages = await myImapClient.GetMessagesAsync(mailbox, 25, 1, true, true, false);
             imapMessageIDs = new Tuple<string, int>[messages.Count];
 
             // Repopulate the message list with the subjects of messages retrieved.
@@ -898,7 +924,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             }
 
             // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
-            List<ReadOnlyMailMessage> messages = await myPop3Client.GetMessagesAsync(25, 1, false, true);
+            List<MailMessage> messages = await myPop3Client.GetMessagesAsync(25, 1, false, true);
             pop3MessageIDs = new List<int>();
 
             // Repopulate the message list with the subjects of messages retrieved.
@@ -923,7 +949,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         /// <param name="headerTextBox">The textbox to populate with selected headers.</param>
         /// <param name="bodyWebBrowser">The web browser in which to render the body.</param>
         /// <param name="bodyWebBrowserPanel">The panel containing the web browser.</param>
-        private void RenderMessage(ReadOnlyMailMessage message, TextBox headerTextBox, WebBrowser bodyWebBrowser, Panel bodyWebBrowserPanel)
+        private void RenderMessage(MailMessage message, TextBox headerTextBox, WebBrowser bodyWebBrowser, Panel bodyWebBrowserPanel)
         {
             StringBuilder headersText = new StringBuilder(Constants.SMALLSBSIZE);
 
@@ -931,14 +957,14 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             headersText.Append("Date: " + message.Date.ToString() + "\r\n");
             headersText.Append("From: ");
             if (message.From != null)
-                headersText.Append(Functions.ToMailAddressString(new MailAddressCollection() { message.From }));
+                headersText.Append(message.From);
             else if (message.Sender != null)
-                headersText.Append(Functions.ToMailAddressString(new MailAddressCollection() { message.Sender }));
+                headersText.Append(message.Sender);
             headersText.Append("\r\n");
             if (message.To.Count > 0)
-                headersText.Append("To: " + Functions.ToMailAddressString(message.To) + "\r\n");
+                headersText.Append("To: " + message.To + "\r\n");
             if (message.CC.Count > 0)
-                headersText.Append("CC: " + Functions.ToMailAddressString(message.CC) + "\r\n");
+                headersText.Append("CC: " + message.CC + "\r\n");
             headersText.Append("Subject: " + message.Subject + "\r\n");
             headersText.Append("S/MIME Signed: " + message.SmimeSigned.ToString() + "\r\n");
             headersText.Append("S/MIME Envelope Encrypted: " + message.SmimeEncryptedEnvelope.ToString() + "\r\n");
@@ -963,7 +989,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 {
                     if (i > 0)
                         headersText.Append("; ");
-                    headersText.Append(message.Attachments[i].Name + " (" + message.Attachments[i].ContentType.MediaType + ")");
+                    headersText.Append(message.Attachments[i].Name + " (" + message.Attachments[i].MediaType + ")");
                 }
             }
 
@@ -993,7 +1019,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             // If HTML, correct rendering of non-breaking spaces in the WebBrowser control.  Otherwise, cast to HTML.
             if (message.IsBodyHtml)
-                bodyHtml = bodyHtml.Replace(char.ConvertFromUtf32(194).ToString(), "&nbsp;").Replace(char.ConvertFromUtf32(256).ToString(), "&nbsp;");
+                bodyHtml = bodyHtml.Replace(char.ConvertFromUtf32(194).ToString(), "&nbsp;").Replace(char.ConvertFromUtf32(195).ToString(), "&nbsp;").Replace(char.ConvertFromUtf32(256).ToString(), "&nbsp;");
             else
                 bodyHtml = Functions.ConvertPlainTextToHTML(bodyHtml);
 
@@ -1029,8 +1055,11 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             ImapTestGroup.Width = this.Width - 42;
             ImapMessageGroup.Height = this.Height - 156;
-            ImapMessageList.Height = this.Height - 235;
-            ImapDeleteMessageButton.Top = this.Height - 188;
+            ImapMessageList.Height = this.Height - 300;
+            ImapDeleteMessageButton.Top = this.Height - 249;
+            ImapIncludeHeaders.Top = this.Height - 222;
+            ImapIncludeBody.Top = this.Height - 199;
+            ImapFirst1k.Top = this.Height - 176;
             ImapHeaders.Width = this.Width - 246;
             ImapPreviewGroup.Width = this.Width - 232;
             ImapPreviewGroup.Height = this.Height - 156;
@@ -1183,5 +1212,9 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 textbox.Text = valueNavigator.Value;
         }
         #endregion Private Methods
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+        }
     }
 }

@@ -19,7 +19,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Mail;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
@@ -99,11 +98,11 @@ namespace OpaqueMail.Proxy
         /// <param name="bcc">(Optional) "BCC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
         /// <param name="signature">(Optional) Signature to add to the end of each sent message.</param>
         /// <param name="smimeSettingsMode">Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</param>
-        /// <param name="smimeEncryptedEnvelope">Whether the e-mail's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
-        /// <param name="smimeSigned">Whether the e-mail should be signed.  When true, signing is the first S/MIME operation</param>
-        /// <param name="smimeTripleWrapped">Whether the e-mail should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
+        /// <param name="smimeEncryptedEnvelope">Whether the email's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
+        /// <param name="smimeSigned">Whether the email should be signed.  When true, signing is the first S/MIME operation</param>
+        /// <param name="smimeTripleWrapped">Whether the email should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
         /// <param name="smimeRemovePreviousOperations">Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</param>
-        /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
+        /// <param name="sendCertificateReminders">Send email reminders when a signing certificate is due to expire within 30 days.</param>
         /// <param name="smimeValidCertificates">Collection of certificates to be used when searching for recipient public keys.</param>
         public void Start(string acceptedIPs, IPAddress localIPAddress, int localPort, bool localEnableSsl, string remoteServerHostName, int remoteServerPort, bool remoteServerEnableSsl, NetworkCredential remoteServerCredential, string from, string to, string cc, string bcc, string signature, SmimeSettingsMode smimeSettingsMode, bool smimeSigned, bool smimeEncryptedEnvelope, bool smimeTripleWrapped, bool smimeRemovePreviousOperations, bool sendCertificateReminders, X509Certificate2Collection smimeValidCertificates)
         {
@@ -127,11 +126,11 @@ namespace OpaqueMail.Proxy
         /// <param name="bcc">(Optional) "BCC" address(es) for all sent messages.  When supplied, it will override any values sent from the client.</param>
         /// <param name="signature">(Optional) Signature to add to the end of each sent message.</param>
         /// <param name="smimeSettingsMode">Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</param>
-        /// <param name="smimeEncryptedEnvelope">Whether the e-mail's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
-        /// <param name="smimeSigned">Whether the e-mail should be signed.  When true, signing is the first S/MIME operation</param>
-        /// <param name="smimeTripleWrapped">Whether the e-mail should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
+        /// <param name="smimeEncryptedEnvelope">Whether the email's envelope should be encrypted.  When SmimeSign is true, encryption is the second S/MIME operation.</param>
+        /// <param name="smimeSigned">Whether the email should be signed.  When true, signing is the first S/MIME operation</param>
+        /// <param name="smimeTripleWrapped">Whether the email should be triple-wrapped by signing, then encrypting the envelope, then signing the encrypted envelope.</param>
         /// <param name="smimeRemovePreviousOperations">Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</param>
-        /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
+        /// <param name="sendCertificateReminders">Send email reminders when a signing certificate is due to expire within 30 days.</param>
         /// <param name="exportDirectory">(Optional) Location where all outbound messages are saved as EML files.</param>
         /// <param name="logFile">File where event logs and exception information will be written.</param>
         /// <param name="logLevel">Proxy logging level, determining how much information is logged.</param>
@@ -231,7 +230,8 @@ namespace OpaqueMail.Proxy
                         string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId, localIPAddress.ToString(), remoteServerHostName, localPort, remoteServerPort);
                         if (newLogFileName != logFileName)
                         {
-                            LogWriter.Close();
+                            if (LogWriter != null)
+                                LogWriter.Close();
                             LogWriter = new StreamWriter(newLogFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
                             LogWriter.AutoFlush = true;
                         }
@@ -622,11 +622,11 @@ namespace OpaqueMail.Proxy
                                                 File.WriteAllText(fileName, messageText);
                                             }
 
-                                            ReadOnlyMailMessage message = new ReadOnlyMailMessage(messageText, ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody);
+                                            MailMessage message = new MailMessage(messageText, ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody);
 
                                             if (!string.IsNullOrEmpty(arguments.FixedFrom))
                                             {
-                                                message.From = Functions.FromMailAddressString(arguments.FixedFrom)[0];
+                                                message.From = MailAddressCollection.Parse(arguments.FixedFrom)[0];
 
                                                 if (message.RawHeaders.Contains("From: "))
                                                     message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "From: ", "\r\n", Functions.ToMailAddressString(message.From));
@@ -636,7 +636,7 @@ namespace OpaqueMail.Proxy
 
                                             if (!string.IsNullOrEmpty(arguments.FixedTo))
                                             {
-                                                MailAddressCollection addresses = Functions.FromMailAddressString(arguments.FixedTo);
+                                                MailAddressCollection addresses = MailAddressCollection.Parse(arguments.FixedTo);
                                                 foreach (MailAddress address in addresses)
                                                 {
                                                     bool addressFound = false;
@@ -651,14 +651,14 @@ namespace OpaqueMail.Proxy
                                                 }
 
                                                 if (message.RawHeaders.Contains("To: "))
-                                                    message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "To: ", "\r\n", Functions.ToMailAddressString(message.To));
+                                                    message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "To: ", "\r\n", message.To.ToString());
                                                 else
-                                                    message.RawHeaders = message.RawHeaders.Replace("\r\nSubject: ", "\r\nTo: " + Functions.ToMailAddressString(message.To) + "\r\nSubject: ");
+                                                    message.RawHeaders = message.RawHeaders.Replace("\r\nSubject: ", "\r\nTo: " + message.To.ToString() + "\r\nSubject: ");
                                             }
 
                                             if (!string.IsNullOrEmpty(arguments.FixedCC))
                                             {
-                                                MailAddressCollection addresses = Functions.FromMailAddressString(arguments.FixedCC);
+                                                MailAddressCollection addresses = MailAddressCollection.Parse(arguments.FixedCC);
                                                 foreach (MailAddress address in addresses)
                                                 {
                                                     bool addressFound = false;
@@ -673,14 +673,14 @@ namespace OpaqueMail.Proxy
                                                 }
 
                                                 if (message.RawHeaders.Contains("CC: "))
-                                                    message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "CC: ", "\r\n", Functions.ToMailAddressString(message.To));
+                                                    message.RawHeaders = Functions.ReplaceBetween(message.RawHeaders, "CC: ", "\r\n", message.To.ToString());
                                                 else
-                                                    message.RawHeaders = message.RawHeaders.Replace("\r\nSubject: ", "\r\nTo: " + Functions.ToMailAddressString(message.To) + "\r\nSubject: ");
+                                                    message.RawHeaders = message.RawHeaders.Replace("\r\nSubject: ", "\r\nTo: " + message.To + "\r\nSubject: ");
                                             }
 
                                             if (!string.IsNullOrEmpty(arguments.FixedBcc))
                                             {
-                                                MailAddressCollection addresses = Functions.FromMailAddressString(arguments.FixedBcc);
+                                                MailAddressCollection addresses = MailAddressCollection.Parse(arguments.FixedBcc);
                                                 foreach (MailAddress address in addresses)
                                                 {
                                                     bool addressFound = false;
@@ -746,7 +746,7 @@ namespace OpaqueMail.Proxy
                                                 ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "C: " + message.RawHeaders + "\r\n\r\n" + message.RawBody, Proxy.LogLevel.Raw, LogLevel);
 
                                                 // Send the message.
-                                                await smtpClient.SendAsync(message.AsMailMessage());
+                                                await smtpClient.SendAsync(message);
 
                                                 // Check the signing certificate's expiration to determine if we should send a reminder.
                                                 if (arguments.SendCertificateReminders && message.SmimeSigningCertificate != null)
@@ -772,7 +772,7 @@ namespace OpaqueMail.Proxy
                                                                 "Certificate Subject Name: " + message.SmimeSigningCertificate.Subject + "\r\n" +
                                                                 "Certificate Serial Number: " + message.SmimeSigningCertificate.SerialNumber + "\r\n" +
                                                                 "Certificate Issuer: " + message.SmimeSigningCertificate.Issuer + "\r\n\r\n" +
-                                                                "Please renew or enroll a new certificate to continue protecting your e-mail privacy.\r\n\r\n" +
+                                                                "Please renew or enroll a new certificate to continue protecting your email privacy.\r\n\r\n" +
                                                                 "This is an automated message sent from the OpaqueMail Proxy on " + Functions.GetLocalFQDN() + ".  " +
                                                                 "For more information, visit http://opaquemail.org/.";
 

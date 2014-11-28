@@ -83,7 +83,7 @@ namespace OpaqueMail.Net
         {
             List<string> oids = new List<string>();
             oids.Add("1.3.6.1.5.5.7.3.4");          // Secure Email.
-            oids.Add("1.3.6.1.4.1.6449.1.3.5.2");   // E-mail Protection.
+            oids.Add("1.3.6.1.4.1.6449.1.3.5.2");   // Email Protection.
 
             return CreateCertificateSigningRequest(subjectName, keyLength, durationYears, oids);
         }
@@ -230,7 +230,7 @@ namespace OpaqueMail.Net
         {
             List<string> oids = new List<string>();
             oids.Add("1.3.6.1.5.5.7.3.4");        // Secure Email.
-            oids.Add("1.3.6.1.4.1.6449.1.3.5.2");   // E-mail Protection.
+            oids.Add("1.3.6.1.4.1.6449.1.3.5.2");   // Email Protection.
 
             return CreateSelfSignedCertificate(subjectName, friendlyName, location, addToTrustedRoot, keyLength, durationYears, oids);
         }

@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 namespace OpaqueMail.Net
 {
     /// <summary>
-    /// Allows applications to retrieve and manage e-mail by using the Post Office Protocol (POP3).
+    /// Allows applications to retrieve and manage email by using the Post Office Protocol (POP3).
     /// </summary>
     /// <remarks>Includes OpaqueMail extensions to facilitate processing of secure S/MIME messages.</remarks>
     public class Pop3Client : IDisposable
@@ -434,7 +434,7 @@ namespace OpaqueMail.Net
         /// Retrieve a specific message from the server based on its index.
         /// </summary>
         /// <param name="index">The index number of the message to return.</param>
-        public ReadOnlyMailMessage GetMessage(int index)
+        public MailMessage GetMessage(int index)
         {
             return Task.Run(() => GetMessageAsync(index)).Result;
         }
@@ -443,7 +443,7 @@ namespace OpaqueMail.Net
         /// Retrieve a specific message from the server based on its UID.
         /// </summary>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
-        public ReadOnlyMailMessage GetMessageUid(string uid)
+        public MailMessage GetMessageUid(string uid)
         {
             return Task.Run(() => GetMessageUidAsync(uid)).Result;
         }
@@ -453,7 +453,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="index">The index number of the message to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public ReadOnlyMailMessage GetMessage(int index, bool headersOnly)
+        public MailMessage GetMessage(int index, bool headersOnly)
         {
             return Task.Run(() => GetMessageAsync(index, headersOnly)).Result;
         }
@@ -463,7 +463,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public ReadOnlyMailMessage GetMessageUid(string uid, bool headersOnly)
+        public MailMessage GetMessageUid(string uid, bool headersOnly)
         {
             return Task.Run(() => GetMessageUidAsync(uid, headersOnly)).Result;
         }
@@ -472,7 +472,7 @@ namespace OpaqueMail.Net
         /// Retrieve a specific message from the server based on its index.
         /// </summary>
         /// <param name="index">The index number of the message to return.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageAsync(int index)
+        public async Task<MailMessage> GetMessageAsync(int index)
         {
             return await GetMessageHelper(index, "", false);
         }
@@ -481,7 +481,7 @@ namespace OpaqueMail.Net
         /// Retrieve a specific message from the server based on its UID.
         /// </summary>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageUidAsync(string uid)
+        public async Task<MailMessage> GetMessageUidAsync(string uid)
         {
             return await GetMessageHelper(-1, uid, false);
         }
@@ -491,7 +491,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="index">The index number of the message to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageAsync(int index, bool headersOnly)
+        public async Task<MailMessage> GetMessageAsync(int index, bool headersOnly)
         {
             return await GetMessageHelper(index, "", headersOnly);
         }
@@ -501,7 +501,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public async Task<ReadOnlyMailMessage> GetMessageUidAsync(string uid, bool headersOnly)
+        public async Task<MailMessage> GetMessageUidAsync(string uid, bool headersOnly)
         {
             return await GetMessageHelper(-1, uid, headersOnly);
         }
@@ -540,7 +540,7 @@ namespace OpaqueMail.Net
         /// <summary>
         /// Retrieve up to 25 of the most recent messages on the POP3 server.
         /// </summary>
-        public List<ReadOnlyMailMessage> GetMessages()
+        public List<MailMessage> GetMessages()
         {
             return Task.Run(() => GetMessagesAsync()).Result;
         }
@@ -549,7 +549,7 @@ namespace OpaqueMail.Net
         /// Retrieve up to count of the most recent messages on the POP3 server.
         /// </summary>
         /// <param name="count">The maximum number of messages to return.</param>
-        public List<ReadOnlyMailMessage> GetMessages(int count)
+        public List<MailMessage> GetMessages(int count)
         {
             return Task.Run(() => GetMessagesAsync(count)).Result;
         }
@@ -559,7 +559,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public List<ReadOnlyMailMessage> GetMessages(int count, bool headersOnly)
+        public List<MailMessage> GetMessages(int count, bool headersOnly)
         {
             return Task.Run(() => GetMessagesAsync(count, headersOnly)).Result;
         }
@@ -570,7 +570,7 @@ namespace OpaqueMail.Net
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="startIndex">The relative 1-indexed message to start at.</param>
         /// <param name="reverseOrder">Whether to return messages in descending order.</param>
-        public List<ReadOnlyMailMessage> GetMessages(int count, int startIndex, bool reverseOrder)
+        public List<MailMessage> GetMessages(int count, int startIndex, bool reverseOrder)
         {
             return Task.Run(() => GetMessagesAsync(count, startIndex, reverseOrder)).Result;
         }
@@ -582,7 +582,7 @@ namespace OpaqueMail.Net
         /// <param name="startIndex">The relative 1-indexed message to start with.</param>
         /// <param name="reverseOrder">Whether to return messages in descending order.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
-        public List<ReadOnlyMailMessage> GetMessages(int count, int startIndex, bool reverseOrder, bool headersOnly)
+        public List<MailMessage> GetMessages(int count, int startIndex, bool reverseOrder, bool headersOnly)
         {
             return Task.Run(() => GetMessagesAsync(count, startIndex, reverseOrder, headersOnly)).Result;
         }
@@ -590,7 +590,7 @@ namespace OpaqueMail.Net
         /// <summary>
         /// Retrieve up to 25 of the most recent messages on the POP3 server.
         /// </summary>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync()
+        public async Task<List<MailMessage>> GetMessagesAsync()
         {
             return await GetMessagesAsync(25, 1, false, false);
         }
@@ -599,7 +599,7 @@ namespace OpaqueMail.Net
         /// Retrieve up to count of the most recent messages on the POP3 server.
         /// </summary>
         /// <param name="count">The maximum number of messages to return.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(int count)
+        public async Task<List<MailMessage>> GetMessagesAsync(int count)
         {
             return await GetMessagesAsync(count, 1, false, false);
         }
@@ -609,7 +609,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(int count, bool headersOnly)
+        public async Task<List<MailMessage>> GetMessagesAsync(int count, bool headersOnly)
         {
             return await GetMessagesAsync(count, 1, false, headersOnly);
         }
@@ -620,7 +620,7 @@ namespace OpaqueMail.Net
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="startIndex">The relative 1-indexed message to start at.</param>
         /// <param name="reverseOrder">Whether to return messages in descending order.</param>
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(int count, int startIndex, bool reverseOrder)
+        public async Task<List<MailMessage>> GetMessagesAsync(int count, int startIndex, bool reverseOrder)
         {
             return await GetMessagesAsync(count, startIndex, reverseOrder, false);
         }
@@ -632,14 +632,14 @@ namespace OpaqueMail.Net
         /// <param name="startIndex">The relative 1-indexed message to start with.</param>
         /// <param name="reverseOrder">Whether to return messages in descending order.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
-        public async Task<List<ReadOnlyMailMessage>> GetMessagesAsync(int count, int startIndex, bool reverseOrder, bool headersOnly)
+        public async Task<List<MailMessage>> GetMessagesAsync(int count, int startIndex, bool reverseOrder, bool headersOnly)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
                 throw new Pop3Exception("Must be connected to the server and authenticated prior to calling the TOP or RETR commands.");
 
             string response;
-            List<ReadOnlyMailMessage> messages = new List<ReadOnlyMailMessage>();
+            List<MailMessage> messages = new List<MailMessage>();
             Dictionary<int, string> uidls = new Dictionary<int, string>();
 
             // Try to retrieve a list of unique IDs using the UIDL command.
@@ -674,7 +674,7 @@ namespace OpaqueMail.Net
                 int loopIterations = 0;
                 for (int i = loopStartIndex; loopIterations < numMessages; i+=loopIterateCount)
                 {
-                    ReadOnlyMailMessage message = await GetMessageHelper(i, "", headersOnly);
+                    MailMessage message = await GetMessageHelper(i, "", headersOnly);
                     if (message != null)
                     {
                         message.Index = i;
@@ -973,7 +973,7 @@ namespace OpaqueMail.Net
         /// <param name="index">The index number of the message to return.</param>
         /// <param name="uid">The UID of the message, as returned by a UIDL command.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        private async Task<ReadOnlyMailMessage> GetMessageHelper(int index, string uid, bool headersOnly)
+        private async Task<MailMessage> GetMessageHelper(int index, string uid, bool headersOnly)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -1003,7 +1003,7 @@ namespace OpaqueMail.Net
 
             if (LastCommandResult && response.Length > 0)
             {
-                ReadOnlyMailMessage message = new ReadOnlyMailMessage(response, ProcessingFlags);
+                MailMessage message = new MailMessage(response, ProcessingFlags);
 
                 if (string.IsNullOrEmpty(uid) && ServerSupportsUIDL != null)
                 {

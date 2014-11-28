@@ -40,6 +40,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AlternateView.cs" />
+    <Compile Include="Attachment.cs" />
     <Compile Include="LockAsync.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="EnumsAndStructs.cs" />
@@ -47,15 +49,16 @@
     <Compile Include="IMAP\ImapClient.cs" />
     <Compile Include="IMAP\ImapClient.Properties.cs" />
     <Compile Include="IMAP\ImapClient.Synchronous.cs" />
+    <Compile Include="MailAddress.cs" />
     <Compile Include="Mailbox.cs" />
-    <Compile Include="MailMessage.cs" />
     <Compile Include="MimePart.cs" />
-    <Compile Include="ReadOnlyMailMessage.cs" />
+    <Compile Include="MailMessage.cs" />
     <Compile Include="POP3\Pop3Client.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SMTP\SmtpClient.cs" />
     <Compile Include="TnefEncoding.cs" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

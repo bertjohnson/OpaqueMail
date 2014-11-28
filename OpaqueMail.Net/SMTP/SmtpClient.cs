@@ -18,20 +18,22 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Mail;
 using System.Net.Mime;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Runtime;
+using System.Runtime.Serialization;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace OpaqueMail.Net
 {
     /// <summary>
-    /// Allows applications to send e-mail by using the Simple Mail Transport Protocol (SMTP).
+    /// Allows applications to send email by using the Simple Mail Transport Protocol (SMTP).
     /// Includes OpaqueMail extensions to facilitate sending of secure S/MIME messages.
     /// </summary>
     public class SmtpClient : System.Net.Mail.SmtpClient
@@ -77,7 +79,7 @@ namespace OpaqueMail.Net
             RandomizeBoundaryNames();
         }
         /// <summary>
-        /// Initializes a new instance of the OpaqueMail.SmtpClient class that sends e-mail by using the specified SMTP server.
+        /// Initializes a new instance of the OpaqueMail.SmtpClient class that sends email by using the specified SMTP server.
         /// </summary>
         /// <param name="host">Name or IP of the host used for SMTP transactions.</param>
         public SmtpClient(string host)
@@ -86,7 +88,7 @@ namespace OpaqueMail.Net
             RandomizeBoundaryNames();
         }
         /// <summary>
-        /// Initializes a new instance of the OpaqueMail.SmtpClient class that sends e-mail by using the specified SMTP server and port.
+        /// Initializes a new instance of the OpaqueMail.SmtpClient class that sends email by using the specified SMTP server and port.
         /// </summary>
         /// <param name="host">Name or IP of the host used for SMTP transactions.</param>
         /// <param name="port">Port to be used by the host.</param>
@@ -105,19 +107,7 @@ namespace OpaqueMail.Net
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
         public void Send(MailMessage message)
         {
-            // If not performing any S/MIME encryption or signing, use the default System.Net.Mail.SmtpClient Send() method.
-            if (!message.SmimeSigned && !message.SmimeEncryptedEnvelope && !message.SmimeTripleWrapped)
-            {
-                // If this is a read-only message, it was forwarded by the Proxy and should be sent raw.
-                if (message is ReadOnlyMailMessage)
-                    Task.Run(() => SmimeSendRawAsync(message)).Wait();
-                else
-                    base.Send(message);
-            }
-            else
-            {
-                Task.Run(() => SmimeSendAsync(message)).Wait();
-            }
+            Task.Run(() => SmimeSendRawAsync(message)).Wait();
         }
 
         /// <summary>
@@ -127,11 +117,7 @@ namespace OpaqueMail.Net
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
         public async Task SendAsync(MailMessage message)
         {
-            // If this is a read-only message, it was forwarded by the Proxy and should be sent raw.
-            if (message is ReadOnlyMailMessage)
-                await SmimeSendRawAsync(message);
-            else
-                await SmimeSendAsync(message);
+            await SmimeSendRawAsync(message);
         }
 
         /// <summary>
@@ -227,7 +213,7 @@ namespace OpaqueMail.Net
                 // Loop through certificates and check for matching recipients.
                 foreach (X509Certificate2 cert in SmimeValidCertificates)
                 {
-                    // Look at certificates with e-mail subject names.
+                    // Look at certificates with email subject names.
                     string canonicalCertSubject = "";
                     if (cert.Subject.StartsWith("E="))
                         canonicalCertSubject = cert.Subject.Substring(2).ToUpper();
@@ -240,7 +226,7 @@ namespace OpaqueMail.Net
                     if (certSubjectComma > -1)
                         canonicalCertSubject = canonicalCertSubject.Substring(0, certSubjectComma);
 
-                    // Only proceed if the key is for a recipient of this e-mail.
+                    // Only proceed if the key is for a recipient of this email.
                     if (!addressesNeedingPublicKeys.ContainsKey(canonicalCertSubject))
                         continue;
 
@@ -373,7 +359,7 @@ namespace OpaqueMail.Net
 
             // Identify all recipients of the message.
             if (message.To.Count > 0)
-                rawHeaders.Append(Functions.SpanHeaderLines("To: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.To))) + "\r\n");
+                rawHeaders.Append(Functions.SpanHeaderLines("To: " + Functions.EncodeMailHeader(message.To.ToString())) + "\r\n");
             foreach (MailAddress address in message.To)
             {
                 await writer.WriteLineAsync("RCPT TO:<" + address.Address + ">");
@@ -383,7 +369,7 @@ namespace OpaqueMail.Net
             }
 
             if (message.CC.Count > 0)
-                rawHeaders.Append(Functions.SpanHeaderLines("CC: " + Functions.EncodeMailHeader(Functions.ToMailAddressString(message.CC))) + "\r\n");
+                rawHeaders.Append(Functions.SpanHeaderLines("CC: " + Functions.EncodeMailHeader(message.CC.ToString())) + "\r\n");
             foreach (MailAddress address in message.CC)
             {
                 await writer.WriteLineAsync("RCPT TO:<" + address.Address + ">");
@@ -406,30 +392,30 @@ namespace OpaqueMail.Net
             if (!response.StartsWith("3"))
                 throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'DATA' and received '" + response + "'.");
 
-            // If a read-only mail message is passed in with its raw headers and body, save a few steps by sending that directly.
-            if (message is ReadOnlyMailMessage)
-                await writer.WriteAsync(((ReadOnlyMailMessage)message).RawHeaders + "\r\n" + ((ReadOnlyMailMessage)message).RawBody + "\r\n.\r\n");
-            else
-            {
-                rawHeaders.Append(Functions.SpanHeaderLines("Subject: " + Functions.EncodeMailHeader(message.Subject)) + "\r\n");
-                foreach (string rawHeader in message.Headers)
-                {
-                    switch (rawHeader.ToUpper())
-                    {
-                        case "BCC":
-                        case "CC":
-                        case "FROM":
-                        case "SUBJECT":
-                        case "TO":
-                            break;
-                        default:
-                            rawHeaders.Append(Functions.SpanHeaderLines(rawHeader + ": " + message.Headers[rawHeader]) + "\r\n");
-                            break;
-                    }
-                }
+            if (!string.IsNullOrEmpty(message.ContentType))
+                message.Headers["Content-Type"] = message.ContentType;
 
-                await writer.WriteAsync(rawHeaders.ToString() + "\r\n" + message.Body + "\r\n.\r\n");
+            rawHeaders.Append(Functions.SpanHeaderLines("Subject: " + Functions.EncodeMailHeader(message.Subject)) + "\r\n");
+            foreach (string rawHeader in message.Headers)
+            {
+                switch (rawHeader.ToUpper())
+                {
+                    case "BCC":
+                    case "CC":
+                    case "FROM":
+                    case "SUBJECT":
+                    case "TO":
+                        break;
+                    default:
+                        rawHeaders.Append(Functions.SpanHeaderLines(rawHeader + ": " + message.Headers[rawHeader]) + "\r\n");
+                        break;
+                }
             }
+
+            if (string.IsNullOrEmpty(message.RawBody))
+                message.RawBody = message.Body;
+
+            await writer.WriteAsync(rawHeaders.ToString() + "\r\n" + message.RawBody + "\r\n.\r\n");
 
             response = await reader.ReadLineAsync();
             if (!response.StartsWith("2"))
@@ -531,14 +517,23 @@ namespace OpaqueMail.Net
                 message.Subject = Guid.NewGuid().ToString();
             }
 
-            // Generate a multipart/mixed message containing the e-mail's body, alternate views, and attachments.
-            byte[] MIMEMessageBytes = await message.MIMEEncode(SmimeBoundaryName, SmimeAlternativeViewBoundaryName);
+            // Generate a multipart/mixed message containing the email's body, alternate views, and attachments.
+            string MIMEMessage = await message.MIMEEncode("7bit", SmimeBoundaryName);
             message.Headers["Content-Type"] = "multipart/mixed; boundary=\"" + SmimeBoundaryName + "\"";
             message.Headers["Content-Transfer-Encoding"] = "7bit";
 
             // Skip the MIME header.
-            message.Body = Encoding.UTF8.GetString(MIMEMessageBytes);
+            message.Body = MIMEMessage;
             message.Body = message.Body.Substring(message.Body.IndexOf("\r\n\r\n") + 4);
+
+            // Determine the body encoding, defaulting to UTF-8.
+            Encoding bodyEncoding = message.BodyEncoding != null ? message.BodyEncoding : new UTF8Encoding();
+            Encoder bodyEncoder = bodyEncoding.GetEncoder();
+
+            // Encode and return the message.
+            char[] chars = MIMEMessage.ToCharArray();
+            byte[] MIMEMessageBytes = new byte[bodyEncoder.GetByteCount(chars, 0, chars.Length, false)];
+            int byteCount = bodyEncoder.GetBytes(chars, 0, chars.Length, MIMEMessageBytes, 0, true);
 
             // Handle S/MIME signing.
             bool successfullySigned = false;
@@ -665,5 +660,27 @@ namespace OpaqueMail.Net
             return Encoding.UTF8.GetBytes(messageBuilder.ToString());
         }
         #endregion Private Methods
+    }
+
+    /// <summary>
+    /// Represents the exception that is thrown when the OpaqueMail.ImapClient is not able to complete an operation.
+    /// </summary>
+    public class SmtpException : Exception
+    {
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.SmtpException class.
+        /// </summary>
+        public SmtpException() : base() { }
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.SmtpException class with the specified error message and inner exception.
+        /// </summary>
+        /// <param name="message">A System.String that describes the error that occurred.</param>
+        public SmtpException(string message) : base(message) { }
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.SmtpException class with the specified error message and inner exception.
+        /// </summary>
+        /// <param name="message">A System.String that describes the error that occurred.</param>
+        /// <param name="innerException">The exception that is the cause of the current exception.</param>
+        public SmtpException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

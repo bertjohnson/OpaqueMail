@@ -241,15 +241,15 @@ namespace OpaqueMail.Proxy
         /// <summary>(Optional) Signature to add to the end of each sent message.</summary>
         public string FixedSignature;
 
-        /// <summary>Encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
+        /// <summary>Encrypt the email's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
         public bool SmimeEncryptedEnvelope;
         /// <summary>Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</summary>
         public bool SmimeRemovePreviousOperations;
         /// <summary>Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</summary>
         public SmimeSettingsMode SmimeSettingsMode;
-        /// <summary>Sign the e-mail.  When true, signing is the first S/MIME operation.</summary>
+        /// <summary>Sign the email.  When true, signing is the first S/MIME operation.</summary>
         public bool SmimeSigned;
-        /// <summary>Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
+        /// <summary>Triple-wrap the email by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
         public bool SmimeTripleWrapped;
 
         /// <summary>Collection of certificates to be used when searching for recipient public keys.</summary>
@@ -264,7 +264,7 @@ namespace OpaqueMail.Proxy
         /// <summary>The instance number of the proxy.</summary>
         public int InstanceId;
 
-        /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
+        /// <param name="sendCertificateReminders">Send email reminders when a signing certificate is due to expire within 30 days.</param>
         public bool SendCertificateReminders;
 
         /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>
@@ -312,22 +312,22 @@ namespace OpaqueMail.Proxy
         /// <summary>(Optional) Signature to add to the end of each sent message.</summary>
         public string FixedSignature;
 
-        /// <summary>Encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
+        /// <summary>Encrypt the email's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
         public bool SmimeEncryptedEnvelope;
         /// <summary>Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</summary>
         public SmimeSettingsMode SmimeSettingsMode;
         /// <summary>Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied.</summary>
         public bool SmimeRemovePreviousOperations;
-        /// <summary>Sign the e-mail.  When true, signing is the first S/MIME operation.</summary>
+        /// <summary>Sign the email.  When true, signing is the first S/MIME operation.</summary>
         public bool SmimeSigned;
-        /// <summary>Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
+        /// <summary>Triple-wrap the email by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
         public bool SmimeTripleWrapped;
 
         /// <summary>Collection of certificates to be used when searching for recipient public keys.</summary>
         /// <remarks>If not specified, SmtpClient will use the current Windows user's certificate store.</remarks>
         public X509Certificate2Collection SmimeValidCertificates;
 
-        /// <param name="sendCertificateReminders">Send e-mail reminders when a signing certificate is due to expire within 30 days.</param>
+        /// <param name="sendCertificateReminders">Send email reminders when a signing certificate is due to expire within 30 days.</param>
         public bool SendCertificateReminders;
 
         /// <summary>Whether the proxy instance is running in DEBUG mode and should output full exception messages.</summary>

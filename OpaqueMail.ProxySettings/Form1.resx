@@ -127,9 +127,9 @@ Advanced settings can be managed by editing:
 For more information, visit http://opaquemail.org/.</value>
   </data>
   <data name="AboutLabel.Text" xml:space="preserve">
-    <value>OpaqueMail is a flexible e-mail proxy designed for security, performance, and flexibility.
+    <value>OpaqueMail is a flexible email proxy designed for security, performance, and flexibility.
 
-OpaqueMail can protect e-mail by automatically signing and encrypting messages using S/MIME.  It operates as an SMTP proxy to wrap outgoing messages, and also serves as an IMAP and POP3 proxy to import certificates from inbound messages.
+OpaqueMail can protect email by automatically signing and encrypting messages using S/MIME.  It operates as an SMTP proxy to wrap outgoing messages, and also serves as an IMAP and POP3 proxy to import certificates from inbound messages.
 
 The proxy can also add TLS/SSL protection and authentication credentials to wrap anonymous connections.
 
@@ -161,7 +161,7 @@ Other account types can be configured manually.  See http://opaquemail.org/ for 
 In "Best Effort" mode, the proxy will attempt to apply S/MIME protection, but still allow messages through if they can't be processed.  With "Require Exact Settings", any message that can't be protected will be blocked.</value>
   </data>
   <data name="CertificateLabel.Text" xml:space="preserve">
-    <value>Each e-mail account should have a personal S/MIME certificate for signing and encrypting messages.  Certificates can be obtained in three ways:
+    <value>Each email account should have a personal S/MIME certificate for signing and encrypting messages.  Certificates can be obtained in three ways:
 
 1. Trusted certificates can be procured for free from Comodo or StartCom.
 2. Other trusted certificates can be purchased from other sources.
@@ -170,9 +170,9 @@ In "Best Effort" mode, the proxy will attempt to apply S/MIME protection, but st
 If no certificate is assigned for an account using OpaqueMail, a self-signed certificate will automatically be generated.  We recommend downloading free trusted certificates from Comodo or StartCom if possible.</value>
   </data>
   <data name="SpreadTheWordLabel.Text" xml:space="preserve">
-    <value>OpaqueMail is 100% free and open source, relying on the community to spread the word.  We believe that everybody deserves secure and private e-mail.
+    <value>OpaqueMail is 100% free and open source, relying on the community to spread the word.  We believe that everybody deserves secure and private email.
 
-Please help spread the word by updating your Outlook e-mail signature with a link to OpaqueMail.</value>
+Please help spread the word by updating your Outlook email signature with a link to OpaqueMail.</value>
   </data>
   <data name="label1.Text" xml:space="preserve">
     <value>Choose whether other computers will be able to access this instance of the OpaqueMail proxy.

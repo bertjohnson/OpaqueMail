@@ -160,7 +160,8 @@ namespace OpaqueMail.Proxy
                         string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId, localIPAddress.ToString(), remoteServerHostName, localPort, remoteServerPort);
                         if (newLogFileName != logFileName)
                         {
-                            LogWriter.Close();
+                            if (LogWriter != null)
+                                LogWriter.Close();
                             LogWriter = new StreamWriter(newLogFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
                             LogWriter.AutoFlush = true;
                         }
@@ -667,7 +668,7 @@ namespace OpaqueMail.Proxy
                 try
                 {
                     // Parse the message.
-                    ReadOnlyMailMessage message = new ReadOnlyMailMessage(arguments.MessageText);
+                    MailMessage message = new MailMessage(arguments.MessageText);
 
                     // If the message contains a signing certificate that we haven't processed on this session, import it.
                     if (message.SmimeSigningCertificate != null && !SmimeCertificatesReceived.Contains(message.SmimeSigningCertificate))

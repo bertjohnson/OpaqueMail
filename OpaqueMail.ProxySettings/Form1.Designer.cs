@@ -164,7 +164,7 @@ namespace OpaqueMail.Proxy.Settings
             this.SelectAccountsTab.Padding = new System.Windows.Forms.Padding(3);
             this.SelectAccountsTab.Size = new System.Drawing.Size(570, 366);
             this.SelectAccountsTab.TabIndex = 1;
-            this.SelectAccountsTab.Text = "1. Select E-mail Accounts";
+            this.SelectAccountsTab.Text = "1. Select Email Accounts";
             this.SelectAccountsTab.UseVisualStyleBackColor = true;
             // 
             // AccountGroupBox

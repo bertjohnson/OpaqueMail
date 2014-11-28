@@ -1,7 +1,7 @@
-OpaqueMail .NET E-mail Library
+OpaqueMail .NET Email Library
 ==============================
 
-.NET e-mail library with full support for IMAP, POP3, and SMTP.  Provides S/MIME message signing, encryption, and decryption to foster better e-mail security and privacy.
+.NET email library with full support for IMAP, POP3, and SMTP.  Provides S/MIME message signing, encryption, and decryption to foster better email security and privacy.
 
 Follows IETF standards, implementing all IMAP4rev1, POP3, SMTP, and S/MIME 3.2 commands plus common extensions such as IDLE.  Supports MIME, Unicode, and TNEF encoding.
 
@@ -17,16 +17,16 @@ Licensed according to the MIT License (http://mit-license.org/).
 
 Created by Bert Johnson (http://bertjohnson.net/) of Bkip Inc. (http://bkip.com/).
 
-OpaqueMail E-mail Proxy
+OpaqueMail Email Proxy
 ==============================
 
 SMTP proxy and message transfer agent (MTA) to add or remove S/MIME message signing, encryption, and authentication for outbound messages.  Can operate in passthrough mode or augment messages to add or filter headers.
 
 Also serve as a passthrough IMAP and POP3 proxy to import S/MIME certificates, filter IPs, or export messages.
 
-Simplifies e-mail protection for Outlook, Thunderbird, Windows Live Mail, Opera Mail, and other e-mail clients.
+Simplifies email protection for Outlook, Thunderbird, Windows Live Mail, Opera Mail, and other email clients.
 
-Can be used to secure and authenticate e-mail programs that connect to SMTP servers anonymously (e.g. SharePoint).
+Can be used to secure and authenticate email programs that connect to SMTP servers anonymously (e.g. SharePoint).
 
 Runs as a Windows service.  Inbound and outbound IPs, ports, logging, and TLS / SSL settings are all configurable via XML.
 

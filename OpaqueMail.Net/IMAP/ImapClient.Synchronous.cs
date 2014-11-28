@@ -61,7 +61,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
         /// <param name="message">The raw message to append.</param>
-        public bool AppendMessage(string mailboxName, ReadOnlyMailMessage message)
+        public bool AppendMessage(string mailboxName, MailMessage message)
         {
             return Task.Run(() => AppendMessageAsync(mailboxName, message)).Result;
         }
@@ -85,7 +85,7 @@ namespace OpaqueMail.Net
         /// <param name="message">The raw message to append.</param>
         /// <param name="flags">Optional flags to be applied for the message.</param>
         /// <param name="date">Optional date for the message.</param>
-        public bool AppendMessage(string mailboxName, ReadOnlyMailMessage message, string[] flags, DateTime? date)
+        public bool AppendMessage(string mailboxName, MailMessage message, string[] flags, DateTime? date)
         {
             return Task.Run(() => AppendMessageAsync(mailboxName, message, flags, date)).Result;
         }
@@ -105,7 +105,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to append to.</param>
         /// <param name="messages">The raw messages to append.</param>
-        public bool AppendMessages(string mailboxName, ReadOnlyMailMessage[] messages)
+        public bool AppendMessages(string mailboxName, MailMessage[] messages)
         {
             return Task.Run(() => AppendMessagesAsync(mailboxName, messages, new string[] { }, null)).Result;
         }
@@ -129,7 +129,7 @@ namespace OpaqueMail.Net
         /// <param name="messages">The raw messages to append.</param>
         /// <param name="flags">Optional flags to be applied for all messages.</param>
         /// <param name="date">Optional date for all messages.</param>
-        public bool AppendMessages(string mailboxName, ReadOnlyMailMessage[] messages, string[] flags, DateTime? date)
+        public bool AppendMessages(string mailboxName, MailMessage[] messages, string[] flags, DateTime? date)
         {
             return Task.Run(() => AppendMessagesAsync(mailboxName, messages, flags, date)).Result;
         }
@@ -272,7 +272,7 @@ namespace OpaqueMail.Net
         /// Load an instance of a message based on its index.
         /// </summary>
         /// <param name="index">The index of the message to load.</param>
-        public ReadOnlyMailMessage GetMessage(int index)
+        public MailMessage GetMessage(int index)
         {
             return Task.Run(() => GetMessageAsync(index)).Result;
         }
@@ -282,7 +282,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The mailbox to load from.</param>
         /// <param name="index">The index of the message to load.</param>
-        public ReadOnlyMailMessage GetMessage(string mailboxName, int index)
+        public MailMessage GetMessage(string mailboxName, int index)
         {
             return Task.Run(() => GetMessageAsync(mailboxName, index)).Result;
         }
@@ -293,7 +293,7 @@ namespace OpaqueMail.Net
         /// <param name="mailboxName">The mailbox to load from.</param>
         /// <param name="index">The index of the message to load.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
-        public ReadOnlyMailMessage GetMessage(string mailboxName, int index, bool headersOnly)
+        public MailMessage GetMessage(string mailboxName, int index, bool headersOnly)
         {
             return Task.Run(() => GetMessageAsync(mailboxName, index, headersOnly)).Result;
         }
@@ -305,7 +305,7 @@ namespace OpaqueMail.Net
         /// <param name="index">The index of the message to load.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
-        public ReadOnlyMailMessage GetMessage(string mailboxName, int index, bool headersOnly, bool setSeenFlag)
+        public MailMessage GetMessage(string mailboxName, int index, bool headersOnly, bool setSeenFlag)
         {
             return Task.Run(() => GetMessageAsync(mailboxName, index, headersOnly, setSeenFlag)).Result;
         }
@@ -331,7 +331,7 @@ namespace OpaqueMail.Net
         /// Load an instance of a message based on its UID.
         /// </summary>
         /// <param name="uid">The UID of the message to load.</param>
-        public ReadOnlyMailMessage GetMessageUid(int uid)
+        public MailMessage GetMessageUid(int uid)
         {
             return Task.Run(() => GetMessageUidAsync(uid)).Result;
         }
@@ -341,20 +341,9 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The mailbox to load from.</param>
         /// <param name="uid">The UID of the message to load.</param>
-        public ReadOnlyMailMessage GetMessageUid(string mailboxName, int uid)
+        public MailMessage GetMessageUid(string mailboxName, int uid)
         {
             return Task.Run(() => GetMessageUidAsync(mailboxName, uid)).Result;
-        }
-
-        /// <summary>
-        /// Load an instance of a message in a specified mailbox based on its UID, optionally returning only headers.
-        /// </summary>
-        /// <param name="mailboxName">The mailbox to load from.</param>
-        /// <param name="uid">The UID of the message to load.</param>
-        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
-        public ReadOnlyMailMessage GetMessageUid(string mailboxName, int uid, bool headersOnly)
-        {
-            return Task.Run(() => GetMessageUidAsync(mailboxName, uid, headersOnly)).Result;
         }
 
         /// <summary>
@@ -364,15 +353,17 @@ namespace OpaqueMail.Net
         /// <param name="uid">The UID of the message to load.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
-        public ReadOnlyMailMessage GetMessageUid(string mailboxName, int uid, bool headersOnly, bool setSeenFlag)
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        public MailMessage GetMessageUid(string mailboxName, int uid, bool headersOnly = false, bool setSeenFlag = true, int seekStart = -1, int seekEnd = -1)
         {
-            return Task.Run(() => GetMessageUidAsync(mailboxName, uid, headersOnly, setSeenFlag)).Result;
+            return Task.Run(() => GetMessageUidAsync(mailboxName, uid, headersOnly, setSeenFlag, seekStart, seekEnd)).Result;
         }
 
         /// <summary>
         /// Retrieve up to 25 of the most recent messages from the current mailbox.
         /// </summary>
-        public List<ReadOnlyMailMessage> GetMessages()
+        public List<MailMessage> GetMessages()
         {
             return Task.Run(() => GetMessagesAsync()).Result;
         }
@@ -381,7 +372,7 @@ namespace OpaqueMail.Net
         /// Retrieve up to 25 of the most recent messages from the specified mailbox.
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
-        public List<ReadOnlyMailMessage> GetMessages(string mailboxName)
+        public List<MailMessage> GetMessages(string mailboxName)
         {
             return Task.Run(() => GetMessagesAsync(mailboxName)).Result;
         }
@@ -390,7 +381,7 @@ namespace OpaqueMail.Net
         /// Retrieve up to count of the most recent messages from the current mailbox.
         /// </summary>
         /// <param name="count">The maximum number of messages to return.</param>
-        public List<ReadOnlyMailMessage> GetMessages(int count)
+        public List<MailMessage> GetMessages(int count)
         {
             return Task.Run(() => GetMessagesAsync(count)).Result;
         }
@@ -400,7 +391,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         /// <param name="count">The maximum number of messages to return.</param>
-        public List<ReadOnlyMailMessage> GetMessages(string mailboxName, int count)
+        public List<MailMessage> GetMessages(string mailboxName, int count)
         {
             return Task.Run(() => GetMessagesAsync(mailboxName, count)).Result;
         }
@@ -410,7 +401,7 @@ namespace OpaqueMail.Net
         /// </summary>
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public List<ReadOnlyMailMessage> GetMessages(int count, bool headersOnly)
+        public List<MailMessage> GetMessages(int count, bool headersOnly)
         {
             return Task.Run(() => GetMessagesAsync(count, headersOnly)).Result;
         }
@@ -421,7 +412,7 @@ namespace OpaqueMail.Net
         /// <param name="mailboxName">The name of the mailbox to fetch from.</param>
         /// <param name="count">The maximum number of messages to return.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
-        public List<ReadOnlyMailMessage> GetMessages(string mailboxName, int count, bool headersOnly)
+        public List<MailMessage> GetMessages(string mailboxName, int count, bool headersOnly)
         {
             return Task.Run(() => GetMessagesAsync(mailboxName, count, headersOnly)).Result;
         }
@@ -435,7 +426,7 @@ namespace OpaqueMail.Net
         /// <param name="reverseOrder">Whether to return messages in descending order.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>
         /// <param name="setSeenFlag">Whether to update the message's flag as having been seen.</param>
-        public List<ReadOnlyMailMessage> GetMessages(string mailboxName, int count, int startIndex, bool reverseOrder, bool headersOnly, bool setSeenFlag)
+        public List<MailMessage> GetMessages(string mailboxName, int count, int startIndex, bool reverseOrder, bool headersOnly, bool setSeenFlag)
         {
             return Task.Run(() => GetMessagesAsync(mailboxName, count, startIndex, reverseOrder, headersOnly, setSeenFlag)).Result;
         }
@@ -635,7 +626,7 @@ namespace OpaqueMail.Net
         /// Perform a search in the current mailbox and return all matching messages.
         /// </summary>
         /// <param name="searchQuery">Well-formatted IMAP search criteria.</param>
-        public List<ReadOnlyMailMessage> Search(string searchQuery)
+        public List<MailMessage> Search(string searchQuery)
         {
             return Task.Run(() => SearchAsync(searchQuery)).Result;
         }

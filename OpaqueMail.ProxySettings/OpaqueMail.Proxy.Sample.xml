@@ -39,7 +39,7 @@
       <!-- (Optional) Signature to add to the end of each sent message. -->
       <Signature></Signature>
 
-      <!-- Send e-mail reminders when a signing certificate is due to expire within 30 days. -->
+      <!-- Send email reminders when a signing certificate is due to expire within 30 days. -->
       <SendCertificateReminders>True</SendCertificateReminders>
 
       <!-- Whether all outgoing messages require the S/MIME settings specified below. -->
@@ -47,11 +47,11 @@
       <!-- When set to "BestEffort", OpaqueMail Proxy will attempt to sign and/or encrypt messages but still forward any that can't be. -->
       <SMIMESettingsMode>BestEffort</SMIMESettingsMode>
 
-      <!-- Whether to sign the e-mail.  When true, signing is the first S/MIME operation. -->
+      <!-- Whether to sign the email.  When true, signing is the first S/MIME operation. -->
       <SMIMESign>True</SMIMESign>
-      <!-- Whether to encrypt the e-mail's envelope.  When SmimeSign is true, encryption is the second S/MIME operation. -->
+      <!-- Whether to encrypt the email's envelope.  When SmimeSign is true, encryption is the second S/MIME operation. -->
       <SMIMEEncrypt>True</SMIMEEncrypt>
-      <!-- Triple-wrap the e-mail by signing, then encrypting the envelope, then signing the encrypted envelope. -->
+      <!-- Triple-wrap the email by signing, then encrypting the envelope, then signing the encrypted envelope. -->
       <SMIMETripleWrap>True</SMIMETripleWrap>
 
       <!-- Remove envelope encryption and signatures from passed-in messages.  If true and SmimeSigned or SmimeEncryptEnvelope is also true, new S/MIME operations will be applied. -->

@@ -124,7 +124,9 @@ namespace OpaqueMail.Proxy
                     // If local SSL is supported via STARTTLS, ensure we have a valid server certificate.
                     if (localEnableSsl)
                     {
+                        // Load the SSL certificate for the listening server name.
                         serverCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, fqdn);
+
                         // In case the service as running as the current user, check the Current User certificate store as well.
                         if (serverCertificate == null)
                             serverCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, fqdn);
@@ -160,34 +162,40 @@ namespace OpaqueMail.Proxy
                         string newLogFileName = ProxyFunctions.GetLogFileName(logFile, instanceId, localIPAddress.ToString(), remoteServerHostName, localPort, remoteServerPort);
                         if (newLogFileName != logFileName)
                         {
-                            LogWriter.Close();
+                            if (LogWriter != null)
+                                LogWriter.Close();
                             LogWriter = new StreamWriter(newLogFileName, true, Encoding.UTF8, Constants.SMALLBUFFERSIZE);
                             LogWriter.AutoFlush = true;
                         }
 
-                        // Prepare the arguments for our new thread.
-                        ImapProxyConnectionArguments arguments = new ImapProxyConnectionArguments();
-                        arguments.AcceptedIPs = acceptedIPs;
-                        arguments.TcpClient = client;
-                        arguments.Certificate = serverCertificate;
-                        arguments.ExportDirectory = exportDirectory;
-                        arguments.LocalIpAddress = localIPAddress;
-                        arguments.LocalPort = localPort;
-                        arguments.LocalEnableSsl = localEnableSsl;
-                        arguments.RemoteServerHostName = remoteServerHostName;
-                        arguments.RemoteServerPort = remoteServerPort;
-                        arguments.RemoteServerEnableSsl = remoteServerEnableSsl;
-                        arguments.RemoteServerCredential = remoteServerCredential;
+                        try
+                        {
+                            // Prepare the arguments for our new thread.
+                            ImapProxyConnectionArguments arguments = new ImapProxyConnectionArguments();
+                            arguments.AcceptedIPs = acceptedIPs;
+                            arguments.TcpClient = client;
+                            arguments.Certificate = serverCertificate;
+                            arguments.ExportDirectory = exportDirectory;
+                            arguments.LocalIpAddress = localIPAddress;
+                            arguments.LocalPort = localPort;
+                            arguments.LocalEnableSsl = localEnableSsl;
+                            arguments.RemoteServerHostName = remoteServerHostName;
+                            arguments.RemoteServerPort = remoteServerPort;
+                            arguments.RemoteServerEnableSsl = remoteServerEnableSsl;
+                            arguments.RemoteServerCredential = remoteServerCredential;
 
-                        // Increment the connection counter;
-                        arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
-                        arguments.InstanceId = instanceId;
-                        arguments.DebugMode = debugMode;
+                            // Increment the connection counter;
+                            arguments.ConnectionId = (unchecked(++ConnectionId)).ToString();
+                            arguments.InstanceId = instanceId;
+                            arguments.DebugMode = debugMode;
 
-                        // Fork the thread and continue listening for new connections.
-                        Thread processThread = new Thread(new ParameterizedThreadStart(ProcessConnection));
-                        processThread.Name = "OpaqueMail IMAP Proxy Connection";
-                        processThread.Start(arguments);
+                            // Fork the thread and continue listening for new connections.
+                            Task.Run(() => ProcessConnection(arguments));
+                        }
+                        catch (Exception ex)
+                        {
+                            ProxyFunctions.Log(LogWriter, SessionId, "Error while processing connection: " + ex.ToString(), Proxy.LogLevel.Error, LogLevel);
+                        }
                     }
                     return;
                 }
@@ -364,7 +372,7 @@ namespace OpaqueMail.Proxy
         /// Handle an incoming IMAP connection, from connection to completion.
         /// </summary>
         /// <param name="parameters">ImapProxyConnectionArguments object containing all parameters for this connection.</param>
-        private void ProcessConnection(object parameters)
+        private async Task ProcessConnection(object parameters)
         {
             // Cast the passed-in parameters back to their original objects.
             ImapProxyConnectionArguments arguments = (ImapProxyConnectionArguments)parameters;
@@ -446,9 +454,7 @@ namespace OpaqueMail.Proxy
                 remoteServerToClientArguments.DebugMode = arguments.DebugMode;
                 remoteServerToClientArguments.IPAddress = ip;
                 remoteServerToClientArguments.ExportDirectory = arguments.ExportDirectory;
-                Thread remoteServerToClientThread = new Thread(new ParameterizedThreadStart(RelayData));
-                remoteServerToClientThread.Name = "OpaqueMail IMAP Proxy Server to Client";
-                remoteServerToClientThread.Start(remoteServerToClientArguments);
+                Task.Run(() => RelayData(remoteServerToClientArguments));
 
                 // Relay client data to the remote server.
                 TransmitArguments clientToRemoteServerArguments = new TransmitArguments();
@@ -460,9 +466,7 @@ namespace OpaqueMail.Proxy
                 clientToRemoteServerArguments.DebugMode = arguments.DebugMode;
                 clientToRemoteServerArguments.IPAddress = ip;
                 clientToRemoteServerArguments.Credential = arguments.RemoteServerCredential;
-                Thread clientToRemoteServerThread = new Thread(new ParameterizedThreadStart(RelayData));
-                clientToRemoteServerThread.Name = "OpaqueMail IMAP Proxy Client to Server";
-                clientToRemoteServerThread.Start(clientToRemoteServerArguments);
+                Task.Run(() => RelayData(clientToRemoteServerArguments));
             }
             catch (SocketException ex)
             {
@@ -535,28 +539,19 @@ namespace OpaqueMail.Proxy
                                     string[] commandParts = stringRead.Split(new char[] { ' ' }, 4);
                                     if (commandParts.Length > 1)
                                     {
-                                        // Optionally replace credentials with those from our settings file.
+                                        // Optionally, transform the login details.
                                         if (commandParts[1] == "LOGIN" && commandParts.Length == 4)
-                                        {
-                                            if (arguments.Credential != null)
-                                            {
-                                                await remoteServerStreamWriter.WriteLineAsync(commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password);
-
-                                                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password, Proxy.LogLevel.Raw, LogLevel);
-
-                                                messageRelayed = true;
-                                            }
-                                            else
-                                                UserName = commandParts[2].Replace("\"", "");
-                                        }
+                                            messageRelayed = TransformLogin(remoteServerStreamWriter, stringRead, arguments, ref UserName);
                                         else
                                             ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + stringRead, Proxy.LogLevel.Raw, LogLevel);
 
+                                        // Remember the previous command.
                                         if (commandParts[1].ToUpper() == "UID" && commandParts.Length > 2)
                                             LastCommandReceived = (commandParts[1] + " " + commandParts[2]).ToUpper();
                                         else
                                             LastCommandReceived = commandParts[1].ToUpper();
 
+                                        // Stop after a logout order is received.
                                         if (LastCommandReceived == "LOGOUT")
                                             stillReceiving = false;
 
@@ -604,6 +599,7 @@ namespace OpaqueMail.Proxy
                                         }
                                     }
 
+                                    // If the command wasn't processed, send the raw command.
                                     if (!messageRelayed)
                                         await remoteServerStreamWriter.WriteLineAsync(stringRead);
                                 }
@@ -642,6 +638,7 @@ namespace OpaqueMail.Proxy
                                         if (stringRead.StartsWith("* CAPABILITY"))
                                             stringRead = stringRead.Replace(" COMPRESS=DEFLATE", "");
 
+                                        // Check for IMAP meta flags.
                                         string betweenBraces = Functions.ReturnBetween(stringRead, "[", "]");
                                         switch (betweenBraces)
                                         {
@@ -744,7 +741,7 @@ namespace OpaqueMail.Proxy
                 try
                 {
                     // Parse the message.
-                    ReadOnlyMailMessage message = new ReadOnlyMailMessage(arguments.MessageText);
+                    MailMessage message = new MailMessage(arguments.MessageText);
 
                     // If the message contains a signing certificate that we haven't processed on this session, import it.
                     foreach (X509Certificate2 cert in message.SmimeSigningCertificateChain)
@@ -780,6 +777,32 @@ namespace OpaqueMail.Proxy
 
             // Start the proxy using passed-in settings.
             arguments.Proxy.Start(arguments.AcceptedIPs, arguments.LocalIpAddress, arguments.LocalPort, arguments.LocalEnableSsl, arguments.RemoteServerHostName, arguments.RemoteServerPort, arguments.RemoteServerEnableSsl, arguments.RemoteServerCredential, arguments.ExportDirectory, arguments.LogFile, arguments.LogLevel, arguments.InstanceId, arguments.DebugMode);
+        }
+
+        /// <summary>
+        /// Optionally, replace credentials with those from our settings file.
+        /// </summary>
+        /// <param name="remoteServerStreamWriter">Remote stream writer to transform.</param>
+        /// <param name="stringRead">Login string read from the client.</param>
+        /// <param name="arguments">A TransmitArguments object containing local and remote server parameters.</param>
+        /// <param name="Username">Username of the connected account.</param>
+        /// <returns></returns>
+        private bool TransformLogin(StreamWriter remoteServerStreamWriter, string stringRead, TransmitArguments arguments, ref string Username)
+        {
+            string[] commandParts = stringRead.Split(new char[] { ' ' }, 4);
+            if (arguments.Credential != null)
+            {
+                remoteServerStreamWriter.WriteLine(commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password);
+
+                ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId.ToString(), "C: " + commandParts[0] + " " + commandParts[1] + " " + arguments.Credential.UserName + " " + arguments.Credential.Password, Proxy.LogLevel.Raw, LogLevel);
+
+                return true;
+            }
+            else
+            {
+                UserName = commandParts[2].Replace("\"", "");
+                return false;
+            }
         }
         #endregion Private Methods
     }
