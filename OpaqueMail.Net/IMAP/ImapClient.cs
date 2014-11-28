@@ -357,7 +357,7 @@ namespace OpaqueMail.Net
 
             // Create the initial APPEND command.
             StringBuilder commandBuilder = new StringBuilder(Constants.SMALLSBSIZE);
-            commandBuilder.Append("APPEND " + mailboxName + " ");
+            commandBuilder.Append("APPEND " + Functions.EscapeMailboxName(mailboxName) + " ");
 
             // If flags are specified, add them as parameters.
             if (flags != null)
@@ -455,7 +455,7 @@ namespace OpaqueMail.Net
 
                     if (firstMessage)
                     {
-                        commandBuilder.Append("APPEND " + mailboxName);
+                        commandBuilder.Append("APPEND " + Functions.EscapeMailboxName(mailboxName));
 
                         // Generate a unique command tag for tracking this command and its response.
                         commandTag = UniqueCommandTag();
@@ -751,13 +751,10 @@ namespace OpaqueMail.Net
             if (mailboxName.IndexOf("*", StringComparison.Ordinal) > -1 || mailboxName.IndexOf("%", StringComparison.Ordinal) > -1)
                 throw new ImapException("A mailbox must be selected prior to calling the CREATE command.");
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "CREATE " + mailboxName + "\r\n");
+            await SendCommandAsync(commandTag, "CREATE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
             string response = await ReadDataAsync(commandTag, "CREATE");
 
             return LastCommandResult;
@@ -773,13 +770,10 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the DELETE command.");
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "DELETE " + mailboxName + "\r\n");
+            await SendCommandAsync(commandTag, "DELETE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
             string response = await ReadDataAsync(commandTag, "DELETE");
 
             return LastCommandResult;
@@ -899,16 +893,13 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the EXAMINE command.");
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             if (!string.IsNullOrEmpty(qResyncParameters))
-                await SendCommandAsync(commandTag, "EXAMINE " + mailboxName + " (QRESYNC (" + qResyncParameters + "))\r\n");
+                await SendCommandAsync(commandTag, "EXAMINE " + Functions.EscapeMailboxName(mailboxName) + " (QRESYNC (" + qResyncParameters + "))\r\n");
             else
-                await SendCommandAsync(commandTag, "EXAMINE " + mailboxName + "\r\n");
+                await SendCommandAsync(commandTag, "EXAMINE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
             
             string response = await ReadDataAsync(commandTag, "EXAMINE");
 
@@ -1036,13 +1027,10 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the STATUS command.");
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "STATUS " + mailboxName + " (messages)\r\n");
+            await SendCommandAsync(commandTag, "STATUS " + Functions.EscapeMailboxName(mailboxName) + " (messages)\r\n");
             string response = await ReadDataAsync(commandTag, "STATUS");
             response = Functions.ReturnBetween(response, "(MESSAGES ", ")");
 
@@ -1204,13 +1192,10 @@ namespace OpaqueMail.Net
                 if (!IsAuthenticated)
                     throw new ImapException("Must be connected to the server and authenticated prior to calling the GETQUOTA command.");
 
-                // Encode ampersands and Unicode characters.
-                mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                await SendCommandAsync(commandTag, "GETQUOTA \"" + mailboxName + "\"\r\n");
+                await SendCommandAsync(commandTag, "GETQUOTA \"" + Functions.EscapeMailboxName(mailboxName) + "\"\r\n");
                 string response = await ReadDataAsync(commandTag, "GETQUOTA");
 
                 if (LastCommandResult)
@@ -1247,7 +1232,7 @@ namespace OpaqueMail.Net
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                await SendCommandAsync(commandTag, "GETQUOTAROOT \"" + mailboxName + "\"\r\n");
+                await SendCommandAsync(commandTag, "GETQUOTAROOT \"" + Functions.EscapeMailboxName(mailboxName) + "\"\r\n");
                 string response = await ReadDataAsync(commandTag, "GETQUOTAROOT");
 
                 if (LastCommandResult)
@@ -1381,13 +1366,13 @@ namespace OpaqueMail.Net
             string commandTag = UniqueCommandTag();
 
             if (includeFullHierarchy)
-                await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" *\r\n");
+                await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + Functions.EscapeMailboxName(mailboxName) + "\" *\r\n");
             else
             {
                 if (string.IsNullOrEmpty(mailboxName))
-                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %\r\n");
+                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + Functions.EscapeMailboxName(mailboxName) + "\" %\r\n");
                 else
-                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %/%\r\n");
+                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + Functions.EscapeMailboxName(mailboxName) + "\" %/%\r\n");
             }
 
             string response = await ReadDataAsync(commandTag, "LIST");
@@ -1435,13 +1420,13 @@ namespace OpaqueMail.Net
             string commandTag = UniqueCommandTag();
 
             if (includeFullHierarchy)
-                await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" *\r\n");
+                await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + Functions.EscapeMailboxName(mailboxName) + "\" *\r\n");
             else
             {
                 if (string.IsNullOrEmpty(mailboxName))
-                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %\r\n");
+                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + Functions.EscapeMailboxName(mailboxName) + "\" %\r\n");
                 else
-                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + mailboxName + "\" %/%\r\n");
+                    await SendCommandAsync(commandTag, xListPrefix + "LIST \"" + Functions.EscapeMailboxName(mailboxName) + "\" %/%\r\n");
             }
 
             string response = await ReadDataAsync(commandTag, "LIST");
@@ -1487,17 +1472,14 @@ namespace OpaqueMail.Net
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             if (includeFullHierarchy)
-                await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" *\r\n");
+                await SendCommandAsync(commandTag, "LSUB \"" + Functions.EscapeMailboxName(mailboxName) + "\" *\r\n");
             else
             {
                 if (string.IsNullOrEmpty(mailboxName))
-                    await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %\r\n");
+                    await SendCommandAsync(commandTag, "LSUB \"" + Functions.EscapeMailboxName(mailboxName) + "\" %\r\n");
                 else
-                    await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %/%\r\n");
+                    await SendCommandAsync(commandTag, "LSUB \"" + Functions.EscapeMailboxName(mailboxName) + "\" %/%\r\n");
             }
 
             string response = await ReadDataAsync(commandTag, "LSUB");
@@ -1539,17 +1521,14 @@ namespace OpaqueMail.Net
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             if (includeFullHierarchy)
-                await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" *\r\n");
+                await SendCommandAsync(commandTag, "LSUB \"" + Functions.EscapeMailboxName(mailboxName) + "\" *\r\n");
             else
             {
                 if (string.IsNullOrEmpty(mailboxName))
-                    await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %\r\n");
+                    await SendCommandAsync(commandTag, "LSUB \"" + Functions.EscapeMailboxName(mailboxName) + "\" %\r\n");
                 else
-                    await SendCommandAsync(commandTag, "LSUB \"" + mailboxName + "\" %/%\r\n");
+                    await SendCommandAsync(commandTag, "LSUB \"" + Functions.EscapeMailboxName(mailboxName) + "\" %/%\r\n");
             }
 
             string response = await ReadDataAsync(commandTag, "LSUB");
@@ -1811,10 +1790,6 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the RENAME command.");
 
-            // Encode ampersands and Unicode characters.
-            currentMailboxName = Functions.ToModifiedUTF7(currentMailboxName);
-            newMailboxName = Functions.ToModifiedUTF7(newMailboxName);
-
             // Disallow wildcard characters in mailbox names;
             if (newMailboxName.IndexOf("*", StringComparison.Ordinal) > -1 || newMailboxName.IndexOf("%", StringComparison.Ordinal) > -1)
                 return false;
@@ -1822,7 +1797,7 @@ namespace OpaqueMail.Net
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "RENAME " + currentMailboxName + " " + newMailboxName + "\r\n");
+            await SendCommandAsync(commandTag, "RENAME " + Functions.EscapeMailboxName(currentMailboxName) + " " + Functions.EscapeMailboxName(newMailboxName) + "\r\n");
             string response = await ReadDataAsync(commandTag, "RENAME");
 
             return LastCommandResult;
@@ -1895,16 +1870,13 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the SELECT command.");
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
             if (!string.IsNullOrEmpty(qResyncParameters))
-                await SendCommandAsync(commandTag, "SELECT " + mailboxName + " (QRESYNC (" + qResyncParameters + "))\r\n");
+                await SendCommandAsync(commandTag, "SELECT " + Functions.EscapeMailboxName(mailboxName) + " (QRESYNC (" + qResyncParameters + "))\r\n");
             else
-                await SendCommandAsync(commandTag, "SELECT " + mailboxName + "\r\n");
+                await SendCommandAsync(commandTag, "SELECT " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
 
             string response = await ReadDataAsync(commandTag, "SELECT");
 
@@ -1961,13 +1933,10 @@ namespace OpaqueMail.Net
                 if (!IsAuthenticated)
                     throw new ImapException("Must be connected to the server and authenticated prior to calling the SETQUOTA command.");
 
-                // Encode ampersands and Unicode characters.
-                mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                await SendCommandAsync(commandTag, "SETQUOTA \"" + mailboxName + "\" (STORAGE " + quotaSize.ToString() + ")\r\n");
+                await SendCommandAsync(commandTag, "SETQUOTA \"" + Functions.EscapeMailboxName(mailboxName) + "\" (STORAGE " + quotaSize.ToString() + ")\r\n");
                 string response = await ReadDataAsync(commandTag, "SETQUOTA");
 
                 return LastCommandResult;
@@ -2055,13 +2024,10 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the SUBSCRIBE command.");
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "SUBSCRIBE " + mailboxName + "\r\n");
+            await SendCommandAsync(commandTag, "SUBSCRIBE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
             string response = await ReadDataAsync(commandTag, "SUBSCRIBE");
 
             return LastCommandResult;
@@ -2085,13 +2051,10 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the UNSUBSCRIBE command.");
 
-            // Encode ampersands and Unicode characters.
-            mailboxName = Functions.ToModifiedUTF7(mailboxName);
-
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
 
-            await SendCommandAsync(commandTag, "UNSUBSCRIBE " + mailboxName + "\r\n");
+            await SendCommandAsync(commandTag, "UNSUBSCRIBE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
             string response = await ReadDataAsync(commandTag, "UNSUSBSCRIBE");
 
             return LastCommandResult;
@@ -2428,10 +2391,6 @@ namespace OpaqueMail.Net
             if (!IsAuthenticated)
                 throw new ImapException("Must be connected to the server and authenticated prior to calling the MOVE command.");
 
-            // Encode ampersands and Unicode characters.
-            sourceMailboxName = Functions.ToModifiedUTF7(sourceMailboxName);
-            destMailboxName = Functions.ToModifiedUTF7(destMailboxName);
-
             // Ensure we're working with the right mailbox.
             if (sourceMailboxName != CurrentMailboxName)
                 await SelectMailboxAsync(sourceMailboxName);
@@ -2444,7 +2403,7 @@ namespace OpaqueMail.Net
                 // Generate a unique command tag for tracking this command and its response.
                 string commandTag = UniqueCommandTag();
 
-                await SendCommandAsync(commandTag, uidPrefix + "MOVE " + id.ToString() + " " + destMailboxName + "\r\n");
+                await SendCommandAsync(commandTag, uidPrefix + "MOVE " + id.ToString() + " " + Functions.EscapeMailboxName(destMailboxName) + "\r\n");
                 string response = await ReadDataAsync(commandTag, "MOVE");
 
                 return LastCommandResult;

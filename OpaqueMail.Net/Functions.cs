@@ -483,6 +483,21 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Quotes the name of the mailbox if it contains spaces.
+        /// </summary>
+        /// <param name="mailboxName">Name of the mailbox.</param>
+        /// <returns></returns>
+        public static string EscapeMailboxName(string mailboxName)
+        {
+            // Encode ampersands and Unicode characters.
+            string encodedMailboxName = Functions.ToModifiedUTF7(mailboxName);
+            if (encodedMailboxName != mailboxName || mailboxName.IndexOf(" ") > -1)
+                return "\"" + encodedMailboxName.Replace("\"", "\\\"") + "\"";
+            else
+                return mailboxName;
+        }
+
+        /// <summary>
         /// Return an embedded MIME parameter, observing character set encoding.
         /// </summary>
         /// <param name="mimeHeader">MIME header containing the parameter to extract.</param>
