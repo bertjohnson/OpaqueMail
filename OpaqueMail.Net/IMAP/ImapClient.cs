@@ -1032,7 +1032,7 @@ namespace OpaqueMail.Net
 
             await SendCommandAsync(commandTag, "STATUS " + Functions.EscapeMailboxName(mailboxName) + " (messages)\r\n");
             string response = await ReadDataAsync(commandTag, "STATUS");
-            response = Functions.ReturnBetween(response, "(MESSAGES ", ")");
+            response = Functions.ReturnBetween(response.ToUpper(), "(MESSAGES ", ")");
 
             int numMessages = -1;
             int.TryParse(response, out numMessages);
@@ -2184,8 +2184,18 @@ namespace OpaqueMail.Net
                 string flagsString = Functions.ReturnBetween(response, "FLAGS (", ")");
 
                 // Strip IMAP response padding.
-                response = response.Substring(response.IndexOf("\r\n") + 2);
-                response = response.Substring(0, response.Length - 2);
+                int lineBreak = response.IndexOf("\r\n");
+                string firstLine = response.Substring(0, lineBreak).ToUpper();
+
+                int bodyLength = -1;
+                int.TryParse(Functions.ReturnBetween(firstLine, "BODY[] {", "}"), out bodyLength);
+                if (bodyLength > 0)
+                    response = response.Substring(lineBreak + 2, bodyLength);
+                else
+                {
+                    response = response.Substring(response.IndexOf("\r\n") + 2);
+                    response = response.Substring(0, response.Length - 2);
+                }
 
                 MailMessage message = new MailMessage(response, ProcessingFlags);
                 message.ImapUid = uid;

@@ -80,8 +80,8 @@ namespace OpaqueMail.Net
             // Treat all whitespace equivalently and ignore case.
             string canonicalHtml = html.Replace("\t", " ").Replace("\r\n", "     ").Replace("\r", " ").Replace("\n", " ").ToLower();
 
-            // Convert line breaks to BR tags.
-            html = html.Replace("\r\n", "<br/>");
+            // Convert angle brackets and change line breaks to BR tags.
+            html = html.Replace("<", "&lt;").Replace(">", "&gt;").Replace("\r\n", "<br/>");
             
             // Build a new string using the following buffer.
             StringBuilder htmlBuilder = new StringBuilder(Constants.SMALLSBSIZE);
