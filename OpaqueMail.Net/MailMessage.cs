@@ -118,8 +118,10 @@ namespace OpaqueMail.Net
         public string Importance = "";
         /// <summary>Index as specified by the IMAP or POP3 server.</summary>
         public int Index;
-        /// <summary>In-Reply-To header.</summary>
-        public string InReplyTo = "";
+        /// <summary>Raw In-Reply-To header.</summary>
+        public string InReplyTo;
+        /// <summary>In-Reply-To message IDs.</summary>
+        public string[] InReplyToMessageIDs;
         /// <summary>Message ID header.</summary>
         public string MessageId;
         /// <summary>Text delimiting MIME message parts.</summary>
@@ -349,7 +351,7 @@ namespace OpaqueMail.Net
                         case "cc":
                             if (ccText.Length > 0)
                                 ccText += ", ";
-                            ccText = headerValue;
+                            ccText += headerValue;
                             break;
                         case "content-transfer-encoding":
                             ContentTransferEncoding = headerValue;
@@ -414,12 +416,35 @@ namespace OpaqueMail.Net
                             Importance = headerValue;
                             break;
                         case "in-reply-to":
-                            // Ignore opening and closing <> characters.
                             InReplyTo = headerValue;
-                            if (InReplyTo.StartsWith("<"))
-                                InReplyTo = InReplyTo.Substring(1);
-                            if (InReplyTo.EndsWith(">"))
-                                InReplyTo = InReplyTo.Substring(0, InReplyTo.Length - 1);
+
+                            // Loop through references.
+                            List<string> inReplyTo = new List<string>();
+                            int inReplyToPos = 0;
+                            while (inReplyToPos > -1)
+                            {
+                                inReplyToPos = headerValue.IndexOf("<", inReplyToPos);
+                                if (inReplyToPos > -1)
+                                {
+                                    int referencesPos2 = headerValue.IndexOf(">", inReplyToPos);
+                                    if (referencesPos2 > -1)
+                                    {
+                                        inReplyTo.Add(headerValue.Substring(inReplyToPos + 1, referencesPos2 - inReplyToPos - 1));
+                                        inReplyToPos = referencesPos2 + 1;
+                                    }
+                                    else
+                                        inReplyToPos = -1;
+                                }
+                            }
+                            // If any references were found, apply to the message's array.
+                            if (inReplyTo.Count > 0)
+                                InReplyToMessageIDs = inReplyTo.ToArray();
+                            else
+                            {
+                                if (!string.IsNullOrEmpty(headerValue))
+                                    InReplyToMessageIDs = new string[] {headerValue};
+                            }
+
                             break;
                         case "message-id":
                             // Ignore opening and closing <> characters.

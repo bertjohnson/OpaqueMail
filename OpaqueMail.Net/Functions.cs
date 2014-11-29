@@ -233,10 +233,7 @@ namespace OpaqueMail.Net
                                 if (endCursor > -1 && endCursor > middleCursor + 1)
                                 {
                                     // Try to create a decoder for the encoding.
-                                    string charSet = header.Substring(cursor + 2, middleCursor - cursor - 2).ToUpper().Replace("\"", "");
-
-                                    if (charSet.ToUpper() == "CP1252")
-                                        charSet = "windows-1252";
+                                    string charSet = NormalizeCharSet(header.Substring(cursor + 2, middleCursor - cursor - 2).ToUpper().Replace("\"", ""));
 
                                     Encoding encoding = Encoding.GetEncoding(charSet);
 
@@ -706,10 +703,7 @@ namespace OpaqueMail.Net
             {
                 if (!string.IsNullOrEmpty(charSet))
                 {
-                    if (charSet.ToUpper() == "CP1252")
-                        charSet = "windows-1252";
-
-                    encoding = Encoding.GetEncoding(charSet);
+                    encoding = Encoding.GetEncoding(NormalizeCharSet(charSet));
                 }
                 else
                     encoding = Encoding.UTF8;

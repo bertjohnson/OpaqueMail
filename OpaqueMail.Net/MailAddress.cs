@@ -174,7 +174,7 @@ namespace OpaqueMail
         public override string ToString()
         {
             if (!string.IsNullOrEmpty(this.DisplayName))
-                return this.DisplayName + " <" + this.Address + ">";
+                return Functions.EncodeMailHeader(this.DisplayName) + " <" + this.Address + ">";
             else
                 return this.Address;
         }
