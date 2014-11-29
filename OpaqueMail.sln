@@ -8,6 +8,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1E3374C3-7C9B-4FAA-B1C6-B3609E903428}"
 	ProjectSection(SolutionItems) = preProject
 		LICENSE.txt = LICENSE.txt
+		OpaqueMail.doxygen = OpaqueMail.doxygen
+		OpaqueMail.doxygen.header.html = OpaqueMail.doxygen.header.html
 		OpaqueMail.nupkg = OpaqueMail.nupkg
 		README.md = README.md
 	EndProjectSection
