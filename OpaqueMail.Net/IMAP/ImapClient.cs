@@ -3,7 +3,7 @@
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.net/) of Bkip Inc. (http://bkip.com/).
+ * Copyright © Bert Johnson (http://bertjohnson.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -1666,21 +1666,24 @@ namespace OpaqueMail.Net
                             {
                                 // Handle successes.
                                 case "OK":
-                                    string result = "";
-                                    if (responseBuilder.Length > 0)
-                                        result = responseBuilder.ToString();
-                                    else if (responseParts.Length > 2)
-                                        result = responseParts[2];
-
                                     // If the result matches our expected tag, return it; otherwise, save it for later and continue with the next result.
                                     if (responseParts[0] == commandTag || previousCommand == "DONE")
                                     {
                                         LastCommandResult = true;
-                                        return result;
+
+                                        if (responseBuilder.Length > 0)
+                                            return responseBuilder.ToString();
+                                        else if (responseParts.Length > 2)
+                                            return responseParts[2];
+                                        else
+                                            return "";
                                     }
                                     else if (responseParts[0] != "*")
                                     {
-                                        SwitchBoard[responseParts[0]] = result;
+                                        if (responseBuilder.Length > 0)
+                                            SwitchBoard[responseParts[0]] = responseBuilder.ToString();
+                                        else if (responseParts.Length > 2)
+                                            SwitchBoard[responseParts[0]] = responseParts[2];
                                         continue;
                                     }
                                     else
@@ -1716,10 +1719,8 @@ namespace OpaqueMail.Net
 
                                 // If not a known response, return it verbatim.
                                 default:
-                                    result = responseLine.Substring(responseLine.IndexOf(" ") + 1); ;
-
                                     if (responseParts[0] == commandTag || (responseParts[0] == "+" && responseBuilder.Length == 0))
-                                        return result;
+                                        return responseLine.Substring(responseLine.IndexOf(" ") + 1);
                                     else
                                         responseBuilder.Append(responseLine + "\r\n");
 

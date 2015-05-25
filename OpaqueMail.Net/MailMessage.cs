@@ -3,7 +3,7 @@
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.net/) of Bkip Inc. (http://bkip.com/).
+ * Copyright © Bert Johnson (http://bertjohnson.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -143,7 +143,13 @@ namespace OpaqueMail.Net
         /// <summary>String representation of the raw headers received.</summary>
         public string RawHeaders;
         /// <summary>String representation of the entire raw message received.</summary>
-        public string RawMessage;
+        public string RawMessage
+        {
+            get
+            {
+                return RawHeaders + (RawHeaders.Length > 0 && RawBody.Length > 0 ? "\r\n\r\n" : "") + RawBody;
+            }
+        }
         /// <summary>Array of values of Received and X-Received headers.</summary>
         public string[] ReceivedChain;
         /// <summary>Message IDs of previously referenced messages.</summary>
@@ -292,10 +298,6 @@ namespace OpaqueMail.Net
         {
             // Default to no MIME boundary.
             MimeBoundaryName = null;
-
-            if (((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders) > 0)
-                && (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeRawBody) > 0)
-                RawMessage = messageText;
 
             // Prepare an object to track advanced headers.
             if (parseExtendedHeaders)

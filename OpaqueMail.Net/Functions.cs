@@ -3,7 +3,7 @@
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.net/) of Bkip Inc. (http://bkip.com/).
+ * Copyright © Bert Johnson (http://bertjohnson.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -728,7 +728,7 @@ namespace OpaqueMail.Net
                         case "\r\n":
                             byteBufferEnd = false;
                             break;
-                        case "09":
+/*                        case "09":
                             outputBuilder.Append("\t");
                             break;
                         case "0A":
@@ -736,14 +736,11 @@ namespace OpaqueMail.Net
                             break;
                         case "20":
                             outputBuilder.Append(" ");
-                            break;
-                        case "A0":
-                            outputBuilder.Append("\u00A0");
-                            break;
+                            break;*/
                         default:
                             byte theByte = Byte.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
                             byteBuffer[byteBufferLength++] = theByte;
-                            if (byteBufferLength < byteBuffer.Length && equalsPos < input.Length - 6)
+                            if (byteBufferLength < byteBuffer.Length && equalsPos < input.Length - 5)
                             {
                                 if (input[equalsPos + 3] == '=' && input[equalsPos + 4] != '\r')
                                     byteBufferEnd = false;

@@ -3,7 +3,7 @@
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.net/) of Bkip Inc. (http://bkip.com/).
+ * Copyright © Bert Johnson (http://bertjohnson.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -957,7 +957,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             headersText.Append("Date: " + message.Date.ToString() + "\r\n");
             headersText.Append("From: ");
             if (message.From != null)
-                headersText.Append(message.From);
+                headersText.Append(message.From.DisplayName + " <" + message.From.Address + ">");
             else if (message.Sender != null)
                 headersText.Append(message.Sender);
             headersText.Append("\r\n");
