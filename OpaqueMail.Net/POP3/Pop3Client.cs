@@ -740,7 +740,11 @@ namespace OpaqueMail.Net
         public void LogOut()
         {
             SendCommand("QUIT\r\n");
-            string response = ReadData();
+            try
+            {
+                string response = ReadData();
+            }
+            catch (Exception) { }
             SessionIsAuthenticated = false;
         }
 
