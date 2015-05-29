@@ -115,7 +115,7 @@ namespace OpaqueMail.Net
         /// <param name="contentTransferEncoding">Content Transfer Encoding string of the MIME part.</param>
         /// <param name="body">String representation of the MIME part's body.</param>
         public MimePart(string name, string contentType, string charSet, string contentID, string contentTransferEncoding, string body)
-            : this(name, contentType, charSet, contentID, contentTransferEncoding, Encoding.UTF8.GetBytes(body)) { }
+            : this(name, contentType, "", contentID, contentTransferEncoding, Encoding.UTF8.GetBytes(body)) { }
 
         /// <summary>
         /// Instantiate a MIME part based on its body's byte array.

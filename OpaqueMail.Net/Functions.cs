@@ -244,7 +244,7 @@ namespace OpaqueMail.Net
                                             encodedBytes = Convert.FromBase64String(header.Substring(middleCursor + 3, endCursor - middleCursor - 3));
                                             break;
                                         case "Q?":
-                                            encodedBytes = encoding.GetBytes(FromQuotedPrintable(header.Substring(middleCursor + 3, endCursor - middleCursor - 3), charSet, encoding));
+                                            encodedBytes = encoding.GetBytes(FromQuotedPrintable(header.Substring(middleCursor + 3, endCursor - middleCursor - 3).Replace("_", " "), charSet, encoding));
                                             break;
                                         default:
                                             encodedBytes = encoding.GetBytes(header.Substring(middleCursor, endCursor - middleCursor - 2));
@@ -470,11 +470,14 @@ namespace OpaqueMail.Net
             foreach (char headerCharacter in header.ToCharArray())
             {
                 if (headerCharacter > 127)
+                {
                     extendedCharacterFound = true;
+                    break;
+                }
             }
 
             if (extendedCharacterFound)
-                return "=?B?" + ToBase64String(header) + "?=";
+                return "=?UTF-8?B?" + ToBase64String(header) + "?=";
             else
                 return header;
         }

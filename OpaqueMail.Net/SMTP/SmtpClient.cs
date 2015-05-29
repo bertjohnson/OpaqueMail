@@ -386,14 +386,37 @@ namespace OpaqueMail.Net
                     throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
             }
 
+            // If the body hasn't been processed, handle encoding of extended characters.
+            if (string.IsNullOrEmpty(message.RawBody))
+            {
+                bool extendedCharacterFound = false;
+                foreach (char headerCharacter in message.Body.ToCharArray())
+                {
+                    if (headerCharacter > 127)
+                    {
+                        extendedCharacterFound = true;
+                        break;
+                    }
+                }
+
+                if (extendedCharacterFound)
+                {
+                    message.Headers["Content-Transfer-Encoding"] = "base64";
+                    message.Body = Functions.ToBase64String(message.Body);
+                }
+
+                message.RawBody = message.Body;
+            }
+
+            // Process content type.
+            if (!string.IsNullOrEmpty(message.ContentType))
+                message.Headers["Content-Type"] = message.ContentType + (!string.IsNullOrEmpty(message.CharSet) ? "; charset=\"" + message.CharSet + "\"" : "");
+
             // Send the raw message.
             await writer.WriteLineAsync("DATA");
             response = await reader.ReadLineAsync();
             if (!response.StartsWith("3"))
                 throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'DATA' and received '" + response + "'.");
-
-            if (!string.IsNullOrEmpty(message.ContentType))
-                message.Headers["Content-Type"] = message.ContentType;
 
             rawHeaders.Append(Functions.SpanHeaderLines("Subject: " + Functions.EncodeMailHeader(message.Subject)) + "\r\n");
             foreach (string rawHeader in message.Headers)
@@ -411,9 +434,6 @@ namespace OpaqueMail.Net
                         break;
                 }
             }
-
-            if (string.IsNullOrEmpty(message.RawBody))
-                message.RawBody = message.Body;
 
             await writer.WriteAsync(rawHeaders.ToString() + "\r\n" + message.RawBody + "\r\n.\r\n");
 

@@ -624,6 +624,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 smtpClient.EnableSsl = true;
 
                 MailMessage message = new MailMessage();
+                message.ContentType = "text/plain";
                 message.From = new MailAddress(SmtpFrom.Text);
 
                 // Parse all addresses provided into MailAddress objects.
