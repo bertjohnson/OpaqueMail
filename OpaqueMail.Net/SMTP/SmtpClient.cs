@@ -386,6 +386,16 @@ namespace OpaqueMail.Net
                     throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'RCPT TO' and received '" + response + "'.");
             }
 
+            // Ensure a content type is set.
+            if (string.IsNullOrEmpty(message.ContentType))
+            {
+                if (Functions.AppearsHTML(message.Body))
+                    message.ContentType = "text/html";
+                else
+                    message.ContentType = "text/plain";
+            }
+            message.Headers["Content-Type"] = message.ContentType + (!string.IsNullOrEmpty(message.CharSet) ? "; charset=\"" + message.CharSet + "\"" : "");
+
             // If the body hasn't been processed, handle encoding of extended characters.
             if (string.IsNullOrEmpty(message.RawBody))
             {
@@ -407,10 +417,6 @@ namespace OpaqueMail.Net
 
                 message.RawBody = message.Body;
             }
-
-            // Process content type.
-            if (!string.IsNullOrEmpty(message.ContentType))
-                message.Headers["Content-Type"] = message.ContentType + (!string.IsNullOrEmpty(message.CharSet) ? "; charset=\"" + message.CharSet + "\"" : "");
 
             // Send the raw message.
             await writer.WriteLineAsync("DATA");

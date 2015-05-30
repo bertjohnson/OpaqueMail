@@ -54,6 +54,23 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
+        /// Determine whether the content type of a message appears to be HTML.
+        /// </summary>
+        /// <param name="body">Message body to check.</param>
+        /// <returns>Whether the content type of the message appears to be HTML.</returns>
+        public static bool AppearsHTML(string body)
+        {
+            int tagCursor = body.IndexOf("<");
+            if (tagCursor > -1){
+                int endTagCursor = body.IndexOf(">", tagCursor + 1);
+                if (endTagCursor > -1 && (endTagCursor - tagCursor) < 128)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Determine whether a message without no encoding specified appears to be Quoted-Printable.
         /// </summary>
         /// <param name="body">Message body to check.</param>
@@ -317,7 +334,7 @@ namespace OpaqueMail.Net
         }
 
         /// <summary>
-        /// Convert CID: object references to Base-64 encoded versions.
+        /// Convert "CID: object" references to Base-64 encoded versions.
         /// </summary>
         /// <remarks>Useful for displaying text/html messages with image references.</remarks>
         /// <param name="html">HTML block to process.</param>
@@ -691,7 +708,7 @@ namespace OpaqueMail.Net
         public static string FromQuotedPrintable(string input, string charSet, Encoding encoding)
         {
             // Remove carriage returns because they'll be added back in for line breaks (=0A).
-            input = input.Replace("=0D", "");
+//            input = input.Replace("=0D", "");
 
             // Build a new string using the following buffer.
             StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
