@@ -27,36 +27,48 @@ namespace OpaqueMail.Net
     public class Mailbox
     {
         /// <summary>List of FETCH commands returned by QRESYNC.</summary>
-        public List<string> FetchList = new List<string>();
+        public List<string> FetchList { get; set; }
         /// <summary>Standard IMAP flags associated with this mailbox.</summary>
-        public HashSet<string> Flags = new HashSet<string>();
+        public HashSet<string> Flags { get; set; }
         /// <summary>Mailbox hierarchy delimiting string.</summary>
-        public string HierarchyDelimiter;
+        public string HierarchyDelimiter { get; set; }
         /// <summary>Name of the mailbox.</summary>
-        public string Name;
+        public string Name { get; set; }
         /// <summary>True if ModSeq is explicitly unavailable.</summary>
-        public bool NoModSeq = false;
+        public bool NoModSeq { get; set; }
         /// <summary>Permanent IMAP flags associated with this mailbox.</summary>
-        public HashSet<string> PermanentFlags = new HashSet<string>();
+        public HashSet<string> PermanentFlags { get; set; }
         /// <summary>List of message IDs that have disappeared since the last QRESYNC.</summary>
-        public string VanishedList;
+        public string VanishedList { get; set; }
 
-        /// <summary>Number of messages in the mailbox.  -1 if COUNT was not parsed.</summary>
-        public int Count = -1;
-        /// <summary>Highest ModSeq in the mailbox.  -1 if HIGHESTMODSEQ was not parsed.</summary>
-        public int HighestModSeq = -1;
-        /// <summary>Number of recent messages in the mailbox.  -1 if RECENT was not parsed.</summary>
-        public int Recent = -1;
-        /// <summary>Expected next UID for the mailbox.  -1 if UIDNEXT was not parsed.</summary>
-        public int UidNext = -1;
-        /// <summary>UID validity for the mailbox.  -1 if UIDVALIDITY was not parsed.</summary>
-        public int UidValidity = -1;
+        /// <summary>Number of messages in the mailbox.  Null if COUNT was not parsed.</summary>
+        public int? Count { get; set; }
+        /// <summary>Highest ModSeq in the mailbox.  Null if HIGHESTMODSEQ was not parsed.</summary>
+        public int? HighestModSeq { get; set; }
+        /// <summary>Number of recent messages in the mailbox.  Null if RECENT was not parsed.</summary>
+        public int? Recent { get; set; }
+        /// <summary>Expected next UID for the mailbox.  Null if UIDNEXT was not parsed.</summary>
+        public int? UidNext { get; set; }
+        /// <summary>UID validity for the mailbox.  Null if UIDVALIDITY was not parsed.</summary>
+        public int? UidValidity { get; set; }
 
         #region Constructors
         /// <summary>
         /// Default constructor.
         /// </summary>
-        public Mailbox() { }
+        public Mailbox()
+        {
+            FetchList = new List<string>();
+            Flags = new HashSet<string>();
+            NoModSeq = false;
+            PermanentFlags = new HashSet<string>();
+
+            Count = null;
+            HighestModSeq = null;
+            Recent = null;
+            UidNext = null;
+            UidValidity = null;
+        }
 
         /// <summary>
         /// Parse IMAP output from an EXAMINE or SELECT command.
@@ -64,6 +76,7 @@ namespace OpaqueMail.Net
         /// <param name="name">Name of the mailbox.</param>
         /// <param name="imapResponse">Raw IMAP output of an EXAMINE or SELECT command.</param>
         public Mailbox(string name, string imapResponse)
+            : this()
         {
             // Escape modifed UTF-7 encoding for ampersands or Unicode characters.
             Name = Functions.FromModifiedUTF7(name);
@@ -85,7 +98,9 @@ namespace OpaqueMail.Net
                 else if (responseLine.StartsWith("* OK [HIGHESTMODSEQ "))
                 {
                     string highestModSeq = responseLine.Substring(20, responseLine.IndexOf("]") - 20);
-                    int.TryParse(highestModSeq, out HighestModSeq);
+                    int highestModSeqValue;
+                    int.TryParse(highestModSeq, out highestModSeqValue);
+                    HighestModSeq = highestModSeqValue;
                 }
                 else if (responseLine.StartsWith("* OK [PERMANENTFLAGS ("))
                 {
@@ -99,12 +114,16 @@ namespace OpaqueMail.Net
                 else if (responseLine.StartsWith("* OK [UIDNEXT "))
                 {
                     string uidNext = responseLine.Substring(14, responseLine.IndexOf("]") - 14);
-                    int.TryParse(uidNext, out UidNext);
+                    int uidNextValue;
+                    int.TryParse(uidNext, out uidNextValue);
+                    UidNext = uidNextValue;
                 }
                 else if (responseLine.StartsWith("* OK [UIDVALIDITY "))
                 {
                     string uidValidity = responseLine.Substring(18, responseLine.IndexOf("]") - 18);
-                    int.TryParse(uidValidity, out UidValidity);
+                    int UidValidityValue;
+                    int.TryParse(uidValidity, out UidValidityValue);
+                    UidValidity = UidValidityValue;
                 }
                 else if (responseLine.StartsWith("* VANISHED "))
                     VanishedList = responseLine.Substring(11);
@@ -113,12 +132,16 @@ namespace OpaqueMail.Net
                 else if (responseLine.EndsWith(" EXISTS"))
                 {
                     string existsCount = responseLine.Substring(2, responseLine.Length - 9);
-                    int.TryParse(existsCount, out Count);
+                    int existsCountValue;
+                    int.TryParse(existsCount, out existsCountValue);
+                    Count = existsCountValue;
                 }
                 else if (responseLine.EndsWith(" RECENT"))
                 {
                     string recentCount = responseLine.Substring(2, responseLine.Length - 9);
-                    int.TryParse(recentCount, out Recent);
+                    int recentCountValue;
+                    int.TryParse(recentCount, out recentCountValue);
+                    Recent = recentCountValue;
                 }
             }
         }

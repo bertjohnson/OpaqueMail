@@ -33,17 +33,15 @@ namespace OpaqueMail.Net
     {
         #region Public Members
         /// <summary>Optional shared secret for securing authentication via the APOP command.</summary>
-        public string APOPSharedSecret = "";
-        /// <summary>Gets or sets the credentials used to authenticate.</summary>
-        public NetworkCredential Credentials;
-        /// <summary>Specify whether the OpaqueMail.Pop3Client uses Secure Sockets Layer (SSL).</summary>
-        public bool EnableSsl;
-        /// <summary>Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</summary>
-        public ReadOnlyMailMessageProcessingFlags ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
+        public string APOPSharedSecret { get; set; }
         /// <summary>Set of extended POP3 capabilities.</summary>
         public HashSet<string> Capabilities = new HashSet<string>();
+        /// <summary>Gets or sets the credentials used to authenticate.</summary>
+        public NetworkCredential Credentials { get; set; }
+        /// <summary>Specify whether the OpaqueMail.Pop3Client uses Secure Sockets Layer (SSL).</summary>
+        public bool EnableSsl { get; set; }
         /// <summary>Gets or sets the name or IP address of the host used for POP3 transactions.</summary>
-        public string Host;
+        public string Host { get; set; }
         /// <summary>Whether the session has successfully been authenticated.</summary>
         public bool IsAuthenticated
         {
@@ -67,15 +65,17 @@ namespace OpaqueMail.Net
             }
         }
         /// <summary>The authentication state when capabilities were last queried.</summary>
-        private bool LastCapabilitiesCheckAuthenticationState = false;
+        private bool LastCapabilitiesCheckAuthenticationState { get; set; }
         /// <summary>The last command issued to the POP3 server.</summary>
-        public string LastCommandIssued;
+        public string LastCommandIssued { get; set; }
         /// <summary>Whether the last POP3 command was successful.</summary>
-        public bool LastCommandResult = false;
+        public bool LastCommandResult { get; set; }
         /// <summary>The last error message returned by the POP3 server.</summary>
-        public string LastErrorMessage;
+        public string LastErrorMessage { get; set; }
         /// <summary>Gets or sets the port used for POP3 transactions.</summary>
-        public int Port;
+        public int Port { get; set; }
+        /// <summary>Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</summary>
+        public ReadOnlyMailMessageProcessingFlags ProcessingFlags { get; set; }
         /// <summary>Gets or sets a value, in milliseconds, that determines how long the stream will attempt to read before timing out.</summary>
         public int ReadTimeout
         {
@@ -92,6 +92,16 @@ namespace OpaqueMail.Net
                     Pop3Stream.ReadTimeout = value;
             }
         }
+        /// Returns the POP3 server's pipelining capability as found from the CAPA command.
+        private bool ServerSupportsPipelining { get; set; }
+        /// <summary>Whether the POP3 server supports SASL authentication, as found from the CAPA command.</summary>
+        private bool ServerSupportsSASL { get; set; }
+        /// <summary>Whether the POP3 server supports TLS negotation, as found from the CAPA command.</summary>
+        private bool ServerSupportsSTLS { get; set; }
+        /// <summary>Whether the POP3 server supports the "TOP" command for previewing headers.</summary>
+        private bool? ServerSupportsTop { get; set; }
+        /// <summary>Whether the POP3 server supports the "UIDL" command for uniquely identifying messages.</summary>
+        private bool? ServerSupportsUIDL { get; set; }
         /// <summary>The welcome message provided by the POP3 server.</summary>
         public string WelcomeMessage
         {
@@ -145,6 +155,16 @@ namespace OpaqueMail.Net
         /// <param name="enableSSL">Whether the POP3 connection uses TLS / SSL protection.</param>
         public Pop3Client(string host, int port, string userName, string password, bool enableSSL)
         {
+            APOPSharedSecret = "";
+            LastCapabilitiesCheckAuthenticationState = false;
+            LastCommandResult = false;
+            ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
+            ServerSupportsPipelining = false;
+            ServerSupportsSASL = false;
+            ServerSupportsSTLS = false;
+            ServerSupportsTop = null;
+            ServerSupportsUIDL = null;
+
             Host = host;
             Port = port;
             Credentials = new NetworkCredential(userName, password);
@@ -1035,16 +1055,6 @@ namespace OpaqueMail.Net
         #endregion Private Methods
 
         #region Public Properties
-        /// Returns the POP3 server's pipelining capability as found from the CAPA command.
-        private bool ServerSupportsPipelining = false;
-        /// <summary>Whether the POP3 server supports the "TOP" command for previewing headers.</summary>
-        private bool? ServerSupportsTop = null;
-        /// <summary>Whether the POP3 server supports SASL authentication, as found from the CAPA command.</summary>
-        private bool ServerSupportsSASL = false;
-        /// <summary>Whether the POP3 server supports TLS negotation, as found from the CAPA command.</summary>
-        private bool ServerSupportsSTLS = false;
-        /// <summary>Whether the POP3 server supports the "UIDL" command for uniquely identifying messages.</summary>
-        private bool? ServerSupportsUIDL = null;
 
         /// <summary>
         /// Returns the POP3 server's expiration policy as found from the CAPA command.

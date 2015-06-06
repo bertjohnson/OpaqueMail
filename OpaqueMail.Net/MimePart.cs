@@ -76,23 +76,23 @@ namespace OpaqueMail.Net
             }
         }
         /// <summary>Character Set used to encode the MIME part.</summary>
-        public string CharSet = "";
+        public string CharSet { get; set; }
         /// <summary>ID of the MIME part.</summary>
-        public string ContentID = "";
+        public string ContentID { get; set; }
         /// <summary>Content Type of the MIME part.</summary>
-        public string ContentType = "";
+        public string ContentType { get; set; }
         /// <summary>Content Transfer Encoding of the MIME part.</summary>
-        public TransferEncoding ContentTransferEncoding = TransferEncoding.Unknown;
+        public TransferEncoding ContentTransferEncoding { get; set; }
         /// <summary>Filename of the MIME part.</summary>
-        public string Name = "";
+        public string Name { get; set; }
         /// <summary>Whether the MIME part is part of an S/MIME encrypted envelope.</summary>
-        public bool SmimeEncryptedEnvelope = false;
+        public bool SmimeEncryptedEnvelope { get; set; }
         /// <summary>Whether the MIME part is S/MIME signed.</summary>
-        public bool SmimeSigned = false;
+        public bool SmimeSigned { get; set; }
         /// <summary>Certificates used when signing messages.</summary>
-        public X509Certificate2Collection SmimeSigningCertificates = null;
+        public X509Certificate2Collection SmimeSigningCertificates { get; set; }
         /// <summary>Whether the MIME part was S/MIME signed, had its envelope encrypted, and was then signed again.</summary>
-        public bool SmimeTripleWrapped = false;
+        public bool SmimeTripleWrapped { get; set; }
         #endregion Public Members
 
         #region Private Members
@@ -152,6 +152,11 @@ namespace OpaqueMail.Net
                     ContentTransferEncoding = TransferEncoding.Unknown;
                     break;
             }
+
+            SmimeEncryptedEnvelope = false;
+            SmimeSigned = false;
+            SmimeSigningCertificates = null;
+            SmimeTripleWrapped = false;
         }
         #endregion Constructors
 

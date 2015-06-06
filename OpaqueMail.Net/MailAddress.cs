@@ -29,63 +29,6 @@ namespace OpaqueMail
     /// <summary>Represents the address of an electronic mail sender or recipient.</summary>
     public class MailAddress
     {
-        #region Constructors
-        /// <summary>
-        /// Initializes an empty instance of the MailAddress class.
-        /// </summary>
-        public MailAddress()
-        {
-            userName = "";
-            host = "";
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the MailAddress class using the specified address.
-        /// </summary>
-        /// <param name="address">A string that contains an email address.</param>
-        public MailAddress(string address)
-        {
-            mailAddress = address;
-
-            // Split the address into its components.
-            int atPos = address.IndexOf('@');
-            if (atPos > -1)
-            {
-                userName = address.Substring(0, atPos);
-                host = address.Substring(atPos + 1);
-            }
-            else
-            {
-                userName = address;
-                host = "";
-            }
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the MailAddress class using the specified address and display name.
-        /// </summary>
-        /// <param name="address">A string that contains an email address.</param>
-        /// <param name="displayName">A string that contains the display name associated with the address.</param>
-        public MailAddress(string address, string displayName)
-        {
-            mailAddress = address;
-            mailDisplayName = displayName;
-
-            // Split the address into its components.
-            int atPos = address.IndexOf('@');
-            if (atPos > -1)
-            {
-                userName = address.Substring(0, atPos);
-                host = address.Substring(atPos + 1);
-            }
-            else
-            {
-                userName = address;
-                host = "";
-            }
-        }
-        #endregion Constructors
-
         #region Public Members
         /// <summary>Gets the email address specified when this instance was created.</summary>
         public string Address
@@ -157,6 +100,63 @@ namespace OpaqueMail
         /// <summary>User information from the address specified.</summary>
         private string userName;
         #endregion
+
+        #region Constructors
+        /// <summary>
+        /// Initializes an empty instance of the MailAddress class.
+        /// </summary>
+        public MailAddress()
+        {
+            userName = "";
+            host = "";
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the MailAddress class using the specified address.
+        /// </summary>
+        /// <param name="address">A string that contains an email address.</param>
+        public MailAddress(string address)
+        {
+            mailAddress = address;
+
+            // Split the address into its components.
+            int atPos = address.IndexOf('@');
+            if (atPos > -1)
+            {
+                userName = address.Substring(0, atPos);
+                host = address.Substring(atPos + 1);
+            }
+            else
+            {
+                userName = address;
+                host = "";
+            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the MailAddress class using the specified address and display name.
+        /// </summary>
+        /// <param name="address">A string that contains an email address.</param>
+        /// <param name="displayName">A string that contains the display name associated with the address.</param>
+        public MailAddress(string address, string displayName)
+        {
+            mailAddress = address;
+            mailDisplayName = displayName;
+
+            // Split the address into its components.
+            int atPos = address.IndexOf('@');
+            if (atPos > -1)
+            {
+                userName = address.Substring(0, atPos);
+                host = address.Substring(atPos + 1);
+            }
+            else
+            {
+                userName = address;
+                host = "";
+            }
+        }
+        #endregion Constructors
 
         #region Public Methods
         /// <summary>

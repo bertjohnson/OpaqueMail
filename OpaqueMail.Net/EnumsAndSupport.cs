@@ -68,7 +68,7 @@ namespace OpaqueMail.Net
     /// Extended email headers for a ReadOnlyMailMessage.
     /// Only populated when the ReadOnlyMailMessage is instantiated with a parseExtendedHeaders setting of true.
     /// </summary>
-    public struct ExtendedProperties
+    public class ExtendedProperties
     {
         /// <summary>Accept-Language header.</summary>
         public string AcceptLanguage;

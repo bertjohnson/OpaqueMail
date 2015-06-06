@@ -26,10 +26,13 @@ namespace OpaqueMail
 {
 	/// <summary>Represents the format to view an email message.</summary>
 	public class AlternateView : Attachment
-	{
-        public TransferEncoding TransferEncoding;
+    {
+        #region Public Members
+        public TransferEncoding TransferEncoding { get; set; }
+        #endregion Public Members
 
-		public AlternateView() : base()
+        #region Constructors
+        public AlternateView() : base()
 		{
 		}
 
@@ -101,7 +104,9 @@ namespace OpaqueMail
 		public AlternateView(Stream contentStream, ContentType contentType) : base(contentStream, contentType)
 		{
 		}
-		
+        #endregion Constructors
+
+        #region Public Methods
         /// <summary>Creates a <see cref="T:System.Net.Mail.AlternateView" /> of an email message using the content specified in a <see cref="T:System.String" />.</summary>
 		/// <returns>An <see cref="T:System.Net.Mail.AlternateView" /> object that represents an alternate view of an email message.</returns>
 		/// <param name="content">The <see cref="T:System.String" /> that contains the content of the email message.</param>
@@ -142,7 +147,8 @@ namespace OpaqueMail
             alternateView.MediaType = contentType.MediaType;
             return alternateView;
 		}
-	}
+        #endregion Public Methods
+    }
 
     public class AlternateViewCollection : Collection<AlternateView>
     {

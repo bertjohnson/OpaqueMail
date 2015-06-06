@@ -28,11 +28,11 @@ namespace OpaqueMail.Net
     {
         #region Public Members
         /// <summary>Raw body of the TNEF-encoded message.</summary>
-        public string Body;
+        public string Body { get; set; }
         /// <summary>Calculated content type of the TNEF-encoded message.</summary>
-        public string ContentType;
+        public string ContentType { get; set; }
         /// <summary>Collection of files attached to the TNEF-encoded message.</summary>
-        public List<MimePart> MimeAttachments = new List<MimePart>();
+        public List<MimePart> MimeAttachments { get; set; }
         #endregion Public Members
 
         #region Private Members
@@ -46,6 +46,8 @@ namespace OpaqueMail.Net
         /// </summary>
         public TnefEncoding(byte[] TnefEncodedBytes)
         {
+            MimeAttachments = new List<MimePart>();
+
             // Confirm the TNEF signature.
             uint signature = ReadUint32(TnefEncodedBytes);
             if (signature == 0x223E9F78)
@@ -209,9 +211,9 @@ namespace OpaqueMail.Net
     {
         #region Public Members
         /// <summary>Raw body of the TNEF-encoded message.</summary>
-        public string Body;
+        public string Body { get; set; }
         /// <summary>Calculated content type of the TNEF-encoded message.</summary>
-        public string ContentType;
+        public string ContentType { get; set; }
         #endregion Private Members
 
         #region Private Members

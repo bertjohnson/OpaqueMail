@@ -36,37 +36,37 @@ namespace OpaqueMail.Net
     {
         #region Public Members
         /// <summary>Collection of all recipients of this message, based on To, CC, and Bcc paramaters.</summary>
-        public List<string> AllRecipients = new List<string>();
-        public AlternateViewCollection AlternateViews = new AlternateViewCollection();
+        public List<string> AllRecipients { get; set; }
+        public AlternateViewCollection AlternateViews { get; set; }
         /// <summary>Gets the attachment collection used to store data attached to this email message.</summary>
         /// <returns>A writable <see cref="T:System.Net.Mail.AttachmentCollection" />.</returns>
-        public AttachmentCollection Attachments = new AttachmentCollection();
+        public AttachmentCollection Attachments { get; set; }
         /// <summary>Gets the address collection that contains the blind carbon copy (BCC) recipients for this email message.</summary>
         /// <returns>A writable <see cref="T:System.Net.Mail.MailAddressCollection" /> object.</returns>
-        public MailAddressCollection Bcc = new MailAddressCollection();
+        public MailAddressCollection Bcc { get; set; }
         /// <summary>Gets or sets the message body.</summary>
-        public string Body = "";
+        public string Body { get; set; }
         /// <summary>Content type of the message's body.</summary>
-        public string BodyContentType = "";
+        public string BodyContentType { get; set; }
         /// <summary>Whether the body's contents were decoded from their transfer encoding.</summary>
-        public bool BodyDecoded = false;
+        public bool BodyDecoded { get; set; }
         /// <summary>Gets or sets the encoding used to encode the message body.</summary>
-        public Encoding BodyEncoding;
-        public TransferEncoding BodyTransferEncoding;
+        public Encoding BodyEncoding { get; set; }
+        public TransferEncoding BodyTransferEncoding { get; set; }
         /// <summary>Gets the address collection that contains the carbon copy (CC) recipients for this email message.</summary>
-        public MailAddressCollection CC = new MailAddressCollection();
+        public MailAddressCollection CC { get; set; }
         /// <summary>Character set encoding of the message.</summary>
-        public string CharSet = "";
+        public string CharSet { get; set; }
         /// <summary>Language of message content.</summary>
-        public string ContentLanguage = "";
+        public string ContentLanguage { get; set; }
         /// <summary>Content transfer encoding of the message.</summary>
-        public string ContentTransferEncoding = "";
+        public string ContentTransferEncoding { get; set; }
         /// <summary>Primary content type of the message.</summary>
-        public string ContentType = "";
+        public string ContentType { get; set; }
         /// <summary>Date sent.</summary>
-        public DateTime Date;
+        public DateTime Date { get; set; }
         /// <summary>Delivered-To header.</summary>
-        public string DeliveredTo = "";
+        public string DeliveredTo { get; set; }
         /// <summary>Gets or sets the delivery notifications for this email message.</summary>
         /// <returns>A <see cref="T:System.Net.Mail.DeliveryNotificationOptions" /> value that contains the delivery notifications for this message.</returns>
         public DeliveryNotificationOptions DeliveryNotificationOptions
@@ -89,59 +89,59 @@ namespace OpaqueMail.Net
         /// Extended email headers.
         /// Only populated when the ReadOnlyMailMessage is instantiated with a parseExtendedHeaders setting of true.
         /// </summary>
-        public ExtendedProperties ExtendedProperties;
+        public ExtendedProperties ExtendedProperties { get; set; }
         /// <summary>Flags representing the processed state of the message.</summary>
-        public Flags Flags;
+        public Flags Flags { get; set; }
         /// <summary>Gets or sets the from address for this email message.</summary>
         /// <returns>A <see cref="T:System.Net.Mail.MailAddress" /> that contains the from address information.</returns>
-        public MailAddress From;
+        public MailAddress From { get; set; }
         /// <summary>Whether the message contains a body.</summary>
-        public bool HasBody;
+        public bool HasBody { get; set; }
         /// <summary>Whether the message contains headers.</summary>
-        public bool HasHeaders;
+        public bool HasHeaders { get; set; }
         /// <summary>Gets the email headers that are transmitted with this email message.</summary>
         /// <returns>A <see cref="T:System.Collections.Specialized.NameValueCollection" /> that contains the email headers.</returns>
-        public NameValueCollection Headers = new NameValueCollection();
+        public NameValueCollection Headers { get; set; }
         /// <summary>Gets or sets the encoding used for the user-defined custom headers for this email message.</summary>
         /// <returns>The encoding used for user-defined custom headers for this email message.</returns>
-        public Encoding HeadersEncoding;
+        public Encoding HeadersEncoding { get; set; }
         /// <summary>Gets or sets a value indicating whether the mail message body is in Html.</summary>
-        public bool IsBodyHtml;
+        public bool IsBodyHtml { get; set; }
         /// <summary>Mailbox the message was read from.</summary>
-        public string Mailbox;
+        public string Mailbox { get; set; }
         /// <summary>Gets or sets the priority of this email message.</summary>
         /// <returns>A <see cref="T:System.Net.Mail.MailPriority" /> that contains the priority of this message.</returns>
-        public MailPriority Priority;
+        public MailPriority Priority { get; set; }
         /// <summary>UID as specified by the IMAP server.</summary>
-        public int ImapUid;
+        public int ImapUid { get; set; }
         /// <summary>Importance header.</summary>
-        public string Importance = "";
+        public string Importance { get; set; }
         /// <summary>Index as specified by the IMAP or POP3 server.</summary>
-        public int Index;
+        public int Index { get; set; }
         /// <summary>Raw In-Reply-To header.</summary>
-        public string InReplyTo;
+        public string InReplyTo { get; set; }
         /// <summary>In-Reply-To message IDs.</summary>
-        public string[] InReplyToMessageIDs;
+        public string[] InReplyToMessageIDs { get; set; }
         /// <summary>Message ID header.</summary>
-        public string MessageId;
+        public string MessageId { get; set; }
         /// <summary>Text delimiting MIME message parts.</summary>
-        public string MimeBoundaryName = "OpaqueMail-boundary";
+        public string MimeBoundaryName { get; set; }
         /// <summary>List of MIME parts from a multipart/* MIME encoded message.</summary>
-        public List<MimePart> MimeParts;
+        public List<MimePart> MimeParts { get; set; }
         /// <summary>Partial message unique ID.</summary>
-        public string PartialMessageId;
+        public string PartialMessageId { get; set; }
         /// <summary>Partial message unique number.</summary>
-        public int PartialMessageNumber;
+        public int PartialMessageNumber { get; set; }
         /// <summary>UIDL as specified by the POP3 server.</summary>
-        public string Pop3Uidl;
+        public string Pop3Uidl { get; set; }
         /// <summary>Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</summary>
-        public ReadOnlyMailMessageProcessingFlags ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
+        public ReadOnlyMailMessageProcessingFlags ProcessingFlags { get; set; }
         /// <summary>String representation of the raw body received.</summary>
-        public string RawBody;
+        public string RawBody { get; set; }
         /// <summary>Raw flags returned with the message.</summary>
-        public HashSet<string> RawFlags = new HashSet<string>();
+        public HashSet<string> RawFlags { get; set; }
         /// <summary>String representation of the raw headers received.</summary>
-        public string RawHeaders;
+        public string RawHeaders { get; set; }
         /// <summary>String representation of the entire raw message received.</summary>
         public string RawMessage
         {
@@ -151,31 +151,21 @@ namespace OpaqueMail.Net
             }
         }
         /// <summary>Array of values of Received and X-Received headers.</summary>
-        public string[] ReceivedChain;
+        public string[] ReceivedChain { get; set; }
         /// <summary>Message IDs of previously referenced messages.</summary>
-        public string[] References;
+        public string[] References { get; set; }
         /// <summary>Gets or sets the ReplyTo address for the mail message.</summary>
         /// <returns>A MailAddress that indicates the value of the <see cref="P:System.Net.Mail.MailMessage.ReplyTo" /> field.</returns>
         [Obsolete("ReplyTo is obsoleted for this type.  Please use ReplyToList instead which can accept multiple addresses. http://go.microsoft.com/fwlink/?linkid=14202")]
-        public MailAddress ReplyTo;
+        public MailAddress ReplyTo { get; set; }
         /// <summary>Gets or sets the list of addresses to reply to for the mail message.</summary>
         /// <returns>The list of the addresses to reply to for the mail message.</returns>
         public MailAddressCollection ReplyToList = new MailAddressCollection();
         /// <summary>Return-Path header.</summary>
-        public string ReturnPath = "";
+        public string ReturnPath { get; set; }
         /// <summary>Gets or sets the sender's address for this email message.</summary>
         /// <returns>A <see cref="T:System.Net.Mail.MailAddress" /> that contains the sender's address information.</returns>
-        public MailAddress Sender;
-        /// <summary>Certificate chain used to sign the message.</summary>
-        public X509Certificate2Collection SmimeSigningCertificateChain = new X509Certificate2Collection();
-        /// <summary>Gets or sets the subject line for this email message.</summary>
-        /// <returns>A <see cref="T:System.String" /> that contains the subject content.</returns>
-        public string Subject;
-        /// <summary>Gets or sets the encoding used for the subject content for this email message.</summary>
-        /// <returns>An <see cref="T:System.Text.Encoding" /> that was used to encode the <see cref="P:System.Net.Mail.MailMessage.Subject" /> property.</returns>
-        public Encoding SubjectEncoding;
-        /// <summary>X-Subject-Encryption header, as optionally used by OpaqueMail.</summary>
-        public bool SubjectEncryption;
+        public MailAddress Sender { get; set; }
         /// <summary>
         /// Size of the entire message.
         /// When sending email, this is a rough estimate only.
@@ -209,28 +199,38 @@ namespace OpaqueMail.Net
             }
         }
         /// <summary>Encrypt the email's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
-        public bool SmimeEncryptedEnvelope = false;
+        public bool SmimeEncryptedEnvelope { get; set; }
         /// <summary>Type of subject identifier to use.</summary>
         /// <remarks>The default of "IssuerAndSerialNumber" is recommended for most use cases.</remarks>
-        public SmimeEncryptionOptionFlags SmimeEncryptionOptionFlags = SmimeEncryptionOptionFlags.RequireCertificateVerification;
+        public SmimeEncryptionOptionFlags SmimeEncryptionOptionFlags { get; set; }
         /// <summary>Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</summary>
-        public SmimeSettingsMode SmimeSettingsMode = SmimeSettingsMode.RequireExactSettings;
+        public SmimeSettingsMode SmimeSettingsMode { get; set; }
         /// <summary>Sign the email.  When true, signing is the first S/MIME operation.</summary>
-        public bool SmimeSigned = false;
+        public bool SmimeSigned { get; set; }
         /// <summary>
         /// Certificate used when signing messages.
         /// Requires private key.
         /// </summary>
-        public X509Certificate2 SmimeSigningCertificate;
+        public X509Certificate2 SmimeSigningCertificate { get; set; }
+        /// <summary>Certificate chain used to sign the message.</summary>
+        public X509Certificate2Collection SmimeSigningCertificateChain { get; set; }
         /// <summary>Determine how the S/MIME message will be signed.</summary>
-        public SmimeSigningOptionFlags SmimeSigningOptionFlags = SmimeSigningOptionFlags.SignTime;
+        public SmimeSigningOptionFlags SmimeSigningOptionFlags { get; set; }
         /// <summary>Triple-wrap the email by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
-        public bool SmimeTripleWrapped = false;
+        public bool SmimeTripleWrapped { get; set; }
         /// <summary>Determine how the S/MIME envelope will be encrypted.</summary>
-        public SubjectIdentifierType SubjectIdentifierType = SubjectIdentifierType.IssuerAndSerialNumber;
+        /// <summary>Gets or sets the subject line for this email message.</summary>
+        /// <returns>A <see cref="T:System.String" /> that contains the subject content.</returns>
+        public string Subject { get; set; }
+        /// <summary>Gets or sets the encoding used for the subject content for this email message.</summary>
+        /// <returns>An <see cref="T:System.Text.Encoding" /> that was used to encode the <see cref="P:System.Net.Mail.MailMessage.Subject" /> property.</returns>
+        public Encoding SubjectEncoding { get; set; }
+        /// <summary>X-Subject-Encryption header, as optionally used by OpaqueMail.</summary>
+        public bool SubjectEncryption { get; set; }
+        public SubjectIdentifierType SubjectIdentifierType { get; set; }
         /// <summary>Gets the address collection that contains the recipients of this email message.</summary>
         /// <returns>A writable <see cref="T:System.Net.Mail.MailAddressCollection" /> object.</returns>
-        public MailAddressCollection To = new MailAddressCollection();
+        public MailAddressCollection To { get; set; }
         #endregion Public Members
 
         #region Protected Members
@@ -251,7 +251,36 @@ namespace OpaqueMail.Net
         /// Initializes an empty instance of the OpaqueMail.MailMessage class.
         /// </summary>
         public MailMessage()
+            : base()
         {
+            AllRecipients = new List<string>();
+            AlternateViews = new AlternateViewCollection();
+            Attachments = new AttachmentCollection();
+            Bcc = new MailAddressCollection();
+            Body = "";
+            BodyContentType = "";
+            BodyDecoded = false;
+            CC = new MailAddressCollection();
+            CharSet = "";
+            ContentLanguage = "";
+            ContentTransferEncoding = "";
+            ContentType = "";
+            DeliveredTo = "";
+            Headers = new NameValueCollection();
+            Importance = "";
+            MimeBoundaryName = "OpaqueMail-boundary";
+            ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
+            RawFlags = new HashSet<string>();
+            ReturnPath = "";
+            SmimeSigningCertificateChain = new X509Certificate2Collection();
+            SmimeEncryptedEnvelope = false;
+            SmimeEncryptionOptionFlags = SmimeEncryptionOptionFlags.RequireCertificateVerification;
+            SmimeSettingsMode = SmimeSettingsMode.RequireExactSettings;
+            SmimeSigned = false;
+            SmimeSigningOptionFlags = SmimeSigningOptionFlags.SignTime;
+            SmimeTripleWrapped = false;
+            SubjectIdentifierType = SubjectIdentifierType.IssuerAndSerialNumber;
+            To = new MailAddressCollection();
         }
         /// <summary>
         /// Initializes an empty instance of the OpaqueMail.MailMessage class by using the specified OpaqueMail.MailAddress class objects.
@@ -259,6 +288,7 @@ namespace OpaqueMail.Net
         /// <param name="from">A System.Net.Mail.MailAddress that contains the address of the sender of the email message.</param>
         /// <param name="to">A System.Net.Mail.MailAddress that contains the address of the recipient of the email message.</param>
         public MailMessage(MailAddress from, MailAddress to)
+            : this()
         {
             From = from;
             To.Add(to);
@@ -271,6 +301,7 @@ namespace OpaqueMail.Net
         /// <param name="subject">A System.String that contains the subject text.</param>
         /// <param name="body">A System.String that contains the message body.</param>
         public MailMessage(string from, string to, string subject, string body)
+            : this()
         {
             From = new MailAddress(from);
             To.Add(new MailAddress(to));
@@ -281,13 +312,19 @@ namespace OpaqueMail.Net
         /// Initializes a populated instance of the OpaqueMail.ReadOnlyMailMessage class representing the message text passed in.
         /// </summary>
         /// <param name="messageText">The raw contents of the email message.</param>
-        public MailMessage(string messageText) : this(messageText, ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody | ReadOnlyMailMessageProcessingFlags.IncludeMIMEParts, false) { }
+        public MailMessage(string messageText)
+            : this(messageText, ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody | ReadOnlyMailMessageProcessingFlags.IncludeMIMEParts, false)
+        {
+        }
         /// <summary>
         /// Initializes a populated instance of the OpaqueMail.ReadOnlyMailMessage class representing the message text passed in with attachments procesed according to the attachment filter flags.
         /// </summary>
         /// <param name="messageText">The raw contents of the email message.</param>
         /// <param name="processingFlags">Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</param>
-        public MailMessage(string messageText, ReadOnlyMailMessageProcessingFlags processingFlags) : this(messageText, processingFlags, false) { }
+        public MailMessage(string messageText, ReadOnlyMailMessageProcessingFlags processingFlags)
+            : this(messageText, processingFlags, false)
+        {
+        }
         /// <summary>
         /// Initializes a populated instance of the OpaqueMail.ReadOnlyMailMessage class representing the message text passed in with attachments procesed according to the attachment filter flags.
         /// </summary>
@@ -295,6 +332,7 @@ namespace OpaqueMail.Net
         /// <param name="processingFlags">Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</param>
         /// <param name="parseExtendedHeaders">Whether to populate the ExtendedHeaders object.</param>
         public MailMessage(string messageText, ReadOnlyMailMessageProcessingFlags processingFlags, bool parseExtendedHeaders)
+            : this()
         {
             // Default to no MIME boundary.
             MimeBoundaryName = null;
@@ -406,7 +444,9 @@ namespace OpaqueMail.Net
                             if (dateString.Substring(dateString.Length - 4, 1) == " ")
                                 dateString = dateString.Substring(0, dateString.Length - 4);
 
-                            DateTime.TryParse(dateString, out Date);
+                            DateTime date;
+                            DateTime.TryParse(dateString, out date);
+                            Date = date;
                             break;
                         case "delivered-to":
                             DeliveredTo = headerValue;
@@ -532,7 +572,9 @@ namespace OpaqueMail.Net
                             }
                             break;
                         case "x-subject-encryption":
-                            bool.TryParse(headerValue, out SubjectEncryption);
+                            bool subjectEncryption;
+                            bool.TryParse(headerValue, out subjectEncryption);
+                            SubjectEncryption = subjectEncryption;
                             break;
                         default:
                             break;

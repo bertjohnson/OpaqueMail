@@ -44,7 +44,7 @@
     <Compile Include="Attachment.cs" />
     <Compile Include="LockAsync.cs" />
     <Compile Include="Constants.cs" />
-    <Compile Include="EnumsAndStructs.cs" />
+    <Compile Include="EnumsAndSupport.cs" />
     <Compile Include="Functions.cs" />
     <Compile Include="IMAP\ImapClient.cs" />
     <Compile Include="IMAP\ImapClient.Properties.cs" />

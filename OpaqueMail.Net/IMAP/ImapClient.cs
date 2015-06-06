@@ -36,17 +36,17 @@ namespace OpaqueMail.Net
     {
         #region Public Members
         /// <summary>Set of extended IMAP capabilities.</summary>
-        public HashSet<string> Capabilities = new HashSet<string>();
+        public HashSet<string> Capabilities { get; set; }
         /// <summary>Gets or sets the credentials used to authenticate.</summary>
-        public NetworkCredential Credentials;
+        public NetworkCredential Credentials { get; set; }
         /// <summary>Specify whether the OpaqueMail.ImapClient uses Secure Sockets Layer (SSL).</summary>
-        public bool EnableSsl;
+        public bool EnableSsl { get; set; }
         /// <summary>Gets or sets the name or IP address of the host used for IMAP transactions.</summary>
-        public string Host;
+        public string Host { get; set; }
         /// <summary>Frequency of checking for mailbox notifications.</summary>
-        public TimeSpan IdleFrequency = new TimeSpan(0, 1, 0);
+        public TimeSpan IdleFrequency { get; set; }
         /// <summary>Version of IMAP reported by the server.</summary>
-        public string ImapVersion = "";
+        public string ImapVersion { get; set; }
         /// <summary>Whether the session has successfully been authenticated.</summary>
         public bool IsAuthenticated
         {
@@ -86,17 +86,15 @@ namespace OpaqueMail.Net
             }
         }
         /// <summary>The last command issued to the IMAP server.</summary>
-        public string LastCommandIssued;
+        public string LastCommandIssued { get; set; }
         /// <summary>Whether the last IMAP command was successful.</summary>
-        public bool LastCommandResult = false;
+        public bool LastCommandResult { get; set; }
         /// <summary>The last error message returned by the IMAP server.</summary>
-        public string LastErrorMessage;
+        public string LastErrorMessage { get; set; }
         /// <summary>Gets or sets the port used for IMAP transactions.</summary>
-        public int Port;
+        public int Port { get; set; }
         /// <summary>Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</summary>
-        public ReadOnlyMailMessageProcessingFlags ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
-        /// <summary>A unique string used to tag commands in the current IMAP session.</summary>
-        public string SessionCommandTag = ".";
+        public ReadOnlyMailMessageProcessingFlags ProcessingFlags { get; set; }
         /// <summary>Gets or sets a value, in milliseconds, that determines how long the stream will attempt to read before timing out.</summary>
         public int ReadTimeout
         {
@@ -113,8 +111,10 @@ namespace OpaqueMail.Net
                     ImapStream.ReadTimeout = value;
             }
         }
+        /// <summary>A unique string used to tag commands in the current IMAP session.</summary>
+        public string SessionCommandTag { get; set; }
         /// <summary>List of unprocessed messages returned by the server.</summary>
-        public List<string> UnexpectedServerMessages = new List<string>();
+        public List<string> UnexpectedServerMessages { get; set; }
         /// <summary>The welcome message provided by the IMAP server.</summary>
         public string WelcomeMessage
         {
@@ -189,6 +189,14 @@ namespace OpaqueMail.Net
         /// <param name="enableSSL">Whether the IMAP connection uses TLS / SSL protection.</param>
         public ImapClient(string host, int port, string userName, string password, bool enableSSL)
         {
+            Capabilities = new HashSet<string>();
+            IdleFrequency = new TimeSpan(0, 1, 0);
+            ImapVersion = "";
+            LastCommandResult = false;
+            ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
+            SessionCommandTag = ".";
+            UnexpectedServerMessages = new List<string>();
+
             Host = host;
             Port = port;
             Credentials = new NetworkCredential(userName, password);

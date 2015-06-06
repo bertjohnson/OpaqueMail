@@ -27,15 +27,16 @@ namespace OpaqueMail
 {
     public class Attachment
 	{
-        public string Boundary;
-        public string ContentId;
-        public string MediaType;
-        public string Name;
-        public Encoding NameEncoding;
-        public Stream ContentStream = new MemoryStream();
+        public string Boundary { get; set; }
+        public string ContentId { get; set; }
+        public string MediaType { get; set; }
+        public string Name { get; set; }
+        public Encoding NameEncoding { get; set; }
+        public Stream ContentStream { get; set; }
 
         public Attachment()
         {
+            ContentStream = new MemoryStream();
         }
 
         public Attachment(string fileName)
@@ -67,12 +68,14 @@ namespace OpaqueMail
         }
 
         public Attachment(Stream contentStream)
+            : this()
         {
             contentStream.CopyTo(ContentStream);
             ContentStream.Seek(0, SeekOrigin.Begin);
         }
 
         public Attachment(Stream contentStream, string name)
+            : this()
         {
             Name = name;
             contentStream.CopyTo(ContentStream);
@@ -80,6 +83,7 @@ namespace OpaqueMail
         }
 
         public Attachment(Stream contentStream, string name, string mediaType)
+            : this()
         {
             Name = name;
             contentStream.CopyTo(ContentStream);
@@ -88,6 +92,7 @@ namespace OpaqueMail
         }
 
         public Attachment(Stream contentStream, ContentType contentType)
+            : this()
         {
             contentStream.CopyTo(ContentStream);
             ContentStream.Seek(0, SeekOrigin.Begin);

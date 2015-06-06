@@ -43,12 +43,12 @@ namespace OpaqueMail.Net
         /// OID representing the encryption algorthim(s) to be used.
         /// </summary>
         /// <remarks>Defaults to using the AES 256-bit algorithm with CBC.</remarks>
-        public AlgorithmIdentifier SmimeAlgorithmIdentifier = new AlgorithmIdentifier(new Oid("2.16.840.1.101.3.4.1.42"));
+        public AlgorithmIdentifier SmimeAlgorithmIdentifier { get; set; }
         /// <summary>
         /// Collection of certificates to be used when searching for recipient public keys.
         /// If not specified, SmtpClient will use the current Windows user's certificate store.
         /// </summary>
-        public X509Certificate2Collection SmimeValidCertificates = null;
+        public X509Certificate2Collection SmimeValidCertificates { get; set; }
         #endregion Public Members
 
         #region Protected Members
@@ -76,6 +76,9 @@ namespace OpaqueMail.Net
         public SmtpClient()
             : base()
         {
+            SmimeAlgorithmIdentifier = new AlgorithmIdentifier(new Oid("2.16.840.1.101.3.4.1.42"));
+            SmimeValidCertificates = null;
+            
             RandomizeBoundaryNames();
         }
         /// <summary>
@@ -85,6 +88,9 @@ namespace OpaqueMail.Net
         public SmtpClient(string host)
             : base(host)
         {
+            SmimeAlgorithmIdentifier = new AlgorithmIdentifier(new Oid("2.16.840.1.101.3.4.1.42"));
+            SmimeValidCertificates = null;
+
             RandomizeBoundaryNames();
         }
         /// <summary>
@@ -95,6 +101,9 @@ namespace OpaqueMail.Net
         public SmtpClient(string host, int port)
             : base(host, port)
         {
+            SmimeAlgorithmIdentifier = new AlgorithmIdentifier(new Oid("2.16.840.1.101.3.4.1.42"));
+            SmimeValidCertificates = null;
+
             RandomizeBoundaryNames();
         }
         #endregion Constructors

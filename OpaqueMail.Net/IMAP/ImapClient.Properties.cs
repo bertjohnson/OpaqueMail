@@ -25,95 +25,95 @@ namespace OpaqueMail.Net
     {
         #region Public Properties
         /// <summary>A list of authentication mechanisms supported by the server.</summary>
-        private List<string> ServerAuthSupport;
+        private List<string> ServerAuthSupport { get; set; }
         /// <summary>Whether the IMAP server supports the "ACL" extension.</summary>
-        private bool ServerSupportsACL = false;
+        private bool ServerSupportsACL { get; set; }
         /// <summary>Whether the IMAP server supports the "Binary" extension.</summary>
-        private bool ServerSupportsBinary = false;
+        private bool ServerSupportsBinary { get; set; }
         /// <summary>Whether the IMAP server supports the "Catenate" extension.</summary>
-        private bool ServerSupportsCatenate = false;
+        private bool ServerSupportsCatenate { get; set; }
         /// <summary>Whether the IMAP server supports the "Children" mailbox extension.</summary>
-        private bool ServerSupportsChildren = false;
+        private bool ServerSupportsChildren { get; set; }
         /// <summary>A list of compression algorithms supported by the server.</summary>
-        private List<string> ServerCompressionSupport;
+        private List<string> ServerCompressionSupport { get; set; }
         /// <summary>Whether the IMAP server supports the Conditional STORE command.</summary>
-        private bool ServerSupportsCondStore = false;
+        private bool ServerSupportsCondStore { get; set; }
         /// <summary>A list of contexts supported by the server.</summary>
-        private List<string> ServerContextSupport;
+        private List<string> ServerContextSupport { get; set; }
         /// <summary>Whether the IMAP server supports the "Convert" command.</summary>
-        private bool ServerSupportsConvert = false;
+        private bool ServerSupportsConvert { get; set; }
         /// <summary>Whether the IMAP server supports the "Create-Special-Use" command.</summary>
-        private bool ServerSupportsCreateSpecialUse = false;
+        private bool ServerSupportsCreateSpecialUse { get; set; }
         /// <summary>Whether the IMAP server supports the "Enable" command.</summary>
-        private bool ServerSupportsEnable = false;
+        private bool ServerSupportsEnable { get; set; }
         /// <summary>Whether the IMAP server supports the "ESearch" extension.</summary>
-        private bool ServerSupportsESearch = false;
+        private bool ServerSupportsESearch { get; set; }
         /// <summary>Whether the IMAP server supports the "ESort" extension.</summary>
-        private bool ServerSupportsESort = false;
+        private bool ServerSupportsESort { get; set; }
         /// <summary>Whether the IMAP server supports the "Filters" extension.</summary>
-        private bool ServerSupportsFilters = false;
+        private bool ServerSupportsFilters { get; set; }
         /// <summary>Whether the IMAP server supports Google's X-GM-EXT-1 extensions.</summary>
-        private bool ServerSupportsGoogleExtensions = false;
+        private bool ServerSupportsGoogleExtensions { get; set; }
         /// <summary>Whether the IMAP server supports the "ID" command.</summary>
-        private bool ServerSupportsID = false;
+        private bool ServerSupportsID { get; set; }
         /// <summary>Whether the IMAP server supports real-time notifications.</summary>
-        private bool ServerSupportsIdle = false;
+        private bool ServerSupportsIdle { get; set; }
         /// <summary>Link to the "IMAP-Sieve" server.</summary>
-        private string ServerImapSieveServer;
+        private string ServerImapSieveServer { get; set; }
         /// <summary>Whether the IMAP server supports the "Language" extension.</summary>
-        private bool ServerSupportsLanguage = false;
+        private bool ServerSupportsLanguage { get; set; }
         /// <summary>Whether the IMAP server supports the "ListExt" extension.</summary>
-        private bool ServerSupportsListExt = false;
+        private bool ServerSupportsListExt { get; set; }
         /// <summary>Whether the IMAP server supports the "List-Status" extension.</summary>
-        private bool ServerSupportsListStatus = false;
+        private bool ServerSupportsListStatus { get; set; }
         /// <summary>Whether the IMAP server supports non-synchronizing literals.</summary>
-        private bool ServerSupportsLiteralPlus = false;
+        private bool ServerSupportsLiteralPlus { get; set; }
         /// <summary>Whether the IMAP server supports the "LoginDisabled" extension.</summary>
-        private bool ServerSupportsLoginDisabled = false;
+        private bool ServerSupportsLoginDisabled { get; set; }
         /// <summary>Whether the IMAP server supports the "Login-Referrals" extension.</summary>
-        private bool ServerSupportsLoginReferrals = false;
+        private bool ServerSupportsLoginReferrals { get; set; }
         /// <summary>Whether the IMAP server supports the "Mailbox-Referrals" extension.</summary>
-        private bool ServerSupportsMailboxReferrals = false;
+        private bool ServerSupportsMailboxReferrals { get; set; }
         /// <summary>Whether the IMAP server supports the "Metadata" extension.</summary>
-        private bool ServerSupportsMetadata = false;
+        private bool ServerSupportsMetadata { get; set; }
         /// <summary>Whether the IMAP server supports the "Move" command.</summary>
-        private bool ServerSupportsMove = false;
+        private bool ServerSupportsMove { get; set; }
         /// Whether the IMAP server supports the "MultiAppend" command.
-        private bool ServerSupportsMultiAppend = false;
+        private bool ServerSupportsMultiAppend { get; set; }
         /// Whether the IMAP server supports the "MultiSearch" extension.
-        private bool ServerSupportsMultiSearch = false;
+        private bool ServerSupportsMultiSearch { get; set; }
         /// <summary>Whether the IMAP server supports namespaces.</summary>
-        private bool ServerSupportsNamespace = false;
+        private bool ServerSupportsNamespace { get; set; }
         /// <summary>Whether the IMAP server supports the "Notify" command.</summary>
-        private bool ServerSupportsNotify = false;
+        private bool ServerSupportsNotify { get; set; }
         /// <summary>Whether the IMAP server supports the "Quota" extension.</summary>
-        private bool ServerSupportsQuota = false;
+        private bool ServerSupportsQuota { get; set; }
         /// <summary>Whether the IMAP server supports the "QResync" extension.</summary>
-        private bool ServerSupportsQResync = false;
+        private bool ServerSupportsQResync { get; set; }
         /// <summary>A list of search options supported by the server.</summary>
-        private List<string> ServerSearchSupport;
+        private List<string> ServerSearchSupport { get; set; }
         /// <summary>Whether the IMAP server supports the "SearchRes" extension.</summary>
-        private bool ServerSupportsSearchRes = false;
+        private bool ServerSupportsSearchRes { get; set; }
         /// <summary>A list of rights reported by the server.</summary>
-        private List<string> ServerRights;
+        private List<string> ServerRights { get; set; }
         /// <summary>Whether the IMAP server supports the "Sort" command.</summary>
-        private bool ServerSupportsSort = false;
+        private bool ServerSupportsSort { get; set; }
         /// <summary>A list of sorting options supported by the server.</summary>
-        private List<string> ServerSortingSupport;
+        private List<string> ServerSortingSupport { get; set; }
         /// <summary>Whether the IMAP server supports the "Special-Use" extension.</summary>
-        private bool ServerSupportsSpecialUse = false;
+        private bool ServerSupportsSpecialUse { get; set; }
         /// <summary>A list of threading options supported by the server.</summary>
-        private List<string> ServerThreadingSupport;
+        private List<string> ServerThreadingSupport { get; set; }
         /// <summary>Whether the IMAP server supports the "StartTLS" command.</summary>
-        private bool ServerSupportsStartTls = false;
+        private bool ServerSupportsStartTls { get; set; }
         /// <summary>Whether the IMAP server supports the "UIDPlus" extension.</summary>
-        private bool ServerSupportsUIDPlus = false;
+        private bool ServerSupportsUIDPlus { get; set; }
         /// <summary>Whether the IMAP server supports the "Unselect" command.</summary>
-        private bool ServerSupportsUnselect = false;
+        private bool ServerSupportsUnselect { get; set; }
         /// <summary>Whether the IMAP server supports the "Within" search extension.</summary>
-        private bool ServerSupportsWithin = false;
+        private bool ServerSupportsWithin { get; set; }
         /// <summary>Whether the IMAP server supports the "Xlist" command.</summary>
-        private bool ServerSupportsXlist = false;
+        private bool ServerSupportsXlist { get; set; }
 
         /// <summary>
         /// Whether the IMAP server supports the "ACL" extension.
