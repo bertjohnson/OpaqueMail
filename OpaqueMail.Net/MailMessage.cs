@@ -87,7 +87,7 @@ namespace OpaqueMail.Net
         }
         /// <summary>
         /// Extended email headers.
-        /// Only populated when the ReadOnlyMailMessage is instantiated with a parseExtendedHeaders setting of true.
+        /// Only populated when the MailMessage is instantiated with a parseExtendedHeaders setting of true.
         /// </summary>
         public ExtendedProperties ExtendedProperties { get; set; }
         /// <summary>Flags representing the processed state of the message.</summary>
@@ -134,8 +134,8 @@ namespace OpaqueMail.Net
         public int PartialMessageNumber { get; set; }
         /// <summary>UIDL as specified by the POP3 server.</summary>
         public string Pop3Uidl { get; set; }
-        /// <summary>Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</summary>
-        public ReadOnlyMailMessageProcessingFlags ProcessingFlags { get; set; }
+        /// <summary>Flags determining whether specialized properties are returned with a MailMessage.</summary>
+        public MailMessageProcessingFlags ProcessingFlags { get; set; }
         /// <summary>String representation of the raw body received.</summary>
         public string RawBody { get; set; }
         /// <summary>Raw flags returned with the message.</summary>
@@ -179,7 +179,7 @@ namespace OpaqueMail.Net
                     return loadedSize;
                 else
                 {
-                    // If this message wasn't loaded via ReadOnlyMailMessage, calculate a rough estimate of its size.
+                    // Calculate a rough estimate of its size.
                     long size = Body.Length;
 
                     foreach (Attachment attachment in Attachments)
@@ -241,7 +241,7 @@ namespace OpaqueMail.Net
         #endregion Protected Members
 
         #region Private Members
-        /// <summary>Size of the loaded message, as calculated in ReadOnlyMailMessage's constructor.</summary>
+        /// <summary>Size of the loaded message, as calculated in MailMessage's constructor.</summary>
         private long loadedSize = -1;
         private DeliveryNotificationOptions deliveryStatusNotification;
         #endregion Private Members
@@ -269,7 +269,7 @@ namespace OpaqueMail.Net
             Headers = new NameValueCollection();
             Importance = "";
             MimeBoundaryName = "OpaqueMail-boundary";
-            ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
+            ProcessingFlags = MailMessageProcessingFlags.IncludeRawHeaders | MailMessageProcessingFlags.IncludeRawBody;
             RawFlags = new HashSet<string>();
             ReturnPath = "";
             SmimeSigningCertificateChain = new X509Certificate2Collection();
@@ -309,29 +309,29 @@ namespace OpaqueMail.Net
             Body = body;
         }
         /// <summary>
-        /// Initializes a populated instance of the OpaqueMail.ReadOnlyMailMessage class representing the message text passed in.
+        /// Initializes a populated instance of the OpaqueMail.MailMessage class representing the message text passed in.
         /// </summary>
         /// <param name="messageText">The raw contents of the email message.</param>
         public MailMessage(string messageText)
-            : this(messageText, ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody | ReadOnlyMailMessageProcessingFlags.IncludeMIMEParts, false)
+            : this(messageText, MailMessageProcessingFlags.IncludeRawHeaders | MailMessageProcessingFlags.IncludeRawBody | MailMessageProcessingFlags.IncludeMIMEParts, false)
         {
         }
         /// <summary>
-        /// Initializes a populated instance of the OpaqueMail.ReadOnlyMailMessage class representing the message text passed in with attachments procesed according to the attachment filter flags.
+        /// Initializes a populated instance of the OpaqueMail.MailMessage class representing the message text passed in with attachments procesed according to the attachment filter flags.
         /// </summary>
         /// <param name="messageText">The raw contents of the email message.</param>
-        /// <param name="processingFlags">Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</param>
-        public MailMessage(string messageText, ReadOnlyMailMessageProcessingFlags processingFlags)
+        /// <param name="processingFlags">Flags determining whether specialized properties are returned with a MailMessage.</param>
+        public MailMessage(string messageText, MailMessageProcessingFlags processingFlags)
             : this(messageText, processingFlags, false)
         {
         }
         /// <summary>
-        /// Initializes a populated instance of the OpaqueMail.ReadOnlyMailMessage class representing the message text passed in with attachments procesed according to the attachment filter flags.
+        /// Initializes a populated instance of the OpaqueMail.MailMessage class representing the message text passed in with attachments procesed according to the attachment filter flags.
         /// </summary>
         /// <param name="messageText">The raw contents of the email message.</param>
-        /// <param name="processingFlags">Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</param>
+        /// <param name="processingFlags">Flags determining whether specialized properties are returned with a MailMessage.</param>
         /// <param name="parseExtendedHeaders">Whether to populate the ExtendedHeaders object.</param>
-        public MailMessage(string messageText, ReadOnlyMailMessageProcessingFlags processingFlags, bool parseExtendedHeaders)
+        public MailMessage(string messageText, MailMessageProcessingFlags processingFlags, bool parseExtendedHeaders)
             : this()
         {
             // Default to no MIME boundary.
@@ -749,7 +749,7 @@ namespace OpaqueMail.Net
                 HasHeaders = true;
 
                 // Set the raw headers property if requested.
-                if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders) > 0)
+                if ((processingFlags & MailMessageProcessingFlags.IncludeRawHeaders) > 0)
                     RawHeaders = headers;
 
                 if (cutoff > -1)
@@ -806,7 +806,7 @@ namespace OpaqueMail.Net
                             BodyContentType = "text/html";
                     }
 
-                    if (!((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeMIMEParts) > 0))
+                    if (!((processingFlags & MailMessageProcessingFlags.IncludeMIMEParts) > 0))
                         MimeParts = null;
                 }
                 else
@@ -835,7 +835,7 @@ namespace OpaqueMail.Net
                 }
 
                 // Set the raw body property if requested.
-                if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeRawBody) > 0)
+                if ((processingFlags & MailMessageProcessingFlags.IncludeRawBody) > 0)
                     RawBody = body;
             }
 
@@ -1227,5 +1227,11 @@ namespace OpaqueMail.Net
             SmimeTripleWrapped = allMimePartsTripleWrapped;
         }
         #endregion Private Methods
+    }
+
+
+    [Obsolete("Please use OpaqueMail.Net.MailMessage instead, which can be used for both incoming and outbound messages.")]
+    public class ReadOnlyMailMessage
+    {
     }
 }

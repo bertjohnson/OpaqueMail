@@ -169,8 +169,8 @@ namespace OpaqueMail.Net
         /// <param name="contentTransferEncoding">Encoding of the outermost MIME part.</param>
         /// <param name="body">The outermost MIME part's contents.</param>
         /// <param name="depth">The nesting layer of this MIME part.</param>
-        /// <param name="processingFlags">Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</param>
-        public static List<MimePart> ExtractMIMEParts(string contentType, string charSet, string contentTransferEncoding, string body, ReadOnlyMailMessageProcessingFlags processingFlags, int depth)
+        /// <param name="processingFlags">Flags determining whether specialized properties are returned with a MailMessage.</param>
+        public static List<MimePart> ExtractMIMEParts(string contentType, string charSet, string contentTransferEncoding, string body, MailMessageProcessingFlags processingFlags, int depth)
         {
             List<MimePart> mimeParts = new List<MimePart>();
 
@@ -259,7 +259,7 @@ namespace OpaqueMail.Net
                                 if (mimeContentTypeToUpper.StartsWith("APPLICATION/PKCS7-SIGNATURE") || mimeContentTypeToUpper.StartsWith("APPLICATION/X-PKCS7-SIGNATURE"))
                                 {
                                     // Unless a flag has been set to include this *.p7s block, exclude it from attachments.
-                                    if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeSignedData) == 0)
+                                    if ((processingFlags & MailMessageProcessingFlags.IncludeSmimeSignedData) == 0)
                                         processed = true;
 
                                     // Remember the signature block to use for later verification.
@@ -268,7 +268,7 @@ namespace OpaqueMail.Net
                                 else if (mimeContentTypeToUpper.StartsWith("APPLICATION/PKCS7-MIME") || mimeContentTypeToUpper.StartsWith("APPLICATION/X-PKCS7-MIME"))
                                 {
                                     // Unless a flag has been set to include this *.p7m block, exclude it from attachments.
-                                    processed = (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) == 0;
+                                    processed = (processingFlags & MailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) == 0;
 
                                     // Decrypt the MIME part and recurse through embedded MIME parts.
                                     List<MimePart> returnedMIMEParts = ReturnDecryptedMimeParts(mimeContentType, mimeContentTransferEncoding, mimeBody, processingFlags, depth + 1);
@@ -290,12 +290,12 @@ namespace OpaqueMail.Net
                                     TnefEncoding tnef = new TnefEncoding(Convert.FromBase64String(mimeBody));
 
                                     // If we were unable to extract content from this MIME, include it as an attachment.
-                                    if ((tnef.Body.Length < 1 && tnef.MimeAttachments.Count < 1) || (processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
+                                    if ((tnef.Body.Length < 1 && tnef.MimeAttachments.Count < 1) || (processingFlags & MailMessageProcessingFlags.IncludeWinMailData) > 0)
                                         processed = false;
                                     else
                                     {
                                         // Unless a flag has been set to include this winmail.dat block, exclude it from attachments.
-                                        if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
+                                        if ((processingFlags & MailMessageProcessingFlags.IncludeWinMailData) > 0)
                                         {
                                             if (!string.IsNullOrEmpty(tnef.Body))
                                                 mimeParts.Add(new MimePart("winmail.dat", tnef.ContentType, "", "", mimeContentTransferEncoding, Encoding.UTF8.GetBytes(tnef.Body)));
@@ -307,7 +307,7 @@ namespace OpaqueMail.Net
                                 }
                                 else if (mimeContentTypeToUpper == "MESSAGE/RFC822")
                                 {
-                                    if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeNestedRFC822Messages) > 0)
+                                    if ((processingFlags & MailMessageProcessingFlags.IncludeNestedRFC822Messages) > 0)
                                     {
                                         // Recurse through the RFC822 container.
                                         processed = true;
@@ -386,7 +386,7 @@ namespace OpaqueMail.Net
                 TnefEncoding tnef = new TnefEncoding(Convert.FromBase64String(body));
 
                 // Unless a flag has been set to include this winmail.dat block, exclude it from attachments.
-                if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeWinMailData) > 0)
+                if ((processingFlags & MailMessageProcessingFlags.IncludeWinMailData) > 0)
                 {
                     if (!string.IsNullOrEmpty(tnef.Body))
                         mimeParts.Add(new MimePart("winmail.dat", tnef.ContentType, "", "", "", Encoding.UTF8.GetBytes(tnef.Body)));
@@ -401,7 +401,7 @@ namespace OpaqueMail.Net
                 if (contentType.IndexOf("smime-type=signed-data") < 0)
                 {
                     // Unless a flag has been set to include this *.p7m block, exclude it from attachments.
-                    if ((processingFlags & ReadOnlyMailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) > 0)
+                    if ((processingFlags & MailMessageProcessingFlags.IncludeSmimeEncryptedEnvelopeData) > 0)
                         mimeParts.Add(new MimePart("smime.p7m", contentType, "", "", "", body));
 
                     // Decrypt the MIME part and recurse through embedded MIME parts.
@@ -545,9 +545,9 @@ namespace OpaqueMail.Net
         /// <param name="contentType">Content Type of the outermost MIME part.</param>
         /// <param name="contentTransferEncoding">Encoding of the outermost MIME part.</param>
         /// <param name="envelopeText">The MIME envelope.</param>
-        /// <param name="processingFlags">Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</param>
+        /// <param name="processingFlags">Flags determining whether specialized properties are returned with a MailMessage.</param>
         /// <param name="depth">The nesting layer of this MIME part.</param>
-        public static List<MimePart> ReturnDecryptedMimeParts(string contentType, string contentTransferEncoding, string envelopeText, ReadOnlyMailMessageProcessingFlags processingFlags, int depth)
+        public static List<MimePart> ReturnDecryptedMimeParts(string contentType, string contentTransferEncoding, string envelopeText, MailMessageProcessingFlags processingFlags, int depth)
         {
             try
             {

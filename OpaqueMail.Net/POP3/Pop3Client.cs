@@ -74,8 +74,8 @@ namespace OpaqueMail.Net
         public string LastErrorMessage { get; set; }
         /// <summary>Gets or sets the port used for POP3 transactions.</summary>
         public int Port { get; set; }
-        /// <summary>Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</summary>
-        public ReadOnlyMailMessageProcessingFlags ProcessingFlags { get; set; }
+        /// <summary>Flags determining whether specialized properties are returned with a MailMessage.</summary>
+        public MailMessageProcessingFlags ProcessingFlags { get; set; }
         /// <summary>Gets or sets a value, in milliseconds, that determines how long the stream will attempt to read before timing out.</summary>
         public int ReadTimeout
         {
@@ -158,7 +158,7 @@ namespace OpaqueMail.Net
             APOPSharedSecret = "";
             LastCapabilitiesCheckAuthenticationState = false;
             LastCommandResult = false;
-            ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
+            ProcessingFlags = MailMessageProcessingFlags.IncludeRawHeaders | MailMessageProcessingFlags.IncludeRawBody;
             ServerSupportsPipelining = false;
             ServerSupportsSASL = false;
             ServerSupportsSTLS = false;

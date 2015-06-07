@@ -622,7 +622,7 @@ namespace OpaqueMail.Proxy
                                                 File.WriteAllText(fileName, messageText);
                                             }
 
-                                            MailMessage message = new MailMessage(messageText, ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody);
+                                            MailMessage message = new MailMessage(messageText, MailMessageProcessingFlags.IncludeRawHeaders | MailMessageProcessingFlags.IncludeRawBody);
 
                                             if (!string.IsNullOrEmpty(arguments.FixedFrom))
                                             {

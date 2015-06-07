@@ -94,7 +94,7 @@ namespace OpaqueMail.Net
         /// <summary>Gets or sets the port used for IMAP transactions.</summary>
         public int Port { get; set; }
         /// <summary>Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.</summary>
-        public ReadOnlyMailMessageProcessingFlags ProcessingFlags { get; set; }
+        public MailMessageProcessingFlags ProcessingFlags { get; set; }
         /// <summary>Gets or sets a value, in milliseconds, that determines how long the stream will attempt to read before timing out.</summary>
         public int ReadTimeout
         {
@@ -193,7 +193,7 @@ namespace OpaqueMail.Net
             IdleFrequency = new TimeSpan(0, 1, 0);
             ImapVersion = "";
             LastCommandResult = false;
-            ProcessingFlags = ReadOnlyMailMessageProcessingFlags.IncludeRawHeaders | ReadOnlyMailMessageProcessingFlags.IncludeRawBody;
+            ProcessingFlags = MailMessageProcessingFlags.IncludeRawHeaders | MailMessageProcessingFlags.IncludeRawBody;
             SessionCommandTag = ".";
             UnexpectedServerMessages = new List<string>();
 

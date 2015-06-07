@@ -65,8 +65,8 @@ namespace OpaqueMail.Net
 	}
 
     /// <summary>
-    /// Extended email headers for a ReadOnlyMailMessage.
-    /// Only populated when the ReadOnlyMailMessage is instantiated with a parseExtendedHeaders setting of true.
+    /// Extended email headers for a MailMessage.
+    /// Only populated when the MailMessage is instantiated with a parseExtendedHeaders setting of true.
     /// </summary>
     public class ExtendedProperties
     {
@@ -137,7 +137,7 @@ namespace OpaqueMail.Net
     }
 
     /// <summary>
-    /// Flags representing the processed state of the ReadOnlyMailMessage.
+    /// Flags representing the processed state of the MailMessage.
     /// </summary>
     [Flags]
     public enum Flags
@@ -232,10 +232,10 @@ namespace OpaqueMail.Net
     }
 
     /// <summary>
-    /// Flags determining whether specialized properties are returned with a ReadOnlyMailMessage.
+    /// Flags determining whether specialized properties are returned with a MailMessage.
     /// </summary>
     [Flags]
-    public enum ReadOnlyMailMessageProcessingFlags
+    public enum MailMessageProcessingFlags
     {
         None = 0,
         IncludeRawHeaders = 1,
