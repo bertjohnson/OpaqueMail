@@ -14,7 +14,7 @@
  */
 
 using Microsoft.Win32;
-using OpaqueMail.Net;
+using OpaqueMail;
 using OpaqueMail.Proxy;
 using System;
 using System.Collections.Generic;

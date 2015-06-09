@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{FBDCF97D-7EF1-470D-A13F-04CAB5911D6B}</ProjectGuid>
+    <ProjectGuid>{BF21D27F-72AD-492E-8219-6C82C2330C72}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>OpaqueMail.Proxy</RootNamespace>
-    <AssemblyName>OpaqueMail.Proxy</AssemblyName>
+    <RootNamespace>OpaqueMail</RootNamespace>
+    <AssemblyName>OpaqueMail</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -35,6 +35,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -42,23 +43,24 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IMAP\ImapProxy.cs" />
-    <Compile Include="ProxyBase.cs" />
-    <Compile Include="POP3\Pop3Proxy.cs" />
-    <Compile Include="SMTP\SmtpProxy.cs" />
+    <Compile Include="AlternateView.cs" />
+    <Compile Include="Attachment.cs" />
+    <Compile Include="LockAsync.cs" />
+    <Compile Include="Constants.cs" />
+    <Compile Include="EnumsAndSupport.cs" />
+    <Compile Include="Functions.cs" />
+    <Compile Include="Imap\ImapClient.cs" />
+    <Compile Include="Imap\ImapClient.Properties.cs" />
+    <Compile Include="Imap\ImapClient.Synchronous.cs" />
+    <Compile Include="MailAddress.cs" />
+    <Compile Include="Mailbox.cs" />
+    <Compile Include="MimePart.cs" />
+    <Compile Include="MailMessage.cs" />
+    <Compile Include="Pgp.cs" />
+    <Compile Include="Pop3\Pop3Client.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ProxyFunctions.cs" />
-    <Compile Include="EnumsAndStructs.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\OpaqueMail.CertHelper\OpaqueMail.CertHelper.csproj">
-      <Project>{9f1402f2-d701-43a5-9ad6-cfa926c31dce}</Project>
-      <Name>OpaqueMail.CertHelper</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\OpaqueMail\OpaqueMail.csproj">
-      <Project>{bf21d27f-72ad-492e-8219-6c82c2330c72}</Project>
-      <Name>OpaqueMail</Name>
-    </ProjectReference>
+    <Compile Include="Smtp\SmtpClient.cs" />
+    <Compile Include="TnefEncoding.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

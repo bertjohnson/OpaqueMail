@@ -13,7 +13,7 @@
  * 
  */
 
-using OpaqueMail.Net;
+using OpaqueMail;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -571,7 +571,7 @@ namespace OpaqueMail.Proxy
                 ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "220 " + WelcomeMessage, Proxy.LogLevel.Raw, LogLevel);
 
                 // Instantiate an SmtpClient for sending messages to the remote server.
-                using (OpaqueMail.Net.SmtpClient smtpClient = new OpaqueMail.Net.SmtpClient(arguments.RemoteServerHostName, arguments.RemoteServerPort))
+                using (OpaqueMail.SmtpClient smtpClient = new OpaqueMail.SmtpClient(arguments.RemoteServerHostName, arguments.RemoteServerPort))
                 {
                     smtpClient.EnableSsl = arguments.RemoteServerEnableSsl;
                     smtpClient.Credentials = arguments.RemoteServerCredential;
@@ -766,7 +766,7 @@ namespace OpaqueMail.Proxy
                                                         // Send the reminder message.
                                                         if (sendReminder)
                                                         {
-                                                            OpaqueMail.Net.MailMessage reminderMessage = new OpaqueMail.Net.MailMessage(message.From, message.From);
+                                                            OpaqueMail.MailMessage reminderMessage = new OpaqueMail.MailMessage(message.From, message.From);
                                                             reminderMessage.Subject = "OpaqueMail: S/MIME Certificate Expires " + expirationDateString;
                                                             reminderMessage.Body = "Your OpaqueMail S/MIME Certificate will expire in " + ((int)expirationTime.TotalDays) + " days on " + expirationDateString + ".\r\n\r\n" +
                                                                 "Certificate Subject Name: " + message.SmimeSigningCertificate.Subject + "\r\n" +

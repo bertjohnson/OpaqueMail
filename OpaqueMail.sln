@@ -1,12 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Net", "OpaqueMail.Net\OpaqueMail.Net.csproj", "{BF21D27F-72AD-492E-8219-6C82C2330C72}"
+# Visual Studio 2013
+VisualStudioVersion = 12.0.30723.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail", "OpaqueMail\OpaqueMail.csproj", "{BF21D27F-72AD-492E-8219-6C82C2330C72}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Net.TestClient", "OpaqueMail.Net.TestClient\OpaqueMail.Net.TestClient.csproj", "{C1BC8A46-7219-4831-A917-2BD87CF8D972}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.TestClient", "OpaqueMail.TestClient\OpaqueMail.TestClient.csproj", "{C1BC8A46-7219-4831-A917-2BD87CF8D972}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1E3374C3-7C9B-4FAA-B1C6-B3609E903428}"
 	ProjectSection(SolutionItems) = preProject
+		.travis.yml = .travis.yml
 		LICENSE.txt = LICENSE.txt
 		OpaqueMail.doxygen = OpaqueMail.doxygen
 		OpaqueMail.doxygen.header.html = OpaqueMail.doxygen.header.html
@@ -14,7 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Net.CertHelper", "OpaqueMail.Net.CertHelper\OpaqueMail.Net.CertHelper.csproj", "{9F1402F2-D701-43A5-9AD6-CFA926C31DCE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.CertHelper", "OpaqueMail.CertHelper\OpaqueMail.CertHelper.csproj", "{9F1402F2-D701-43A5-9AD6-CFA926C31DCE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpaqueMail.Proxy", "OpaqueMail.Proxy\OpaqueMail.Proxy.csproj", "{FBDCF97D-7EF1-470D-A13F-04CAB5911D6B}"
 EndProject

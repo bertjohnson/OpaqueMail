@@ -1,13 +1,15 @@
 OpaqueMail .NET Email Library
 ==============================
 
-.NET email library with full support for IMAP, POP3, and SMTP.  Provides S/MIME message signing, encryption, and decryption to foster better email security and privacy.
+.NET email library with full support for IMAP, POP3, and SMTP.
+
+Supports S/MIME and PGP message signing, encryption, and decryption to foster better email security and privacy.
 
 Follows IETF standards, implementing all IMAP4rev1, POP3, SMTP, and S/MIME 3.2 commands plus common extensions such as IDLE.  Supports MIME, Unicode, and TNEF encoding.
 
 Includes a fully-featured test client that allows browsing and searching of IMAP and POP3 messages as well as sending of SMTP messages with encryption.  Automatically embeds images into Text/HTML messages and strips Script tags.
 
-Inherits from System.Net.Mail.MailMessage and System.Net.Mail.SmtpClient for simplified upgrades of existing code.  Implements .NET 4.5 async and await.
+Features patterns similar to System.Net.Mail.MailMessage and System.Net.Mail.SmtpClient for simplified upgrades of existing code.  Implements .NET 4.5 async and await.
 
 Thoroughly documented.  Optimized for security, usability, and performance.
 

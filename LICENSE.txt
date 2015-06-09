@@ -1,4 +1,8 @@
-Copyright © 2013-2015 Bert Johnson
+OpaqueMail (http://opaquemail.org/).
+
+Licensed according to the MIT License (http://mit-license.org/).
+
+Copyright © Bert Johnson (http://bertjohnson.com/).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the “Software”), to deal in
