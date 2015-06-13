@@ -30,7 +30,7 @@ namespace OpaqueMail
     /// <summary>
     /// Provides common functions used by other OpaqueMail classes.
     /// </summary>
-    public class Functions
+    public static class Functions
     {
         #region Public Methods
         /// <summary>
@@ -748,23 +748,17 @@ namespace OpaqueMail
                         case "\r\n":
                             byteBufferEnd = false;
                             break;
-/*                        case "09":
-                            outputBuilder.Append("\t");
-                            break;
-                        case "0A":
-                            outputBuilder.Append("\r\n");
-                            break;
-                        case "20":
-                            outputBuilder.Append(" ");
-                            break;*/
                         default:
-                            byte theByte = Byte.Parse(afterEquals, System.Globalization.NumberStyles.HexNumber);
-                            byteBuffer[byteBufferLength++] = theByte;
-                            if (byteBufferLength < byteBuffer.Length && equalsPos < input.Length - 5)
+                            byte theByte;
+                            if (Byte.TryParse(afterEquals, System.Globalization.NumberStyles.HexNumber, CultureInfo.InvariantCulture, out theByte))
                             {
-                                if (input[equalsPos + 3] == '=' && input[equalsPos + 4] != '\r')
-                                    byteBufferEnd = false;
-                            }                        
+                                byteBuffer[byteBufferLength++] = theByte;
+                                if (byteBufferLength < byteBuffer.Length && equalsPos < input.Length - 5)
+                                {
+                                    if (input[equalsPos + 3] == '=' && input[equalsPos + 4] != '\r')
+                                        byteBufferEnd = false;
+                                }
+                            }
                             break;
                     }
 

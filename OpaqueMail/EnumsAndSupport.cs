@@ -281,7 +281,7 @@ namespace OpaqueMail
         SignTime = 1
     }
 
-	/// <summary>Specifies the outcome of sending email by using the <see cref="T:System.Net.Mail.SmtpClient" /> class.</summary>
+	/// <summary>Specifies the outcome of sending email by using the SmtpClient class.</summary>
 	public enum SmtpStatusCode
 	{
 		/// <summary>A system status or system Help reply.</summary>

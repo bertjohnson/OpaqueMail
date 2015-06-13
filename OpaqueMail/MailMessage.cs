@@ -999,6 +999,46 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Attempt to encrypt a message using PGP with the specified private key.
+        /// </summary>
+        /// <param name="publicKeys">Collection of BouncyCastle public keys to be used for encryption.</param>
+        /// <returns>Whether the encryption completed successfully.</returns>
+        public bool EncryptPgp(IEnumerable<Org.BouncyCastle.Bcpg.OpenPgp.PgpPublicKey> publicKeys)
+        {
+            // Ensure a valid encoding.
+            if (BodyEncoding == null)
+                BodyEncoding = Encoding.UTF8;
+
+            byte[] encryptedMessage = null;
+            bool encrypted = Pgp.Encrypt(BodyEncoding.GetBytes(Body), "message", out encryptedMessage, publicKeys);
+
+            if (encrypted)
+            {
+                Body = BodyEncoding.GetString(encryptedMessage);
+
+                // If the body was successfully encrypted, attempt to encrypt attachments.
+                foreach (Attachment attachment in Attachments)
+                {
+                    // Don't process attachments with names ending in ".pgp".
+                    if (!attachment.Name.ToLower().EndsWith(".pgp"))
+                    {
+                        encrypted = Pgp.Encrypt(attachment.ContentStream, "message", out encryptedMessage, publicKeys);
+
+                        if (encrypted)
+                        {
+                            attachment.ContentStream = new MemoryStream(encryptedMessage);
+                            attachment.Name += ".pgp";
+                        }
+                    }
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Initializes a populated instance of the OpaqueMail.MailMessage class representing the message in the specified file.
         /// </summary>
         /// <param name="path">The file to open for reading.</param>
@@ -1174,6 +1214,31 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Attempt to sign a PGP message using the specific private key.
+        /// </summary>
+        /// <param name="publicKey">The BouncyCastle public key associated with the signature.</param>
+        /// <param name="privateKey">The BouncyCastle private key to be used for signing.</param>
+        /// <param name="hashAlgorithmTag">The hash algorithm tag to use for signing.</param>
+        /// <returns>Whether the signature completed successfully.</returns>
+        public bool SignPgp(Org.BouncyCastle.Bcpg.OpenPgp.PgpPublicKey publicKey, Org.BouncyCastle.Bcpg.OpenPgp.PgpPrivateKey privateKey, Org.BouncyCastle.Bcpg.HashAlgorithmTag hashAlgorithmTag = Org.BouncyCastle.Bcpg.HashAlgorithmTag.Sha256)
+        {
+            // Ensure a valid encoding.
+            if (BodyEncoding == null)
+                BodyEncoding = Encoding.UTF8;
+
+            string signature;
+            bool signed = Pgp.Sign(BodyEncoding.GetBytes(Body), out signature, publicKey, privateKey, hashAlgorithmTag);
+
+            if (signed)
+            {
+                Body = signature;
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Attempt to verify a PGP signed message using the matching public key.
         /// </summary>
         /// <param name="publicKey">BouncyCastle public key to be used for verification.</param>
@@ -1211,7 +1276,7 @@ namespace OpaqueMail
             if (string.IsNullOrEmpty(pgpSignedMessage) && string.IsNullOrEmpty(pgpSignature))
             {
                 pgpSignedMessage = Functions.ReturnBetween(Body, "-----BEGIN PGP SIGNED MESSAGE-----\r\n", "\r\n-----BEGIN PGP SIGNATURE-----");
-                pgpSignature = "-----BEGIN PGP SIGNATURE-----\r\n" + Functions.ReturnBetween(Body, "-----BEGIN PGP SIGNATURE-----\r\n", "\r\n-----END PGP SIGNATURE-----") + "\r\n-----END PGP SIGNATURE-----";
+                pgpSignature = Functions.ReturnBetween(Body, "-----BEGIN PGP SIGNATURE-----\r\n", "\r\n-----END PGP SIGNATURE-----");
             }
 
             // If a signature is embedded, attempt to verify.
@@ -1228,7 +1293,7 @@ namespace OpaqueMail
                 // Verify the message with its signature.
                 if (!string.IsNullOrEmpty(pgpSignedMessage) && !string.IsNullOrEmpty(pgpSignature))
                 {
-                    bool pgpSignatureVerified = Pgp.VerifyPgpSignature(Encoding.UTF8.GetBytes(pgpSignedMessage),
+                    bool pgpSignatureVerified = Pgp.VerifySignature(Encoding.UTF8.GetBytes(pgpSignedMessage),
                         Encoding.UTF8.GetBytes(Functions.FromBase64(pgpSignature)), publicKey);
 
                     if (pgpSignatureVerified)

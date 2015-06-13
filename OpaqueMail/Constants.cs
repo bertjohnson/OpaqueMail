@@ -24,7 +24,7 @@ namespace OpaqueMail
     /// <summary>
     /// Define constants used by other OpaqueMail classes.
     /// </summary>
-    public class Constants
+    public static class Constants
     {
         /// <summary>
         /// Extra large buffer size for bit shuffling.
