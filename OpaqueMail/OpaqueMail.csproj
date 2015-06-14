@@ -54,6 +54,8 @@
     <Compile Include="Imap\ImapClient.Synchronous.cs" />
     <Compile Include="MailAddress.cs" />
     <Compile Include="Mailbox.cs" />
+    <Compile Include="MailMessage.Pgp.cs" />
+    <Compile Include="MailMessage.Smime.cs" />
     <Compile Include="MimePart.cs" />
     <Compile Include="MailMessage.cs" />
     <Compile Include="Pgp.cs" />

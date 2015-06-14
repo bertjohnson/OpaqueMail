@@ -30,9 +30,9 @@ namespace OpaqueMail
 {
     /// <summary>
     /// Represents an email message that was either received using the ImapClient or Pop3Client classes or will be sent using the SmtpClient class.
-    /// Includes OpaqueMail extensions to facilitate handling of secure S/MIME messages.
+    /// Includes OpaqueMail extensions to facilitate handling of secure PGP and S/MIME messages.
     /// </summary>
-    public class MailMessage
+    public partial class MailMessage
     {
         #region Public Members
         /// <summary>Collection of all recipients of this message, based on To, CC, and Bcc paramaters.</summary>
@@ -132,10 +132,6 @@ namespace OpaqueMail
         public string PartialMessageId { get; set; }
         /// <summary>Partial message unique number.</summary>
         public int PartialMessageNumber { get; set; }
-        /// <summary>Encrypt the email's envelope.  When PgpSign is true, encryption is the second PGP operation.</summary>
-        public bool PgpEncryptedEnvelope { get; set; }
-        /// <summary>Sign the email.  When true, signing is the first PGP operation.</summary>
-        public bool PgpSigned { get; set; }
         /// <summary>UIDL as specified by the POP3 server.</summary>
         public string Pop3Uidl { get; set; }
         /// <summary>Flags determining whether specialized properties are returned with a MailMessage.</summary>
@@ -202,27 +198,6 @@ namespace OpaqueMail
                 loadedSize = value;
             }
         }
-        /// <summary>Encrypt the email's envelope.  When SmimeSign is true, encryption is the second S/MIME operation.</summary>
-        public bool SmimeEncryptedEnvelope { get; set; }
-        /// <summary>Type of subject identifier to use.</summary>
-        /// <remarks>The default of "IssuerAndSerialNumber" is recommended for most use cases.</remarks>
-        public SmimeEncryptionOptionFlags SmimeEncryptionOptionFlags { get; set; }
-        /// <summary>Whether S/MIME settings for encryption and signing are explicitly required or only preferred.</summary>
-        public SmimeSettingsMode SmimeSettingsMode { get; set; }
-        /// <summary>Sign the email.  When true, signing is the first S/MIME operation.</summary>
-        public bool SmimeSigned { get; set; }
-        /// <summary>
-        /// Certificate used when signing messages.
-        /// Requires private key.
-        /// </summary>
-        public X509Certificate2 SmimeSigningCertificate { get; set; }
-        /// <summary>Certificate chain used to sign the message.</summary>
-        public X509Certificate2Collection SmimeSigningCertificateChain { get; set; }
-        /// <summary>Determine how the S/MIME message will be signed.</summary>
-        public SmimeSigningOptionFlags SmimeSigningOptionFlags { get; set; }
-        /// <summary>Triple-wrap the email by signing, then encrypting the envelope, then signing the encrypted envelope.</summary>
-        public bool SmimeTripleWrapped { get; set; }
-        /// <summary>Determine how the S/MIME envelope will be encrypted.</summary>
         /// <summary>Gets or sets the subject line for this email message.</summary>
         /// <returns>A <see cref="T:System.String" /> that contains the subject content.</returns>
         public string Subject { get; set; }
@@ -230,25 +205,34 @@ namespace OpaqueMail
         /// <returns>An <see cref="T:System.Text.Encoding" /> that was used to encode the <see cref="P:System.Net.Mail.MailMessage.Subject" /> property.</returns>
         public Encoding SubjectEncoding { get; set; }
         /// <summary>X-Subject-Encryption header, as optionally used by OpaqueMail.</summary>
-        public bool SubjectEncryption { get; set; }
+        public bool SubjectEncryption
+        {
+            get
+            {
+                return subjectEncryption;
+            }
+            set
+            {
+                subjectEncryption = value;
+                if (value)
+                    Headers["X-Subject-Encryption"] = "True";
+                else
+                    Headers.Remove("X-Subject-Encryption");
+            }
+        }
         public SubjectIdentifierType SubjectIdentifierType { get; set; }
         /// <summary>Gets the address collection that contains the recipients of this email message.</summary>
         /// <returns>A writable <see cref="T:System.Net.Mail.MailAddressCollection" /> object.</returns>
         public MailAddressCollection To { get; set; }
         #endregion Public Members
 
-        #region Protected Members
-        /// <summary>Text delimiting S/MIME message parts related to signatures.</summary>
-        protected string SmimeSignedCmsBoundaryName = "OpaqueMail-signature-boundary";
-        /// <summary>Text delimiting MIME message parts in triple wrapped messages.</summary>
-        protected string SmimeTripleSignedCmsBoundaryName = "OpaqueMail-triple-signature-boundary";
-        #endregion Protected Members
-
         #region Private Members
         /// <summary>Size of the loaded message, as calculated in MailMessage's constructor.</summary>
         private long loadedSize = -1;
         /// <summary>Gets or sets the delivery notifications for this email message.</summary>
         private DeliveryNotificationOptions deliveryStatusNotification;
+        /// <summary>X-Subject-Encryption header, as optionally used by OpaqueMail.</summary>
+        private bool subjectEncryption;
         #endregion Private Members
 
         #region Constructors
@@ -277,11 +261,11 @@ namespace OpaqueMail
             ProcessingFlags = MailMessageProcessingFlags.IncludeRawHeaders | MailMessageProcessingFlags.IncludeRawBody;
             RawFlags = new HashSet<string>();
             ReturnPath = "";
-            SmimeSigningCertificateChain = new X509Certificate2Collection();
             SmimeEncryptedEnvelope = false;
             SmimeEncryptionOptionFlags = SmimeEncryptionOptionFlags.RequireCertificateVerification;
             SmimeSettingsMode = SmimeSettingsMode.RequireExactSettings;
             SmimeSigned = false;
+            SmimeSigningCertificateChain = new X509Certificate2Collection();
             SmimeSigningOptionFlags = SmimeSigningOptionFlags.SignTime;
             SmimeTripleWrapped = false;
             SubjectIdentifierType = SubjectIdentifierType.IssuerAndSerialNumber;
@@ -803,9 +787,9 @@ namespace OpaqueMail
                             BodyDecoded = true;
 
                         if (Body.StartsWith("-----BEGIN PGP MESSAGE-----"))
-                            PgpEncryptedEnvelope = true;
+                            pgpEncrypted = true;
                         else if (Body.StartsWith("-----BEGIN PGP SIGNED MESSAGE-----"))
-                            PgpSigned = true;
+                            pgpSigned = true;
 
                         BodyContentType = ContentType;
                         if (BodyContentType.IndexOf(";") > -1)
@@ -836,9 +820,9 @@ namespace OpaqueMail
                         BodyDecoded = true;
 
                     if (Body.StartsWith("-----BEGIN PGP MESSAGE-----"))
-                        PgpEncryptedEnvelope = true;
+                        pgpEncrypted = true;
                     else if (Body.StartsWith("-----BEGIN PGP SIGNED MESSAGE-----"))
-                        PgpSigned = true;
+                        pgpSigned = true;
 
                     BodyContentType = ContentType;
                     if (BodyContentType.IndexOf(";") > -1)
@@ -925,119 +909,6 @@ namespace OpaqueMail
         #endregion Destructor
 
         #region Public Methods
-        /// <summary>
-        /// Attempt to decrypt a PGP protected message using the matching private key.
-        /// </summary>
-        /// <param name="decryptedMessage">If successful, the decrypted message.</param>
-        /// <returns>Whether the decryption completed successfully.</returns>
-        public bool DecryptPgp(Org.BouncyCastle.Bcpg.OpenPgp.PgpPrivateKey privateKey, out byte[] decryptedMessage)
-        {
-            string encryptedBody = "";
-            
-            // Process each MIME part.
-            if (MimeParts != null)
-            {
-                for (int i = 0; i < MimeParts.Count; i++)
-                {
-                    MimePart mimePart = MimeParts[i];
-
-                    // Check if the MIME part is encrypted or signed using PGP.
-                    if (mimePart.Body.StartsWith("-----BEGIN PGP MESSAGE-----")){
-                        encryptedBody = Functions.ReturnBetween(mimePart.Body, "-----BEGIN PGP MESSAGE-----\r\n", "\r\n-----END PGP MESSAGE-----");
-                        break;
-                    }
-                }
-            }
-            else{
-                if (Body.StartsWith("-----BEGIN PGP MESSAGE-----"))
-                    encryptedBody = Functions.ReturnBetween(Body, "-----BEGIN PGP MESSAGE-----\r\n", "\r\n-----END PGP MESSAGE-----");
-            }
-
-            // Process an encrypted body if found.
-            if (!string.IsNullOrEmpty(encryptedBody))
-            {
-                // Ignore the PGP headers.
-                int doubleLineBreak = encryptedBody.IndexOf("\r\n\r\n");
-                if (doubleLineBreak > -1)
-                    encryptedBody = encryptedBody.Substring(doubleLineBreak + 4);
-
-                // Attempt to decrypt the message and set the body if successful.
-                bool decrypted = Pgp.Decrypt(Encoding.UTF8.GetBytes(encryptedBody), out decryptedMessage, privateKey);
-                if (decrypted)
-                {
-                    // Ensure a valid encoding.
-                    if (BodyEncoding == null)
-                        BodyEncoding = Encoding.UTF8;
-
-                    // Convert the byte array back to a string.
-                    Body = BodyEncoding.GetString(decryptedMessage);
-
-                    // If the body was successfully decrypted, attempt to decrypt attachments.
-                    foreach (Attachment attachment in Attachments)
-                    {
-                        // Only process attachments with names ending in ".pgp".
-                        if (attachment.Name.ToLower().EndsWith(".pgp"))
-                        {
-                            decrypted = Pgp.Decrypt(attachment.ContentStream, out decryptedMessage, privateKey);
-
-                            if (decrypted)
-                            {
-                                attachment.ContentStream = new MemoryStream(decryptedMessage);
-                                attachment.Name = attachment.Name.Substring(0, attachment.Name.Length - 4);
-                            }
-                        }
-                    }
-                }
-
-                return decrypted;
-            }
-            else
-            {
-                decryptedMessage = null;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Attempt to encrypt a message using PGP with the specified private key.
-        /// </summary>
-        /// <param name="publicKeys">Collection of BouncyCastle public keys to be used for encryption.</param>
-        /// <returns>Whether the encryption completed successfully.</returns>
-        public bool EncryptPgp(IEnumerable<Org.BouncyCastle.Bcpg.OpenPgp.PgpPublicKey> publicKeys)
-        {
-            // Ensure a valid encoding.
-            if (BodyEncoding == null)
-                BodyEncoding = Encoding.UTF8;
-
-            byte[] encryptedMessage = null;
-            bool encrypted = Pgp.Encrypt(BodyEncoding.GetBytes(Body), "message", out encryptedMessage, publicKeys);
-
-            if (encrypted)
-            {
-                Body = BodyEncoding.GetString(encryptedMessage);
-
-                // If the body was successfully encrypted, attempt to encrypt attachments.
-                foreach (Attachment attachment in Attachments)
-                {
-                    // Don't process attachments with names ending in ".pgp".
-                    if (!attachment.Name.ToLower().EndsWith(".pgp"))
-                    {
-                        encrypted = Pgp.Encrypt(attachment.ContentStream, "message", out encryptedMessage, publicKeys);
-
-                        if (encrypted)
-                        {
-                            attachment.ContentStream = new MemoryStream(encryptedMessage);
-                            attachment.Name += ".pgp";
-                        }
-                    }
-                }
-
-                return true;
-            }
-
-            return false;
-        }
-
         /// <summary>
         /// Initializes a populated instance of the OpaqueMail.MailMessage class representing the message in the specified file.
         /// </summary>
@@ -1212,99 +1083,6 @@ namespace OpaqueMail
         {
             File.WriteAllText(path, RawHeaders + "\r\n\r\n" + RawBody);
         }
-
-        /// <summary>
-        /// Attempt to sign a PGP message using the specific private key.
-        /// </summary>
-        /// <param name="publicKey">The BouncyCastle public key associated with the signature.</param>
-        /// <param name="privateKey">The BouncyCastle private key to be used for signing.</param>
-        /// <param name="hashAlgorithmTag">The hash algorithm tag to use for signing.</param>
-        /// <returns>Whether the signature completed successfully.</returns>
-        public bool SignPgp(Org.BouncyCastle.Bcpg.OpenPgp.PgpPublicKey publicKey, Org.BouncyCastle.Bcpg.OpenPgp.PgpPrivateKey privateKey, Org.BouncyCastle.Bcpg.HashAlgorithmTag hashAlgorithmTag = Org.BouncyCastle.Bcpg.HashAlgorithmTag.Sha256)
-        {
-            // Ensure a valid encoding.
-            if (BodyEncoding == null)
-                BodyEncoding = Encoding.UTF8;
-
-            string signature;
-            bool signed = Pgp.Sign(BodyEncoding.GetBytes(Body), out signature, publicKey, privateKey, hashAlgorithmTag);
-
-            if (signed)
-            {
-                Body = signature;
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Attempt to verify a PGP signed message using the matching public key.
-        /// </summary>
-        /// <param name="publicKey">BouncyCastle public key to be used for verification.</param>
-        /// <returns>Whether the message's signature is verified.</returns>
-        public bool VerifyPgpSignature(Org.BouncyCastle.Bcpg.OpenPgp.PgpPublicKey publicKey)
-        {
-            string pgpSignedMessage = "";
-            string pgpSignature = "";
-
-            // Process each MIME part.
-            if (MimeParts != null)
-            {
-                int pgpSignedMessageIndex = -1;
-                int pgpSignatureIndex = -1;
-                for (int i = 0; i < MimeParts.Count; i++)
-                {
-                    MimePart mimePart = MimeParts[i];
-
-                    // Check if the MIME part is encrypted or signed using PGP.
-                    if (mimePart.Body.StartsWith("-----BEGIN PGP SIGNED MESSAGE-----"))
-                        pgpSignedMessageIndex = i;
-                    else if (mimePart.Body.StartsWith("-----BEGIN PGP SIGNATURE-----"))
-                        pgpSignatureIndex = i;
-                }
-
-                // Verify PGP signatures.
-                if (pgpSignedMessageIndex > -1 && pgpSignatureIndex > -1)
-                {
-                    pgpSignedMessage = MimeParts[pgpSignedMessageIndex].Body;
-                    pgpSignature = MimeParts[pgpSignatureIndex].Body;
-                }
-            }
-
-            // If the signature isn't embedded as its own MIME part, extract from the body.
-            if (string.IsNullOrEmpty(pgpSignedMessage) && string.IsNullOrEmpty(pgpSignature))
-            {
-                pgpSignedMessage = Functions.ReturnBetween(Body, "-----BEGIN PGP SIGNED MESSAGE-----\r\n", "\r\n-----BEGIN PGP SIGNATURE-----");
-                pgpSignature = Functions.ReturnBetween(Body, "-----BEGIN PGP SIGNATURE-----\r\n", "\r\n-----END PGP SIGNATURE-----");
-            }
-
-            // If a signature is embedded, attempt to verify.
-            if (!string.IsNullOrEmpty(pgpSignedMessage) && !string.IsNullOrEmpty(pgpSignature))
-            {
-                // Skip over PGP headers.
-                int doubleLineBreak = pgpSignedMessage.IndexOf("\r\n\r\n");
-                if (doubleLineBreak > -1)
-                    pgpSignedMessage = pgpSignedMessage.Substring(doubleLineBreak + 4);
-                doubleLineBreak = pgpSignature.IndexOf("\r\n\r\n");
-                if (doubleLineBreak > -1)
-                    pgpSignature = pgpSignature.Substring(doubleLineBreak + 4);
-
-                // Verify the message with its signature.
-                if (!string.IsNullOrEmpty(pgpSignedMessage) && !string.IsNullOrEmpty(pgpSignature))
-                {
-                    bool pgpSignatureVerified = Pgp.VerifySignature(Encoding.UTF8.GetBytes(pgpSignedMessage),
-                        Encoding.UTF8.GetBytes(Functions.FromBase64(pgpSignature)), publicKey);
-
-                    if (pgpSignatureVerified)
-                        Body = pgpSignedMessage;
-
-                    return pgpSignatureVerified;
-                }
-            }
-
-            return false;
-        }
         #endregion Public Methods
 
         #region Private Methods
@@ -1431,7 +1209,7 @@ namespace OpaqueMail
 
                 // Check if the MIME part is encrypted or signed using PGP.
                 if (mimePart.Body.StartsWith("-----BEGIN PGP MESSAGE-----"))
-                    PgpEncryptedEnvelope = true;
+                    pgpEncrypted = true;
                 else if (mimePart.Body.StartsWith("-----BEGIN PGP SIGNED MESSAGE-----"))
                     pgpSignedMessageIndex = i;
                 else if (mimePart.Body.StartsWith("-----BEGIN PGP SIGNATURE-----"))
@@ -1439,7 +1217,7 @@ namespace OpaqueMail
             }
 
             if (pgpSignedMessageIndex > -1 && pgpSignatureIndex > -1)
-                PgpSigned = true;
+                pgpSigned = true;
 
             // OpaqueMail optional setting for protecting the subject.
             if (SubjectEncryption && Body.StartsWith("Subject: "))
@@ -1447,11 +1225,11 @@ namespace OpaqueMail
                 int linebreakPosition = Body.IndexOf("\r\n");
                 if (linebreakPosition > -1)
                 {
-                    Body = Body.Substring(linebreakPosition + 2);
-
                     // Decode international strings and remove escaped linebreaks.
                     string subjectText = Body.Substring(9, linebreakPosition - 9);
                     Subject = Functions.DecodeMailHeader(subjectText).Replace("\r", "").Replace("\n", "");
+
+                    Body = Body.Substring(linebreakPosition + 2);
                 }
             }
 
@@ -1467,7 +1245,7 @@ namespace OpaqueMail
     /// Obsolete.  Represents an email message that was received using the ImapClient or Pop3Client classes.
     /// </summary>
     [Obsolete("Please use OpaqueMail.MailMessage instead, which supports both incoming and outbound messages.", true)]
-    public class ReadOnlyMailMessage
+    public class ReadOnlyMailMessage : MailMessage
     {
     }
 }
