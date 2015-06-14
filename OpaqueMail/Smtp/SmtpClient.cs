@@ -338,6 +338,10 @@ namespace OpaqueMail
                 reader = new StreamReader(SmtpStream);
                 writer = new StreamWriter(SmtpStream);
                 writer.AutoFlush = true;
+
+                await writer.WriteLineAsync("EHLO " + Host);
+                bytesRead = await reader.ReadAsync(charBuffer, 0, Constants.SMALLBUFFERSIZE);
+                response = new string(charBuffer, 0, bytesRead);
             }
 
             // Authenticate using the AUTH LOGIN command.
