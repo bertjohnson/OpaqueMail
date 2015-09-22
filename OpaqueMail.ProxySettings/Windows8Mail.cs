@@ -202,7 +202,7 @@ namespace OpaqueMail.Proxy.Settings
                 ConvertSidToStringSid(intPtr, out after);
                 if (before == after)
                 {
-                    return before == after;
+                    return true;
                 }
             }
 
