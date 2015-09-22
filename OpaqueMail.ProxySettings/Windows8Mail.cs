@@ -200,8 +200,10 @@ namespace OpaqueMail.Proxy.Settings
                 string before, after;
                 ConvertSidToStringSid(item.Sid, out before);
                 ConvertSidToStringSid(intPtr, out after);
-
-                return before == after;
+                if (before == after)
+                {
+                    return before == after;
+                }
             }
 
             return false;
