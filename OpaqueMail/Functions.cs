@@ -707,81 +707,85 @@ namespace OpaqueMail
         /// <returns>The decoded version of the quoted-printable string passed in.</returns>
         public static string FromQuotedPrintable(string input, string charSet, Encoding encoding)
         {
-            // Remove carriage returns because they'll be added back in for line breaks (=0A).
-//            input = input.Replace("=0D", "");
+            try {
+                // Build a new string using the following buffer.
+                StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
 
-            // Build a new string using the following buffer.
-            StringBuilder outputBuilder = new StringBuilder(Constants.SMALLSBSIZE);
+                // Buffer for holding bytes of non-ASCII characters.
+                byte[] byteBuffer = new byte[Constants.SMALLBUFFERSIZE];
+                // Total count of bytes stored in byteBuffer.
+                int byteBufferLength = 0;
 
-            // Buffer for holding bytes of non-ASCII characters.
-            byte[] byteBuffer = new byte[Constants.SMALLBUFFERSIZE];
-            // Total count of bytes stored in byteBuffer.
-            int byteBufferLength = 0;
-
-            // If no encoding is passed in, but a character set is specified, create the encoding.
-            if (encoding == null)
-            {
-                if (!string.IsNullOrEmpty(charSet))
+                // If no encoding is passed in, but a character set is specified, create the encoding.
+                if (encoding == null)
                 {
-                    encoding = Encoding.GetEncoding(NormalizeCharSet(charSet));
-                }
-                else
-                    encoding = Encoding.UTF8;
-            }
-
-            // Loop through and process quoted-printable strings, denoted by equals signs.
-            int equalsPos = 0, lastPos = 0;
-            while (equalsPos > -1)
-            {
-                lastPos = equalsPos;
-                equalsPos = input.IndexOf("=", equalsPos, StringComparison.Ordinal);
-                if (equalsPos > -1 && equalsPos < input.Length - 2)
-                {
-                    outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
-
-                    string afterEquals = input.Substring(equalsPos + 1, 2);
-                    // When byteBufferEnd, decode string from byteBuffer.
-                    bool byteBufferEnd = true;
-
-                    switch (afterEquals)
+                    if (!string.IsNullOrEmpty(charSet))
                     {
-                        case "\r\n":
-                            byteBufferEnd = false;
-                            break;
-                        default:
-                            byte theByte;
-                            if (Byte.TryParse(afterEquals, System.Globalization.NumberStyles.HexNumber, CultureInfo.InvariantCulture, out theByte))
-                            {
-                                byteBuffer[byteBufferLength++] = theByte;
-                                if (byteBufferLength < byteBuffer.Length && equalsPos < input.Length - 5)
+                        encoding = Encoding.GetEncoding(NormalizeCharSet(charSet));
+                    }
+                    else
+                        encoding = Encoding.UTF8;
+                }
+
+                // Loop through and process quoted-printable strings, denoted by equals signs.
+                int equalsPos = 0, lastPos = 0;
+                while (equalsPos > -1)
+                {
+                    lastPos = equalsPos;
+                    equalsPos = input.IndexOf("=", equalsPos, StringComparison.Ordinal);
+                    if (equalsPos > -1 && equalsPos < input.Length - 2)
+                    {
+                        outputBuilder.Append(input.Substring(lastPos, equalsPos - lastPos));
+
+                        string afterEquals = input.Substring(equalsPos + 1, 2);
+                        // When byteBufferEnd, decode string from byteBuffer.
+                        bool byteBufferEnd = true;
+
+                        switch (afterEquals)
+                        {
+                            case "\r\n":
+                                byteBufferEnd = false;
+                                break;
+                            default:
+                                byte theByte;
+                                if (Byte.TryParse(afterEquals, System.Globalization.NumberStyles.HexNumber, CultureInfo.InvariantCulture, out theByte))
                                 {
-                                    if (input[equalsPos + 3] == '=' && input[equalsPos + 4] != '\r')
-                                        byteBufferEnd = false;
+                                    byteBuffer[byteBufferLength++] = theByte;
+                                    if (byteBufferLength < byteBuffer.Length && equalsPos < input.Length - 5)
+                                    {
+                                        if (input[equalsPos + 3] == '=' && input[equalsPos + 4] != '\r')
+                                            byteBufferEnd = false;
+                                    }
                                 }
-                            }
-                            break;
-                    }
+                                break;
+                        }
 
-                    if (byteBufferEnd && byteBufferLength > 0)
+                        if (byteBufferEnd && byteBufferLength > 0)
+                        {
+                            outputBuilder.Append(encoding.GetString(byteBuffer, 0, byteBufferLength));
+                            byteBufferLength = 0;
+                        }
+
+                        equalsPos += 3;
+                    }
+                    else
                     {
-                        outputBuilder.Append(encoding.GetString(byteBuffer, 0, byteBufferLength));
-                        byteBufferLength = 0;
+                        outputBuilder.Append(input.Substring(lastPos));
+                        equalsPos = -1;
                     }
-                    
-                    equalsPos += 3;
                 }
-                else
-                {
-                    outputBuilder.Append(input.Substring(lastPos));
-                    equalsPos = -1;
-                }
+
+                // Remove hanging equals.
+                if (outputBuilder[outputBuilder.Length - 1] == '=')
+                    outputBuilder.Remove(outputBuilder.Length - 1, 1);
+
+                return outputBuilder.ToString();
             }
-
-            // Remove hanging equals.
-            if (outputBuilder[outputBuilder.Length - 1] == '=')
-                outputBuilder.Remove(outputBuilder.Length - 1, 1);
-
-            return outputBuilder.ToString();
+            catch (Exception)
+            {
+                // If the input is malformed, return it as passed in.
+                return input;
+            }
         }
 
         /// <summary>
