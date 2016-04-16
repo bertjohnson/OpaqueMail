@@ -3,7 +3,7 @@
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.com/).
+ * Copyright © Bert Johnson (http://bertjohnson.com/) of Apidae Inc. (http://apidae.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -189,14 +189,12 @@ namespace OpaqueMail
         /// </summary>
         public bool Authenticate()
         {
-            string response = "";
-
             // If an APOP shared secret has been established between the client and server, require that authentication.
             if (!string.IsNullOrEmpty(APOPSharedSecret))
             {
                 string[] welcomeMessageComponents = WelcomeMessage.Split(' ');
                 SendCommand("APOP " + Credentials.UserName + " " + Functions.MD5(Credentials.Password + welcomeMessageComponents[welcomeMessageComponents.Length - 1] + APOPSharedSecret) + "\r\n");
-                response = ReadData();
+                ReadData();
 
                 SessionIsAuthenticated = LastCommandResult;
                 return LastCommandResult;
@@ -204,12 +202,12 @@ namespace OpaqueMail
             else
             {
                 SendCommand("USER " + Credentials.UserName + "\r\n");
-                response = ReadData();
+                ReadData();
                 if (!LastCommandResult)
                     return false;
 
                 SendCommand("PASS " + Credentials.Password + "\r\n");
-                response = ReadData();
+                ReadData();
 
                 SessionIsAuthenticated = LastCommandResult;
                 return LastCommandResult;
@@ -277,7 +275,7 @@ namespace OpaqueMail
                 throw new Pop3Exception("Must be connected to the server and authenticated prior to calling the DELE command.");
 
             await SendCommandAsync("DELE " + index.ToString() + "\r\n");
-            string response = await ReadDataAsync();
+            await ReadDataAsync();
             return LastCommandResult;
         }
 
@@ -292,7 +290,7 @@ namespace OpaqueMail
                 throw new Pop3Exception("Must be connected to the server and authenticated prior to calling the DELE command.");
 
             await SendCommandAsync("DELE " + uid + "\r\n");
-            string response = await ReadDataAsync();
+            await ReadDataAsync();
             return LastCommandResult;
         }
 
@@ -319,7 +317,7 @@ namespace OpaqueMail
             foreach (int index in indices)
             {
                 await SendCommandAsync("DELE " + index.ToString() + "\r\n");
-                string response = await ReadDataAsync();
+                await ReadDataAsync();
                 returnValue &= LastCommandResult;
             }
 
@@ -349,7 +347,7 @@ namespace OpaqueMail
             foreach (string uid in uids)
             {
                 await SendCommandAsync("DELE " + uid + "\r\n");
-                string response = await ReadDataAsync();
+                await ReadDataAsync();
                 returnValue &= LastCommandResult;
             }
 
@@ -366,7 +364,7 @@ namespace OpaqueMail
                 if (Pop3TcpClient.Connected)
                 {
                     SendCommand("QUIT\r\n");
-                    string response = ReadData();
+                    ReadData();
                 }
                 Pop3TcpClient.Close();
                 Pop3TcpClient = null;
@@ -762,7 +760,7 @@ namespace OpaqueMail
             SendCommand("QUIT\r\n");
             try
             {
-                string response = ReadData();
+                ReadData();
             }
             catch (Exception) { }
             SessionIsAuthenticated = false;
@@ -782,7 +780,7 @@ namespace OpaqueMail
         public async Task<bool> NoOpAsync()
         {
             await SendCommandAsync("NOOP\r\n");
-            string response = await ReadDataAsync();
+            await ReadDataAsync();
 
             return LastCommandResult;
         }
@@ -960,7 +958,7 @@ namespace OpaqueMail
                 throw new Pop3Exception("Must be connected to the server and authenticated prior to calling the RSET command.");
 
             await SendCommandAsync("RSET\r\n");
-            string response = await ReadDataAsync();
+            await ReadDataAsync();
 
             return LastCommandResult;
         }

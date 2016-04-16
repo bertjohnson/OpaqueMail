@@ -2,7 +2,7 @@ OpaqueMail (http://opaquemail.org/).
 
 Licensed according to the MIT License (http://mit-license.org/).
 
-Copyright © Bert Johnson (http://bertjohnson.com/).
+Copyright © Bert Johnson (http://bertjohnson.com/) of Apidae Inc. (http://apidae.com/).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the “Software”), to deal in

@@ -3,7 +3,7 @@
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.com/).
+ * Copyright © Bert Johnson (http://bertjohnson.com/) of Apidae Inc. (http://apidae.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -397,11 +397,11 @@ namespace OpaqueMail
             await SendCommandAsync(commandTag, commandBuilder.ToString());
 
             // Confirm the server is ready to accept our raw data.
-            string response = await ReadDataAsync("+", "APPEND");
+            await ReadDataAsync("+", "APPEND");
             if (LastCommandResult)
             {
                 await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, message + "\r\n");
-                response = await ReadDataAsync(commandTag, "APPEND");
+                await ReadDataAsync(commandTag, "APPEND");
 
                 return LastCommandResult;
             }
@@ -500,14 +500,14 @@ namespace OpaqueMail
                     await SendCommandAsync(commandTag, commandBuilder.ToString());
 
                     // Confirm the server is ready to accept our raw data.
-                    string response = await ReadDataAsync("+", "APPEND");
+                    await ReadDataAsync("+", "APPEND");
                     if (LastCommandResult)
                     {
                         // If on the last message, add an extra line break and return the result.
                         if (i == messages.Length - 1)
                         {
                             await Functions.SendStreamStringAsync(ImapStream, InternalBuffer, message + "\r\n");
-                            response = await ReadDataAsync(commandTag, "APPEND");
+                            await ReadDataAsync(commandTag, "APPEND");
 
                             return LastCommandResult;
                         }
@@ -638,7 +638,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "CHECK\r\n");
-            string response = await ReadDataAsync(commandTag, "CHECK");
+            await ReadDataAsync(commandTag, "CHECK");
 
             return LastCommandResult;
         }
@@ -661,7 +661,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "CLOSE\r\n");
-            string response = await ReadDataAsync(commandTag, "CLOSE");
+            await ReadDataAsync(commandTag, "CLOSE");
 
             return LastCommandResult;
         }
@@ -719,7 +719,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "COPY " + index.ToString() + " " + destMailboxName + "\r\n");
-            string result = await ReadDataAsync(commandTag, "COPY");
+            await ReadDataAsync(commandTag, "COPY");
 
             return LastCommandResult;
         }
@@ -763,7 +763,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "CREATE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
-            string response = await ReadDataAsync(commandTag, "CREATE");
+            await ReadDataAsync(commandTag, "CREATE");
 
             return LastCommandResult;
         }
@@ -782,7 +782,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "DELETE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
-            string response = await ReadDataAsync(commandTag, "DELETE");
+            await ReadDataAsync(commandTag, "DELETE");
 
             return LastCommandResult;
         }
@@ -877,7 +877,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "ENABLE " + capabilityName + "\r\n");
-            string response = await ReadDataAsync(commandTag, "ENABLE");
+            await ReadDataAsync(commandTag, "ENABLE");
             return LastCommandResult;
         }
 
@@ -934,7 +934,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "EXPUNGE\r\n");
-            string response = await ReadDataAsync(commandTag, "EXPUNGE");
+            await ReadDataAsync(commandTag, "EXPUNGE");
 
             return LastCommandResult;
         }
@@ -1295,7 +1295,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "ID (" + identificationString.Substring(0, identificationString.Length - 1) + ")\r\n");
-                string response = await ReadDataAsync(commandTag, "ID");
+                await ReadDataAsync(commandTag, "ID");
             }
         }
 
@@ -1311,7 +1311,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "IDLE\r\n");
-                string response = await ReadDataAsync(commandTag, "IDLE");
+                await ReadDataAsync(commandTag, "IDLE");
 
                 SessionIsIdle = LastCommandResult;
 
@@ -1337,7 +1337,7 @@ namespace OpaqueMail
                 SessionIsIdle = false;
 
                 await SendCommandAsync("", "DONE\r\n");
-                string response = await ReadDataAsync("", "DONE");
+                await ReadDataAsync("", "DONE");
             }
 
             return true;
@@ -1386,7 +1386,6 @@ namespace OpaqueMail
             string response = await ReadDataAsync(commandTag, "LIST");
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
-            char[] space = " ".ToCharArray();
             foreach (string responseLine in responseLines)
             {
                 Mailbox mailbox = Mailbox.CreateFromList(responseLine);
@@ -1493,7 +1492,6 @@ namespace OpaqueMail
             string response = await ReadDataAsync(commandTag, "LSUB");
 
             string[] responseLines = response.Replace("\r", "").Split('\n');
-            char[] space = " ".ToCharArray();
             foreach (string responseLine in responseLines)
             {
                 Mailbox mailbox = Mailbox.CreateFromList(responseLine);
@@ -1562,7 +1560,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             SendCommand(commandTag, "LOGOUT\r\n");
-            string response = ReadData(commandTag, "LOGOUT");
+            ReadData(commandTag, "LOGOUT");
             SessionIsAuthenticated = false;
         }
 
@@ -1601,7 +1599,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "NOOP\r\n");
-            string response = await ReadDataAsync(commandTag, "NOOP");
+            await ReadDataAsync(commandTag, "NOOP");
 
             return LastCommandResult;
         }
@@ -1622,7 +1620,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "NOTIFY " + notificationCriteria + "\r\n");
-                string response = await ReadDataAsync(commandTag, "NOTIFY");
+                await ReadDataAsync(commandTag, "NOTIFY");
 
                 return LastCommandResult;
             }
@@ -1807,7 +1805,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "RENAME " + Functions.EscapeMailboxName(currentMailboxName) + " " + Functions.EscapeMailboxName(newMailboxName) + "\r\n");
-            string response = await ReadDataAsync(commandTag, "RENAME");
+            await ReadDataAsync(commandTag, "RENAME");
 
             return LastCommandResult;
         }
@@ -1946,7 +1944,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, "SETQUOTA \"" + Functions.EscapeMailboxName(mailboxName) + "\" (STORAGE " + quotaSize.ToString() + ")\r\n");
-                string response = await ReadDataAsync(commandTag, "SETQUOTA");
+                await ReadDataAsync(commandTag, "SETQUOTA");
 
                 return LastCommandResult;
             }
@@ -1965,7 +1963,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 SendCommand(commandTag, "COMPRESS DEFLATE\r\n");
-                string response = ReadData(commandTag, "COMPRESS");
+                ReadData(commandTag, "COMPRESS");
 
                 if (!(ImapStream is DeflateStream))
                     ImapStream = new DeflateStream(ImapStream, CompressionLevel.Fastest);
@@ -1991,7 +1989,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 SendCommand(commandTag, "STARTTLS\r\n");
-                string response = ReadData(commandTag, "STARTTLS");
+                ReadData(commandTag, "STARTTLS");
             }
 
             if (!(ImapStream is SslStream))
@@ -2037,7 +2035,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "SUBSCRIBE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
-            string response = await ReadDataAsync(commandTag, "SUBSCRIBE");
+            await ReadDataAsync(commandTag, "SUBSCRIBE");
 
             return LastCommandResult;
         }
@@ -2064,7 +2062,7 @@ namespace OpaqueMail
             string commandTag = UniqueCommandTag();
 
             await SendCommandAsync(commandTag, "UNSUBSCRIBE " + Functions.EscapeMailboxName(mailboxName) + "\r\n");
-            string response = await ReadDataAsync(commandTag, "UNSUSBSCRIBE");
+            await ReadDataAsync(commandTag, "UNSUSBSCRIBE");
 
             return LastCommandResult;
         }
@@ -2100,7 +2098,7 @@ namespace OpaqueMail
             else
                 await SendCommandAsync(commandTag, "STORE " + id.ToString() + " +Flags (" + flagsString.Substring(0, flagsString.Length - 1) + ")\r\n");
 
-            string response = await ReadDataAsync(commandTag, "STORE");
+            await ReadDataAsync(commandTag, "STORE");
             return LastCommandResult;
         }
 
@@ -2423,7 +2421,7 @@ namespace OpaqueMail
                 string commandTag = UniqueCommandTag();
 
                 await SendCommandAsync(commandTag, uidPrefix + "MOVE " + id.ToString() + " " + Functions.EscapeMailboxName(destMailboxName) + "\r\n");
-                string response = await ReadDataAsync(commandTag, "MOVE");
+                await ReadDataAsync(commandTag, "MOVE");
 
                 return LastCommandResult;
             }
@@ -2468,7 +2466,7 @@ namespace OpaqueMail
             else
                 await SendCommandAsync(commandTag, "STORE " + id.ToString() + " Flags (" + flagsString.Substring(0, flagsString.Length - 1) + ")\r\n");
 
-            string response = await ReadDataAsync(commandTag, "STORE");
+            await ReadDataAsync(commandTag, "STORE");
             return LastCommandResult;
         }
 
@@ -2501,7 +2499,7 @@ namespace OpaqueMail
             else
                 await SendCommandAsync(commandTag, "STORE " + id.ToString() + " -Flags (" + flagsString.Substring(0, flagsString.Length - 1) + ")\r\n");
 
-            string response = await ReadDataAsync(commandTag, "STORE");
+            await ReadDataAsync(commandTag, "STORE");
             return LastCommandResult;
         }
         #endregion Private Methods
