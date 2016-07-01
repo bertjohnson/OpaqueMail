@@ -13,7 +13,7 @@ Features patterns similar to System.Net.Mail.MailMessage and System.Net.Mail.Smt
 
 Thoroughly documented.  Optimized for security, usability, and performance.
 
-Supporting documentation and tutorials available at (https://github.com/bertjohnson/OpaqueMail/wiki/OpaqueMail-Library-Tutorial).
+Supporting documentation and tutorials available at https://github.com/bertjohnson/OpaqueMail/wiki/OpaqueMail-Library-Tutorial.
 
 Licensed according to the MIT License (http://mit-license.org/).
 
@@ -32,7 +32,7 @@ Can be used to secure and authenticate email programs that connect to SMTP serve
 
 Runs as a Windows service.  Inbound and outbound IPs, ports, logging, and TLS / SSL settings are all configurable via XML.
 
-Supporting documentation and tutorials available at (https://github.com/bertjohnson/OpaqueMail/wiki/OpaqueMail-Proxy-Tutorial).
+Supporting documentation and tutorials available at https://github.com/bertjohnson/OpaqueMail/wiki/OpaqueMail-Proxy-Tutorial.
 
 Licensed according to the MIT License (http://mit-license.org/).
 
