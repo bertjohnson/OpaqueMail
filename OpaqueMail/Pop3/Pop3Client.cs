@@ -20,6 +20,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -102,6 +103,8 @@ namespace OpaqueMail
         private bool? ServerSupportsTop { get; set; }
         /// <summary>Whether the POP3 server supports the "UIDL" command for uniquely identifying messages.</summary>
         private bool? ServerSupportsUIDL { get; set; }
+        /// <summary>Allowed protocols when EnableSSL is true.</summary>
+        public SslProtocols SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
         /// <summary>The welcome message provided by the POP3 server.</summary>
         public string WelcomeMessage
         {
@@ -189,6 +192,9 @@ namespace OpaqueMail
         /// </summary>
         public bool Authenticate()
         {
+            if (!IsConnected)
+                return false;
+
             // If an APOP shared secret has been established between the client and server, require that authentication.
             if (!string.IsNullOrEmpty(APOPSharedSecret))
             {
@@ -762,7 +768,7 @@ namespace OpaqueMail
             {
                 ReadData();
             }
-            catch (Exception) { }
+            catch { }
             SessionIsAuthenticated = false;
         }
 
@@ -895,7 +901,12 @@ namespace OpaqueMail
                 {
                     if (endMarker.Length > 0)
                     {
-                        if (responseChunk.EndsWith(endMarker))
+                        bool ended = false;
+                        if (responseChunk.Length >= endMarker.Length)
+                            ended = responseChunk.EndsWith(endMarker);
+                        else
+                            ended = responseBuilder.ToString().EndsWith(endMarker);
+                        if (ended)
                         {
                             receivingMessage = false;
 
@@ -991,9 +1002,9 @@ namespace OpaqueMail
         public void StartTLS()
         {
             if (!(Pop3Stream is SslStream))
-                Pop3Stream = new SslStream(Pop3TcpClient.GetStream());
+                Pop3Stream = new SslStream(Pop3Stream);
             if (!((SslStream)Pop3Stream).IsAuthenticated)
-                ((SslStream)Pop3Stream).AuthenticateAsClient(Host);
+                ((SslStream)Pop3Stream).AuthenticateAsClient(Host, null, SslProtocols, true);
         }
         #endregion Public Methods
 

@@ -121,7 +121,7 @@ namespace OpaqueMail.TestClient
                 // Ensure we connected successfully.
                 if (!myImapClient.IsConnected)
                 {
-                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\n" + myImapClient.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
             }
@@ -207,7 +207,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 // Ensure we connected successfully.
                 if (!myImapClient.IsConnected)
                 {
-                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\n" + myImapClient.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
             }
@@ -387,7 +387,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                     // Ensure we connected successfully.
                     if (!myImapClient.IsConnected)
                     {
-                        MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\n" + myImapClient.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
 
@@ -790,7 +790,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             if (string.IsNullOrEmpty(ImapHost.Text) || string.IsNullOrEmpty(ImapPort.Text) || string.IsNullOrEmpty(ImapUsername.Text) || string.IsNullOrEmpty(ImapPassword.Text))
             {
-                MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\n" + myImapClient.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -812,7 +812,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 // Ensure we connected successfully.
                 if (!myImapClient.IsConnected || !myImapClient.IsAuthenticated)
                 {
-                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\n" + myImapClient.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     myImapClient = null;
                     return;
                 }
@@ -895,7 +895,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         {
             if (string.IsNullOrEmpty(Pop3Host.Text) || string.IsNullOrEmpty(Pop3Port.Text) || string.IsNullOrEmpty(Pop3Username.Text) || string.IsNullOrEmpty(Pop3Password.Text))
             {
-                MessageBox.Show("Unable to connect to the POP3 server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Unable to connect to the POP3 server. Please double-check your settings.\r\n\r\n" + myPop3Client.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             
@@ -917,7 +917,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 // Ensure we connected successfully.
                 if (!myPop3Client.IsConnected || !myPop3Client.IsAuthenticated)
                 {
-                    MessageBox.Show("Unable to connect to the POP3 server. Please double-check your settings.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Unable to connect to the POP3 server. Please double-check your settings.\r\n\r\n" + myPop3Client.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     myPop3Client = null;
                     return;
                 }

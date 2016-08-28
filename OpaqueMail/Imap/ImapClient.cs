@@ -21,6 +21,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -113,6 +114,8 @@ namespace OpaqueMail
         }
         /// <summary>A unique string used to tag commands in the current IMAP session.</summary>
         public string SessionCommandTag { get; set; }
+        /// <summary>Allowed protocols when EnableSSL is true.</summary>
+        public SslProtocols SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
         /// <summary>List of unprocessed messages returned by the server.</summary>
         public List<string> UnexpectedServerMessages { get; set; }
         /// <summary>The welcome message provided by the IMAP server.</summary>
@@ -559,6 +562,9 @@ namespace OpaqueMail
         /// <param name="authMode">The authentication method to use.</param>
         public bool Authenticate(AuthenticationMode authMode)
         {
+            if (!IsConnected)
+                return false;
+
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
             string response = "";
@@ -1996,7 +2002,7 @@ namespace OpaqueMail
                 ImapStream = new SslStream(ImapStream);
 
             if (!((SslStream)ImapStream).IsAuthenticated)
-                ((SslStream)ImapStream).AuthenticateAsClient(Host);
+                ((SslStream)ImapStream).AuthenticateAsClient(Host, null, SslProtocols, true);
         }
 
         /// <summary>

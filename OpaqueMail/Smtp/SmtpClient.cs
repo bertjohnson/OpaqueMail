@@ -16,17 +16,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Net.Mime;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Runtime;
-using System.Runtime.Serialization;
+using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
 using System.Security.Cryptography.X509Certificates;
-using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -49,6 +45,8 @@ namespace OpaqueMail
         /// If not specified, SmtpClient will use the current Windows user's certificate store.
         /// </summary>
         public X509Certificate2Collection SmimeValidCertificates { get; set; }
+        /// <summary>Allowed protocols when EnableSSL is true.</summary>
+        public SslProtocols SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
         #endregion Public Members
 
         #region Protected Members
@@ -333,7 +331,7 @@ namespace OpaqueMail
                     throw new SmtpException("Unable to start TLS/SSL protection with '" + Host + "'.  Received '" + response + "'.");
 
                 SmtpStream = new SslStream(SmtpStream);
-                ((SslStream)SmtpStream).AuthenticateAsClient(Host);
+                ((SslStream)SmtpStream).AuthenticateAsClient(Host, null, SslProtocols, true);
 
                 reader = new StreamReader(SmtpStream);
                 writer = new StreamWriter(SmtpStream);
