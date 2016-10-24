@@ -686,7 +686,7 @@ namespace OpaqueMail
                 if (EnableSsl)
                     StartTLS();
 
-                ImapStreamReader = new StreamReader(ImapStream);
+                ImapStreamReader = new StreamReader(ImapStream, Encoding.GetEncoding("iso-8859-1"));
                 ImapStreamWriter = new StreamWriter(ImapStream);
 
                 // Remember the welcome message.
@@ -2203,14 +2203,22 @@ namespace OpaqueMail
                 int bodyLength = -1;
                 int.TryParse(Functions.ReturnBetween(firstLine, "BODY[] {", "}"), out bodyLength);
 
-                //verify if bodyLength is not overflow the lenght of response
-                if (bodyLength > 0 && (bodyLength + lineBreak + 2) < response.Length)
+                int.TryParse(Functions.ReturnBetween(firstLine, "BODY[] {", "}"), out bodyLength);
+                if (bodyLength > 0)
                     response = response.Substring(lineBreak + 2, bodyLength);
                 else
                 {
                     response = response.Substring(response.IndexOf("\r\n") + 2);
                     response = response.Substring(0, response.Length - 2);
                 }
+
+                // get the raw bytes 
+                var latin1 = Encoding.GetEncoding("iso-8859-1");
+                var bytes = latin1.GetBytes(response);
+
+                // convert to UTF-8, like the old code did...
+                var utf8 = Encoding.GetEncoding("UTF-8", new EncoderReplacementFallback(""), new DecoderReplacementFallback(""));
+                response = utf8.GetString(bytes);
 
                 MailMessage message = new MailMessage(response, ProcessingFlags);
                 message.ImapUid = uid;
