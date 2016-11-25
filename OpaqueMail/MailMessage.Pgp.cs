@@ -51,9 +51,9 @@ namespace OpaqueMail
 
         #region Private Members
         /// <summary>Whether the message is encrypted using PGP.</summary>
-        public bool pgpEncrypted = false;
+        private bool pgpEncrypted = false;
         /// <summary>Whether the message is PGP signed.</summary>
-        public bool pgpSigned = false;
+        private bool pgpSigned = false;
         #endregion Private Members
 
         #region Public Methods
