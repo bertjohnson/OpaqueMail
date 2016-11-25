@@ -926,7 +926,6 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="ContentTransferEncoding">Transfer encoding to use.</param>
         /// <param name="MimeBoundaryName">Text delimiting MIME message parts.</param>
-        /// <param name="MimeAlternativeViewBoundaryName">Text delimiting MIME message alternative view parts.</param>
         public async Task<string> MimeEncode(string ContentTransferEncoding, string MimeBoundaryName)
         {
             // If no Content Transfer Encoding is specified, default to quoted-printable.

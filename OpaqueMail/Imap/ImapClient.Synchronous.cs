@@ -585,9 +585,10 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="commandTag">Command tag identifying the command and its response</param>
         /// <param name="previousCommand">The previous command issued to the server.</param>
-        public string ReadData(string commandTag, string previousCommand)
+        /// <param name="timeout">Number of milliseconds to wait for a response before failing.</param>
+        public string ReadData(string commandTag, string previousCommand, int timeout = 0)
         {
-            return Task.Run(() => ReadDataAsync(commandTag, previousCommand)).Result;
+            return Task.Run(() => ReadDataAsync(commandTag, previousCommand, timeout)).Result;
         }
 
         /// <summary>

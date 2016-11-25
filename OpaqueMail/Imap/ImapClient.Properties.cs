@@ -90,6 +90,10 @@ namespace OpaqueMail
         private bool ServerSupportsQuota { get; set; }
         /// <summary>Whether the IMAP server supports the "QResync" extension.</summary>
         private bool ServerSupportsQResync { get; set; }
+        /// <summary>Whether the IMAP server supports the "SASL" extension.</summary>
+        private bool ServerSupportsSasl { get; set; }
+        /// <summary>Whether the IMAP server supports the "SASL-IR" extension.</summary>
+        private bool ServerSupportsSaslIr { get; set; }
         /// <summary>A list of search options supported by the server.</summary>
         private List<string> ServerSearchSupport { get; set; }
         /// <summary>Whether the IMAP server supports the "SearchRes" extension.</summary>
@@ -489,6 +493,28 @@ namespace OpaqueMail
             }
         }
 
+        /// <summary>
+        /// Whether the IMAP server supports the "SASL" extension.
+        /// </summary>
+        public bool SupportsSasl
+        {
+            get
+            {
+                return ServerSupportsSasl;
+            }
+        }
+
+        /// <summary>
+        /// Whether the IMAP server supports the "SASL-IR" extension.
+        /// </summary>
+        public bool SupportsSaslIr
+        {
+            get
+            {
+                return ServerSupportsSaslIr;
+            }
+        }
+        
         /// <summary>
         /// A list of search options supported by the server.
         /// </summary>

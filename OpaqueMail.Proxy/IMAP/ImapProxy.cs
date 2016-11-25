@@ -372,7 +372,7 @@ namespace OpaqueMail.Proxy
         /// Handle an incoming IMAP connection, from connection to completion.
         /// </summary>
         /// <param name="parameters">ImapProxyConnectionArguments object containing all parameters for this connection.</param>
-        private async Task ProcessConnection(object parameters)
+        private void ProcessConnection(object parameters)
         {
             // Cast the passed-in parameters back to their original objects.
             ImapProxyConnectionArguments arguments = (ImapProxyConnectionArguments)parameters;

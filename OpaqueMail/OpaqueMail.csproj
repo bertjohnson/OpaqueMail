@@ -67,6 +67,7 @@
     <Compile Include="Pgp.cs" />
     <Compile Include="Pop3\Pop3Client.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Smtp\SmtpClient.Smime.cs" />
     <Compile Include="Smtp\SmtpClient.cs" />
     <Compile Include="TnefEncoding.cs" />
   </ItemGroup>

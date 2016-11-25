@@ -15,6 +15,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -223,19 +224,24 @@ namespace OpaqueMail
         /// <summary>
         /// Connect to the remote POP3 server.
         /// </summary>
-        public bool Connect()
+        /// <param name="timeout">Number of milliseconds to wait for a response before failing.</param>
+        public bool Connect(int timeout = 0)
         {
             try
             {
                 Pop3TcpClient = new TcpClient();
+                Pop3TcpClient.ReceiveTimeout = timeout;
                 Pop3TcpClient.Connect(Host, Port);
                 Pop3Stream = Pop3TcpClient.GetStream();
+
+                if (timeout > 0)
+                    Pop3Stream.ReadTimeout = timeout;
 
                 if (EnableSsl)
                     StartTLS();
 
                 // Remember the welcome message.
-                SessionWelcomeMessage = ReadData();
+                SessionWelcomeMessage = ReadData(timeout);
                 if (!LastCommandResult)
                     return false;
 
@@ -794,17 +800,27 @@ namespace OpaqueMail
         /// <summary>
         /// Read the last response from the POP3 server.
         /// </summary>
-        public string ReadData()
+        /// <param name="timeout">Number of milliseconds to wait for a response before failing.</param>
+        public string ReadData(int timeout = 0)
         {
-            return ReadData("");
+            return ReadData("", timeout);
         }
 
         /// <summary>
         /// Read the last response from the POP3 server.
         /// </summary>
         /// <param name="endMarker">A string indicating the end of the current message.</param>
-        public string ReadData(string endMarker)
+        /// <param name="timeout">Number of milliseconds to wait for a response before failing.</param>
+        public string ReadData(string endMarker, int timeout = 0)
         {
+            // Prepare to track time elapsed for timeouts.
+            Stopwatch stopWatch = null;
+            if (timeout > 0)
+            {
+                stopWatch = new Stopwatch();
+                stopWatch.Start();
+            }
+
             string response = "";
 
             LastCommandResult = false;
@@ -812,6 +828,16 @@ namespace OpaqueMail
             while (receivingMessage)
             {
                 int bytesRead = Pop3Stream.Read(InternalBuffer, 0, Constants.LARGEBUFFERSIZE);
+
+                if (bytesRead < 1)
+                {
+                    if (stopWatch != null)
+                    {
+                        if (stopWatch.ElapsedMilliseconds > timeout)
+                            return "";
+                    }
+                }
+
                 response += Encoding.UTF8.GetString(InternalBuffer, 0, bytesRead);
 
                 // Deal with bad commands and responses with errors.
@@ -863,21 +889,31 @@ namespace OpaqueMail
             LastCommandResult = true;
             return response;
         }
-        
+
         /// <summary>
         /// Read the last response from the POP3 server.
         /// </summary>
-        public async Task<string> ReadDataAsync()
+        /// <param name="timeout">Number of milliseconds to wait for a response before failing.</param>
+        public async Task<string> ReadDataAsync(int timeout = 0)
         {
-            return await ReadDataAsync("");
+            return await ReadDataAsync("", timeout);
         }
 
         /// <summary>
         /// Read the last response from the POP3 server.
         /// </summary>
         /// <param name="endMarker">A string indicating the end of the current message.</param>
-        public async Task<string> ReadDataAsync(string endMarker)
+        /// <param name="timeout">Number of milliseconds to wait for a response before failing.</param>
+        public async Task<string> ReadDataAsync(string endMarker, int timeout = 0)
         {
+            // Prepare to track time elapsed for timeouts.
+            Stopwatch stopWatch = null;
+            if (timeout > 0)
+            {
+                stopWatch = new Stopwatch();
+                stopWatch.Start();
+            }
+
             StringBuilder responseBuilder = new StringBuilder();
 
             LastCommandResult = false;
@@ -885,6 +921,16 @@ namespace OpaqueMail
             while (receivingMessage)
             {
                 int bytesRead = await Pop3Stream.ReadAsync(InternalBuffer, 0, Constants.LARGEBUFFERSIZE);
+
+                if (bytesRead < 1)
+                {
+                    if (stopWatch != null)
+                    {
+                        if (stopWatch.ElapsedMilliseconds > timeout)
+                            return "";
+                    }
+                }
+
                 string responseChunk = Encoding.UTF8.GetString(InternalBuffer, 0, bytesRead);
                 responseBuilder.Append(responseChunk);
 

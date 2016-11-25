@@ -806,7 +806,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             // If our connection has timed out or been closed, reconnect.
             if (!myImapClient.IsConnected || !myImapClient.IsAuthenticated)
             {
-                myImapClient.Connect();
+                myImapClient.Connect(15000);
                 myImapClient.Authenticate();
 
                 // Ensure we connected successfully.
@@ -911,7 +911,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             // If our connection has timed out or been closed, reconnect.
             if (!myPop3Client.IsConnected || !myPop3Client.IsAuthenticated)
             {
-                myPop3Client.Connect();
+                myPop3Client.Connect(15000);
                 myPop3Client.Authenticate();
 
                 // Ensure we connected successfully.
@@ -970,6 +970,8 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 headersText.Append("PGP Signed: True\r\n");
             if (message.PgpEncryptedEnvelope)
                 headersText.Append("PGP Encrypted: True\r\n");
+            if (message.SmimeSigned)
+                headersText.Append("S/MIME Signed: True\r\n");
             if (message.SmimeEncryptedEnvelope)
                 headersText.Append("S/MIME Envelope Encrypted: True\r\n");
             if (message.SmimeTripleWrapped)
@@ -1217,9 +1219,5 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 textbox.Text = valueNavigator.Value;
         }
         #endregion Private Methods
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-        }
     }
 }
