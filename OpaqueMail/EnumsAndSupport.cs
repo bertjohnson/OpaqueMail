@@ -28,7 +28,10 @@ namespace OpaqueMail
     {
         Login,
         CramMD5,
+        DigestMD5,
+        Negotiate,
         Plain,
+        XOAuth,
         XOAuth2
     }
 

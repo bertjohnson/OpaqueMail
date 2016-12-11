@@ -136,8 +136,14 @@ namespace OpaqueMail
         public string Pop3Uidl { get; set; }
         /// <summary>Flags determining whether specialized properties are returned with a MailMessage.</summary>
         public MailMessageProcessingFlags ProcessingFlags { get; set; }
-        /// <summary>String representation of the raw body received.</summary>
-        public string RawBody { get; set; }
+        /// <summary>String representation of the raw body.</summary>
+        public string RawBody
+        {
+            get
+            {
+                return rawBody;
+            }
+        }
         /// <summary>Raw flags returned with the message.</summary>
         public HashSet<string> RawFlags { get; set; }
         /// <summary>String representation of the raw headers received.</summary>
@@ -147,7 +153,7 @@ namespace OpaqueMail
         {
             get
             {
-                return RawHeaders + (RawHeaders.Length > 0 && RawBody.Length > 0 ? "\r\n\r\n" : "") + RawBody;
+                return RawHeaders + (RawHeaders.Length > 0 && string.IsNullOrEmpty(rawBody) ? "" : "\r\n\r\n") + rawBody;
             }
         }
         /// <summary>Array of values of Received and X-Received headers.</summary>
@@ -204,22 +210,6 @@ namespace OpaqueMail
         /// <summary>Gets or sets the encoding used for the subject content for this email message.</summary>
         /// <returns>An <see cref="T:System.Text.Encoding" /> that was used to encode the <see cref="P:System.Net.Mail.MailMessage.Subject" /> property.</returns>
         public Encoding SubjectEncoding { get; set; }
-        /// <summary>X-Subject-Encryption header, as optionally used by OpaqueMail.</summary>
-        public bool SubjectEncryption
-        {
-            get
-            {
-                return subjectEncryption;
-            }
-            set
-            {
-                subjectEncryption = value;
-                if (value)
-                    Headers["X-Subject-Encryption"] = "True";
-                else
-                    Headers.Remove("X-Subject-Encryption");
-            }
-        }
         public SubjectIdentifierType SubjectIdentifierType { get; set; }
         /// <summary>Gets the address collection that contains the recipients of this email message.</summary>
         /// <returns>A writable <see cref="T:System.Net.Mail.MailAddressCollection" /> object.</returns>
@@ -231,8 +221,8 @@ namespace OpaqueMail
         private long loadedSize = -1;
         /// <summary>Gets or sets the delivery notifications for this email message.</summary>
         private DeliveryNotificationOptions deliveryStatusNotification;
-        /// <summary>X-Subject-Encryption header, as optionally used by OpaqueMail.</summary>
-        private bool subjectEncryption;
+        /// <summary>String representation of the raw body.</summary>
+        private string rawBody;
         #endregion Private Members
 
         #region Constructors
@@ -560,11 +550,6 @@ namespace OpaqueMail
                                     break;
                             }
                             break;
-                        case "x-subject-encryption":
-                            bool subjectEncryption;
-                            bool.TryParse(headerValue, out subjectEncryption);
-                            SubjectEncryption = subjectEncryption;
-                            break;
                         default:
                             break;
                     }
@@ -835,7 +820,7 @@ namespace OpaqueMail
 
                 // Set the raw body property if requested.
                 if ((processingFlags & MailMessageProcessingFlags.IncludeRawBody) > 0)
-                    RawBody = body;
+                    rawBody = body;
             }
 
             // Parse String representations of addresses into MailAddress objects.
@@ -926,7 +911,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="ContentTransferEncoding">Transfer encoding to use.</param>
         /// <param name="MimeBoundaryName">Text delimiting MIME message parts.</param>
-        public async Task<string> MimeEncode(string ContentTransferEncoding, string MimeBoundaryName)
+        public async Task MimeEncode(string ContentTransferEncoding, string MimeBoundaryName)
         {
             // If no Content Transfer Encoding is specified, default to quoted-printable.
             if (string.IsNullOrEmpty(ContentTransferEncoding))
@@ -997,9 +982,9 @@ namespace OpaqueMail
             // Since we've processed the attachments, they shouldn't be rendered again.
             this.Attachments.Clear();
 
-            MIMEBuilder.Append("--" + MimeBoundaryName + "--");
+            MIMEBuilder.Append("--" + MimeBoundaryName + "--\r\n");
 
-            return MIMEBuilder.ToString();
+            rawBody = MIMEBuilder.ToString();
         }
 
         /// <summary>
@@ -1050,6 +1035,119 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Encode the message, preparing it to send. If appropriate, encode as a multipart/mixed message.
+        /// If also performing S/MIME transformations, run SmimePrepare() afterwards.
+        /// </summary>
+        public void Prepare()
+        {
+            if (string.IsNullOrEmpty(ContentType))
+                ContentType = "text/html";
+            if (string.IsNullOrEmpty(ContentTransferEncoding))
+                ContentTransferEncoding = "quoted-printable";
+
+            // Generate a multipart/mixed message containing the email's body, alternate views, and attachments.
+            if (AlternateViews.Count > 0 || Attachments.Count > 0)
+            {
+                MimeEncode("7bit", MimeBoundaryName).Wait();
+
+                ContentType = "multipart/mixed; boundary=\"" + MimeBoundaryName + "\"";
+                ContentTransferEncoding = "7bit";
+            }
+            else
+                rawBody = Functions.Encode(Body, ContentTransferEncoding);
+        }
+
+        /// <summary>
+        /// Helper function for sending the specified message to an SMTP server for delivery with S/MIME encoding.
+        /// </summary>
+        /// <param name="smtpClient">An OpaqueMail.SmtpClient to cache S/MIME public keys.</param>
+        public void SmimePrepare(SmtpClient smtpClient)
+        {
+            if (SmimeSigned || SmimeEncryptedEnvelope || SmimeTripleWrapped)
+            {
+                rawBody = "Content-Type: " + ContentType + "\r\nContent-Transfer-Encoding: " + ContentTransferEncoding + "\r\n\r\n" + rawBody;
+            }
+            else
+                return;
+
+            // Buffer used during various S/MIME operations.
+            byte[] buffer = new byte[Constants.HUGEBUFFERSIZE];
+
+            // Require one or more recipients.
+            if (To.Count + CC.Count + Bcc.Count < 1)
+                throw new SmtpException("One or more recipients must be specified via the '.To', '.CC', or '.Bcc' collections.");
+
+            // Require a signing certificate to be specified.
+            if ((SmimeSigned || SmimeTripleWrapped) && SmimeSigningCertificate == null)
+                throw new SmtpException("A signing certificate must be passed prior to signing.");
+
+            // Ensure the rendering engine expects MIME encoding.
+            Headers["MIME-Version"] = "1.0";
+
+            // Determine the body encoding, defaulting to UTF-8.
+            Encoding bodyEncoding = BodyEncoding != null ? BodyEncoding : new UTF8Encoding();
+            Encoder bodyEncoder = bodyEncoding.GetEncoder();
+
+            // Encode and return the raw bytes.
+            char[] chars = (rawBody).ToCharArray();
+            byte[] MIMEBodyBytes = new byte[bodyEncoder.GetByteCount(chars, 0, chars.Length, false)];
+            bodyEncoder.GetBytes(chars, 0, chars.Length, MIMEBodyBytes, 0, true);
+
+            // Handle S/MIME signing.
+            bool successfullySigned = false;
+            if (SmimeSigned || SmimeTripleWrapped)
+            {
+                int unsignedSize = MIMEBodyBytes.Length;
+                string boundaryName;
+                MIMEBodyBytes = smtpClient.SmimeSign(buffer, MIMEBodyBytes, this, false, out boundaryName);
+                successfullySigned = MIMEBodyBytes.Length != unsignedSize;
+
+                if (successfullySigned)
+                {
+                    // Remove any prior content dispositions.
+                    if (Headers["Content-Disposition"] != null)
+                        Headers.Remove("Content-Disposition");
+
+                    ContentType = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\r\n\tboundary=\"" + boundaryName + "\"";
+                    ContentTransferEncoding = "7bit";
+                    rawBody = Encoding.UTF8.GetString(MIMEBodyBytes);
+                }
+            }
+
+            // Handle S/MIME envelope encryption.
+            bool successfullyEncrypted = false;
+            if (SmimeEncryptedEnvelope || SmimeTripleWrapped)
+            {
+                int unencryptedSize = MIMEBodyBytes.Length;
+                MIMEBodyBytes = smtpClient.SmimeEncryptEnvelope(MIMEBodyBytes, this, successfullySigned);
+                successfullyEncrypted = MIMEBodyBytes.Length != unencryptedSize;
+
+                // If the message won't be triple-wrapped, wrap the encrypted message with MIME.
+                if (successfullyEncrypted && (!successfullySigned || !SmimeTripleWrapped))
+                {
+                    ContentType = "application/pkcs7-mime; name=smime.p7m;\r\n\tsmime-type=enveloped-data";
+                    ContentTransferEncoding = "base64";
+                    rawBody = OpaqueMail.Functions.ToBase64String(MIMEBodyBytes);
+                }
+            }
+
+            // Handle S/MIME triple wrapping (i.e. signing, envelope encryption, then signing again).
+            if (successfullyEncrypted)
+            {
+                if (SmimeTripleWrapped)
+                {
+                    string boundaryName;
+                    rawBody = Encoding.UTF8.GetString(smtpClient.SmimeSign(buffer, MIMEBodyBytes, this, true, out boundaryName));
+
+                    ContentType = "multipart/signed; protocol=\"application/x-pkcs7-signature\"; micalg=sha1;\r\n\tboundary=\"" + boundaryName + "\"";
+                    ContentTransferEncoding = "7bit";
+                }
+                else
+                    Headers["Content-Disposition"] = "attachment; filename=smime.p7m";
+            }
+        }
+
+        /// <summary>
         /// Ensure boundary names are unique.
         /// </summary>
         public void RandomizeBoundaryNames()
@@ -1080,7 +1178,10 @@ namespace OpaqueMail
         /// <param name="path">The file to save to.</param>
         public void SaveFile(string path)
         {
-            File.WriteAllText(path, RawHeaders + "\r\n\r\n" + RawBody);
+            if (string.IsNullOrEmpty(rawBody))
+                File.WriteAllText(path, RawHeaders + "\r\n\r\n" + Body);
+            else
+                File.WriteAllText(path, RawHeaders + "\r\n\r\n" + rawBody);
         }
         #endregion Public Methods
 
@@ -1217,20 +1318,6 @@ namespace OpaqueMail
 
             if (pgpSignedMessageIndex > -1 && pgpSignatureIndex > -1)
                 pgpSigned = true;
-
-            // OpaqueMail optional setting for protecting the subject.
-            if (SubjectEncryption && Body.StartsWith("Subject: "))
-            {
-                int linebreakPosition = Body.IndexOf("\r\n");
-                if (linebreakPosition > -1)
-                {
-                    // Decode international strings and remove escaped linebreaks.
-                    string subjectText = Body.Substring(9, linebreakPosition - 9);
-                    Subject = Functions.DecodeMailHeader(subjectText).Replace("\r", "").Replace("\n", "");
-
-                    Body = Body.Substring(linebreakPosition + 2);
-                }
-            }
 
             // Set the message's S/MIME attributes.
             SmimeSigned = allMimePartsSigned;

@@ -105,20 +105,6 @@ namespace OpaqueMail
                     // Convert the byte array back to a string.
                     Body = BodyEncoding.GetString(decryptedMessage);
 
-                    // OpaqueMail optional setting for protecting the subject.
-                    if (SubjectEncryption && Body.StartsWith("Subject: "))
-                    {
-                        int linebreakPosition = Body.IndexOf("\r\n");
-                        if (linebreakPosition > -1)
-                        {
-                            // Decode international strings and remove escaped linebreaks.
-                            string subjectText = Body.Substring(9, linebreakPosition - 9);
-                            Subject = Functions.DecodeMailHeader(subjectText).Replace("\r", "").Replace("\n", "");
-
-                            Body = Body.Substring(linebreakPosition + 2);
-                        }
-                    }
-
                     // If the body was successfully decrypted, attempt to decrypt attachments.
                     foreach (Attachment attachment in Attachments)
                     {
@@ -173,25 +159,17 @@ namespace OpaqueMail
             using (MemoryStream encryptedMessageStream = new MemoryStream())
             {
                 // Attempt to encrypt the message.
-                // OpaqueMail optional setting for protecting the subject.
-                if (SubjectEncryption && !Body.StartsWith("Subject: "))
-                    encrypted = Pgp.Encrypt(BodyEncoding.GetBytes("Subject: " + Subject + "\r\n" + Body), encryptedMessageStream, "", recipientPublicKeys, symmetricKeyAlgorithmTag, true);
-                else
-                    encrypted = Pgp.Encrypt(BodyEncoding.GetBytes(Body), encryptedMessageStream, "", recipientPublicKeys, symmetricKeyAlgorithmTag, true);
+                encrypted = Pgp.Encrypt(BodyEncoding.GetBytes(Body), encryptedMessageStream, "", recipientPublicKeys, symmetricKeyAlgorithmTag, true);
                 
                 if (encrypted)
                 {
-                    RawBody = BodyEncoding.GetString(encryptedMessageStream.ToArray());
+                    rawBody = BodyEncoding.GetString(encryptedMessageStream.ToArray());
                 }
             }
 
             // If the body was successfully encrypted, attempt to encrypt attachments.
             if (encrypted)
             {
-                // OpaqueMail optional setting for protecting the subject.
-                if (SubjectEncryption)
-                    Subject = "PGP Encrypted Message";
-
                 foreach (Attachment attachment in Attachments)
                 {
                     // Don't process attachments with names ending in ".pgp".
@@ -232,7 +210,7 @@ namespace OpaqueMail
             if (Pgp.Sign(BodyEncoding.GetBytes(Body), out signatureBytes, senderPublicKey, senderPrivateKey, hashAlgorithmTag))
             {
                 // Fix up a formatting bug in BouncyCastle.
-                RawBody = Encoding.UTF8.GetString(signatureBytes).Replace("-----BEGIN PGP SIGNATURE-----", "\r\n-----BEGIN PGP SIGNATURE-----");
+                rawBody = Encoding.UTF8.GetString(signatureBytes).Replace("-----BEGIN PGP SIGNATURE-----", "\r\n-----BEGIN PGP SIGNATURE-----");
 
                 return true;
             }
@@ -274,21 +252,13 @@ namespace OpaqueMail
             using (MemoryStream signedAndEncryptedMessageStream = new MemoryStream())
             {
                 // Attempt to encrypt the message.
-                // OpaqueMail optional setting for protecting the subject.
-                if (SubjectEncryption && !Body.StartsWith("Subject: "))
-                    signedAndEncrypted = Pgp.SignAndEncrypt(BodyEncoding.GetBytes("Subject: " + Subject + "\r\n" + Body), "", signedAndEncryptedMessageStream, senderPublicKey, senderPrivateKey, recipientPublicKeys, hashAlgorithmTag, symmetricKeyAlgorithmTag, true);
-                else
-                    signedAndEncrypted = Pgp.SignAndEncrypt(BodyEncoding.GetBytes(Body), "", signedAndEncryptedMessageStream, senderPublicKey, senderPrivateKey, recipientPublicKeys, hashAlgorithmTag, symmetricKeyAlgorithmTag, true);
+                signedAndEncrypted = Pgp.SignAndEncrypt(BodyEncoding.GetBytes(Body), "", signedAndEncryptedMessageStream, senderPublicKey, senderPrivateKey, recipientPublicKeys, hashAlgorithmTag, symmetricKeyAlgorithmTag, true);
 
                 if (signedAndEncrypted)
                 {
-                    // OpaqueMail optional setting for protecting the subject.
-                    if (SubjectEncryption)
-                        Subject = "PGP Encrypted Message";
-
                     signedAndEncrypted = true;
 
-                    RawBody = BodyEncoding.GetString(signedAndEncryptedMessageStream.ToArray());
+                    rawBody = BodyEncoding.GetString(signedAndEncryptedMessageStream.ToArray());
                 }
             }
 

@@ -554,7 +554,7 @@ namespace OpaqueMail
         /// </summary>
         public bool Authenticate()
         {
-            return Authenticate(AuthenticationMode.Login);
+            return Authenticate(AuthenticationMode.Negotiate);
         }
 
         /// <summary>
@@ -569,6 +569,43 @@ namespace OpaqueMail
             // Generate a unique command tag for tracking this command and its response.
             string commandTag = UniqueCommandTag();
             string response = "";
+
+            if (authMode == AuthenticationMode.Negotiate)
+            {
+                if (ServerAuthSupport != null)
+                {
+                    // Try to negotiate the authentication scheme based on what the server reported as options.
+                    foreach (string supportedAuthMode in ServerAuthSupport)
+                    {
+                        switch (supportedAuthMode.ToUpper())
+                        {
+                            case "CRAM-MD5":
+                                authMode = AuthenticationMode.CramMD5;
+                                break;
+                            case "DIGEST-MD5":
+                                authMode = AuthenticationMode.DigestMD5;
+                                break;
+                            case "LOGIN":
+                                authMode = AuthenticationMode.Login;
+                                break;
+                            case "PLAIN":
+                                authMode = AuthenticationMode.Plain;
+                                break;
+                            case "XOAUTH":
+                                authMode = AuthenticationMode.XOAuth;
+                                break;
+                            case "XOAUTH2":
+                                authMode = AuthenticationMode.XOAuth2;
+                                break;
+                        }
+                    }
+                }
+                else
+                {
+                    // If the server did not report supported authentication schemes, fail back to PLAIN.
+                    authMode = AuthenticationMode.Plain;
+                }
+            }
 
             switch (authMode)
             {

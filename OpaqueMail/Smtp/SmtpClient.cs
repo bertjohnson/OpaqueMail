@@ -14,7 +14,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Security;
@@ -22,7 +21,6 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Pkcs;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -99,17 +97,13 @@ namespace OpaqueMail
         /// <param name="message">An OpaqueMail.MailMessage that contains the message to send.</param>
         public async Task SendAsync(MailMessage message)
         {
-            // Generate a multipart/mixed message containing the email's body, alternate views, and attachments.
-            message.ContentType = "multipart/mixed; boundary=\"" + SmimeBoundaryName + "\"";
-            message.ContentTransferEncoding = "7bit";
-            message.Body = await message.MimeEncode("7bit", SmimeBoundaryName);
+            // If the message isn't encoded, do so now.
+            if (string.IsNullOrEmpty(message.RawBody))
+                message.Prepare();
 
             // Perform requested S/MIME signing and/or encryption.
-            if (message.SmimeSigned || message.SmimeEncryptedEnvelope || message.SmimeTripleWrapped)
-            {
-                message.Body = "Content-Type: " + message.ContentType + "\r\nContent-Transfer-Encoding: " + message.ContentTransferEncoding + "\r\n" + message.Body;
-                SmimePrepare(message);
-            }
+            message.SmimePrepare(this);
+            string rawBody = message.RawBody;
 
             // Connect to the SMTP server.
             TcpClient SmtpTcpClient = new TcpClient();
@@ -218,7 +212,7 @@ namespace OpaqueMail
             message.Headers["Content-Type"] = message.ContentType + (!string.IsNullOrEmpty(message.CharSet) ? "; charset=\"" + message.CharSet + "\"" : "");
 
             // If the body hasn't been processed, handle encoding of extended characters.
-            if (string.IsNullOrEmpty(message.RawBody))
+            if (string.IsNullOrEmpty(rawBody))
             {
                 bool extendedCharacterFound = false;
                 foreach (char headerCharacter in message.Body.ToCharArray())
@@ -236,7 +230,7 @@ namespace OpaqueMail
                     message.Body = Functions.ToBase64String(message.Body);
                 }
 
-                message.RawBody = message.Body;
+                rawBody = message.Body;
             }
 
             if (!string.IsNullOrEmpty(message.ContentTransferEncoding))
@@ -265,7 +259,7 @@ namespace OpaqueMail
                 }
             }
 
-            await writer.WriteAsync(rawHeaders.ToString() + "\r\n" + message.RawBody + "\r\n.\r\n");
+            await writer.WriteAsync(rawHeaders.ToString() + "\r\n" + rawBody + "\r\n.\r\n");
 
             response = await reader.ReadLineAsync();
             if (!response.StartsWith("2"))
