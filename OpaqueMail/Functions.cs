@@ -483,6 +483,9 @@ namespace OpaqueMail
         /// <returns>Base-64 encoded version of the email header.</returns>
         public static string EncodeMailHeader(string header)
         {
+            if (string.IsNullOrEmpty(header))
+                return "";
+
             bool extendedCharacterFound = false;
             foreach (char headerCharacter in header.ToCharArray())
             {

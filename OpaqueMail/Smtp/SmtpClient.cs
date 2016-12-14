@@ -212,7 +212,7 @@ namespace OpaqueMail
             message.Headers["Content-Type"] = message.ContentType + (!string.IsNullOrEmpty(message.CharSet) ? "; charset=\"" + message.CharSet + "\"" : "");
 
             // If the body hasn't been processed, handle encoding of extended characters.
-            if (string.IsNullOrEmpty(rawBody))
+            if (string.IsNullOrEmpty(rawBody) && !string.IsNullOrEmpty(message.Body))
             {
                 bool extendedCharacterFound = false;
                 foreach (char headerCharacter in message.Body.ToCharArray())
