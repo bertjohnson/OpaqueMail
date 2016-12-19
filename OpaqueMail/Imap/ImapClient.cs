@@ -2268,7 +2268,7 @@ namespace OpaqueMail
 
                 int bodyLength = -1;
                 int.TryParse(Functions.ReturnBetween(firstLine, "BODY[] {", "}"), out bodyLength);
-                if (bodyLength > 0)
+                if (bodyLength > 0 && response.Length > (bodyLength + lineBreak + 2))
                     response = response.Substring(lineBreak + 2, bodyLength);
                 else
                 {
