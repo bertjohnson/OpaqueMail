@@ -2457,7 +2457,7 @@ namespace OpaqueMail
                             ServerSupportsSpecialUse = true;
                             break;
                         case "STARTTLS":
-                            ServerSupportsSort = true;
+                            ServerSupportsStartTls = true;
                             break;
                         case "UIDPLUS":
                             ServerSupportsUIDPlus = true;
