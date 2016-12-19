@@ -1,9 +1,9 @@
 ﻿/*
- * OpaqueMail (http://opaquemail.org/).
+ * OpaqueMail (https://opaquemail.org/).
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.com/) of Apidae Inc. (http://apidae.com/).
+ * Copyright © Bert Johnson (https://bertjohnson.com/) of Allcloud Inc. (https://allcloud.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -14,10 +14,6 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OpaqueMail
 {
@@ -223,7 +219,20 @@ namespace OpaqueMail
         /// <summary>The email has high priority.</summary>
         High
     }
-    
+
+    /// <summary>Helper class to pass message contents with associated metadata.</summary>
+    public class MessagePartialHelper
+    {
+        /// <summary>Message's raw contents.</summary>
+        public string MessageString;
+        /// <summary>UID of the message.</summary>
+        public int ImapUid;
+        /// <summary>Name of the mailbox.</summary>
+        public string Mailbox;
+        /// <summary>String representation of list of flags.</summary>
+        public string FlagsString;
+    }
+
     /// <summary>
     /// Quota and usage info to be used by the "GETQUOTA", "GETQUOTAROOT", and "SETQUOTA" commands.
     /// </summary>

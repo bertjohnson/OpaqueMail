@@ -1,9 +1,9 @@
 ﻿/*
- * OpaqueMail (http://opaquemail.org/).
+ * OpaqueMail (https://opaquemail.org/).
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.com/) of Apidae Inc. (http://apidae.com/).
+ * Copyright © Bert Johnson (https://bertjohnson.com/) of Allcloud Inc. (https://allcloud.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -15,8 +15,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace OpaqueMail
@@ -299,6 +297,42 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Load part of a message's raw contents based on its index.
+        /// </summary>
+        /// <param name="index">The index of the message to load.</param>
+        public string GetMessagePartial(int index)
+        {
+            MessagePartialHelper helper = Task.Run(() => GetMessagePartialHelper(CurrentMailboxName, index, false, false, -1, -1, false)).Result;
+            return helper.MessageString;
+        }
+
+        /// <summary>
+        /// Load part of a message's raw contents in a specified mailbox based on its index.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="index">The index of the message to load.</param>
+        public string GetMessagePartial(string mailboxName, int index)
+        {
+            MessagePartialHelper helper = Task.Run(() => GetMessagePartialHelper(mailboxName, index, false, false, -1, -1, false)).Result;
+            return helper.MessageString;
+        }
+
+        /// <summary>
+        /// Load part of a message's raw contents in a specified mailbox based on its index, optionally returning only headers and/or setting the "Seen" flag.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="index">The index of the message to load.</param>
+        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
+        /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        public string GetMessagePartial(string mailboxName, int index, bool headersOnly = false, bool setSeenFlag = true, int seekStart = -1, int seekEnd = -1)
+        {
+            MessagePartialHelper helper = Task.Run(() => GetMessagePartialHelper(mailboxName, index, headersOnly, setSeenFlag, seekStart, seekEnd, false)).Result;
+            return helper.MessageString;
+        }
+
+        /// <summary>
         /// Load an instance of a message in a specified mailbox based on its index, optionally returning only headers and/or setting the "Seen" flag.
         /// </summary>
         /// <param name="mailboxName">The mailbox to load from.</param>
@@ -325,6 +359,42 @@ namespace OpaqueMail
         public int GetMessageCount(string mailboxName)
         {
             return Task.Run(() => GetMessageCountAsync(mailboxName)).Result;
+        }
+
+        /// <summary>
+        /// Load part of a message's raw contents based on its UID.
+        /// </summary>
+        /// <param name="uid">The UID of the message to load.</param>
+        public string GetMessagePartialUid(int uid)
+        {
+            MessagePartialHelper helper = Task.Run(() => GetMessagePartialHelper(CurrentMailboxName, uid, false, false, -1, -1, true)).Result;
+            return helper.MessageString;
+        }
+
+        /// <summary>
+        /// Load part of a message's raw contents based on its UID.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="uid">The UID of the message to load.</param>
+        public string GetMessagePartialUid(string mailboxName, int uid)
+        {
+            MessagePartialHelper helper = Task.Run(() => GetMessagePartialHelper(mailboxName, uid, false, false, -1, -1, true)).Result;
+            return helper.MessageString;
+        }
+
+        /// <summary>
+        /// Load part of message's raw contents in a specified mailbox based on its UID, optionally returning only headers and/or setting the "Seen" flag.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="uid">The UID of the message to load.</param>
+        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
+        /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        public string GetMessagePartialUid(string mailboxName, int uid, bool headersOnly, bool setSeenFlag, int seekStart = -1, int seekEnd = -1)
+        {
+            MessagePartialHelper helper = Task.Run(() => GetMessagePartialHelper(mailboxName, uid, headersOnly, setSeenFlag, seekStart, seekEnd, true)).Result;
+            return helper.MessageString;
         }
 
         /// <summary>

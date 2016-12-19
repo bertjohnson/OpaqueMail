@@ -124,7 +124,7 @@ Advanced settings can be managed by editing:
 
 [SETTINGSFILE]
 
-For more information, visit http://opaquemail.org/.</value>
+For more information, visit https://opaquemail.org/.</value>
   </data>
   <data name="AboutLabel.Text" xml:space="preserve">
     <value>OpaqueMail is a flexible email proxy designed for security, performance, and flexibility.
@@ -138,7 +138,7 @@ By default, OpaqueMail only accepts connections from the localhost, but accepted
   <data name="AccountsLabel.Text" xml:space="preserve">
     <value>The following Outlook and Thunderbird accounts have been identified.  Select which you'd like to be protected using S/MIME encryption.
 
-Other account types can be configured manually.  See http://opaquemail.org/ for more information.</value>
+Other account types can be configured manually.  See https://opaquemail.org/ for more information.</value>
   </data>
   <metadata name="ClientColumn.UserAddedColumn" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089">
     <value>True</value>

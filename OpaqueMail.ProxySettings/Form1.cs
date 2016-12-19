@@ -1,9 +1,9 @@
 ﻿/*
- * OpaqueMail Proxy (http://opaquemail.org/).
+ * OpaqueMail Proxy (https://opaquemail.org/).
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.com/) of Apidae Inc. (http://apidae.com/).
+ * Copyright © Bert Johnson (https://bertjohnson.com/) of Allcloud Inc. (https://allcloud.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -14,12 +14,8 @@
  */
 
 using Microsoft.Win32;
-using OpaqueMail;
-using OpaqueMail.Proxy;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -27,14 +23,11 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Xml;
 using System.Xml.XPath;
 
 namespace OpaqueMail.Proxy.Settings
@@ -111,7 +104,7 @@ namespace OpaqueMail.Proxy.Settings
             int settingsFileIndex = GettingStartedLabel.Text.IndexOf("[SETTINGSFILE]");
             GettingStartedLabel.Text = GettingStartedLabel.Text.Replace("[SETTINGSFILE]", SettingsFileName);
             GettingStartedLabel.Links.Add(settingsFileIndex, SettingsFileName.Length, SettingsFileName);
-            GettingStartedLabel.Links.Add(GettingStartedLabel.Text.IndexOf("http://opaquemail.org/"), 22, "http://opaquemail.org/");
+            GettingStartedLabel.Links.Add(GettingStartedLabel.Text.IndexOf("https://opaquemail.org/"), 22, "https://opaquemail.org/");
             GettingStartedLabel.LinkClicked += Label_LinkClicked;
 
             CertificateLabel.Links.Clear();
@@ -120,7 +113,7 @@ namespace OpaqueMail.Proxy.Settings
             CertificateLabel.LinkClicked += Label_LinkClicked;
 
             AccountsLabel.Links.Clear();
-            AccountsLabel.Links.Add(AboutLabel.Text.IndexOf("http://opaquemail.org/"), 22, "http://opaquemail.org/");
+            AccountsLabel.Links.Add(AboutLabel.Text.IndexOf("https://opaquemail.org/"), 22, "https://opaquemail.org/");
             AccountsLabel.LinkClicked += Label_LinkClicked;
 
             // Load the email accounts list and certificate choices.

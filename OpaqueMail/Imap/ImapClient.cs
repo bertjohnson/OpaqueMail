@@ -1,9 +1,9 @@
 ﻿/*
- * OpaqueMail (http://opaquemail.org/).
+ * OpaqueMail (https://opaquemail.org/).
  * 
  * Licensed according to the MIT License (http://mit-license.org/).
  * 
- * Copyright © Bert Johnson (http://bertjohnson.com/) of Apidae Inc. (http://apidae.com/).
+ * Copyright © Bert Johnson (https://bertjohnson.com/) of Allcloud Inc. (https://allcloud.com/).
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * 
@@ -1039,7 +1039,7 @@ namespace OpaqueMail
         /// <param name="index">The index of the message to load.</param>
         public async Task<MailMessage> GetMessageAsync(int index)
         {
-            return await GetMessageHelper(CurrentMailboxName, index, false, false, /*-1, -1,*/ false);
+            return await GetMessageHelper(CurrentMailboxName, index, false, false, false);
         }
 
         /// <summary>
@@ -1049,7 +1049,7 @@ namespace OpaqueMail
         /// <param name="index">The index of the message to load.</param>
         public async Task<MailMessage> GetMessageAsync(string mailboxName, int index)
         {
-            return await GetMessageHelper(mailboxName, index, false, false, /*-1, -1,*/ false);
+            return await GetMessageHelper(mailboxName, index, false, false, false);
         }
 
         /// <summary>
@@ -1059,13 +1059,47 @@ namespace OpaqueMail
         /// <param name="index">The index of the message to load.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
-/*        /// <param name="seekStart">Index of first character of the message body to return.</param>
-        /// <param name="seekEnd">Number of characters of the message body to return.</param>*/
-        public async Task<MailMessage> GetMessageAsync(string mailboxName, int index, bool headersOnly = false, bool setSeenFlag = true/*, int seekStart = -1, int seekEnd = -1*/)
+        public async Task<MailMessage> GetMessageAsync(string mailboxName, int index, bool headersOnly = false, bool setSeenFlag = true)
         {
-            return await GetMessageHelper(mailboxName, index, headersOnly, setSeenFlag, /*seekStart, seekEnd,*/ false);
+            return await GetMessageHelper(mailboxName, index, headersOnly, setSeenFlag, false);
         }
 
+        /// <summary>
+        /// Load part of a message's raw contents based on its index.
+        /// </summary>
+        /// <param name="index">The index of the message to load.</param>
+        public async Task<string> GetMessagePartialAsync(int index)
+        {
+            MessagePartialHelper helper = await GetMessagePartialHelper(CurrentMailboxName, index, false, false, -1, -1, false);
+            return helper.MessageString;
+        }
+
+        /// <summary>
+        /// Load part of a message's raw contents in a specified mailbox based on its index.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="index">The index of the message to load.</param>
+        public async Task<string> GetMessagePartialAsync(string mailboxName, int index)
+        {
+            MessagePartialHelper helper = await GetMessagePartialHelper(mailboxName, index, false, false, -1, -1, false);
+            return helper.MessageString;
+        }
+
+        /// <summary>
+        /// Load part of a message's raw contents in a specified mailbox based on its index, optionally returning only headers and/or setting the "Seen" flag.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="index">The index of the message to load.</param>
+        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
+        /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        public async Task<string> GetMessagePartialAsync(string mailboxName, int index, bool headersOnly = false, bool setSeenFlag = true, int seekStart = -1, int seekEnd = -1)
+        {
+            MessagePartialHelper helper = await GetMessagePartialHelper(mailboxName, index, headersOnly, setSeenFlag, seekStart, seekEnd, false);
+            return helper.MessageString;
+        }
+        
         /// <summary>
         /// Return the number of messages in the current mailbox.
         /// </summary>
@@ -1098,12 +1132,48 @@ namespace OpaqueMail
         }
 
         /// <summary>
+        /// Load part of a message's raw contents based on its UID.
+        /// </summary>
+        /// <param name="uid">The UID of the message to load.</param>
+        public async Task<string> GetMessagePartialUidAsync(int uid)
+        {
+            MessagePartialHelper helper = await GetMessagePartialHelper(CurrentMailboxName, uid, false, false, -1, -1, true);
+            return helper.MessageString;
+        }
+
+        /// <summary>
+        /// Load part of a message's raw contents based on its UID.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="uid">The UID of the message to load.</param>
+        public async Task<string> GetMessagePartialUidAsync(string mailboxName, int uid)
+        {
+            MessagePartialHelper helper = await GetMessagePartialHelper(mailboxName, uid, false, false, -1, -1, true);
+            return helper.MessageString;
+        }
+
+        /// <summary>
+        /// Load part of message's raw contents in a specified mailbox based on its UID, optionally returning only headers and/or setting the "Seen" flag.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="uid">The UID of the message to load.</param>
+        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
+        /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        public async Task<string> GetMessagePartialUidAsync(string mailboxName, int uid, bool headersOnly, bool setSeenFlag, int seekStart = -1, int seekEnd = -1)
+        {
+            MessagePartialHelper helper = await GetMessagePartialHelper(mailboxName, uid, headersOnly, setSeenFlag, seekStart, seekEnd, true);
+            return helper.MessageString;
+        }
+
+        /// <summary>
         /// Load an instance of a message based on its UID.
         /// </summary>
         /// <param name="uid">The UID of the message to load.</param>
         public async Task<MailMessage> GetMessageUidAsync(int uid)
         {
-            return await GetMessageHelper(CurrentMailboxName, uid, false, false, /*-1, -1,*/ true);
+            return await GetMessageHelper(CurrentMailboxName, uid, false, false, true);
         }
 
         /// <summary>
@@ -1113,7 +1183,7 @@ namespace OpaqueMail
         /// <param name="uid">The UID of the message to load.</param>
         public async Task<MailMessage> GetMessageUidAsync(string mailboxName, int uid)
         {
-            return await GetMessageHelper(mailboxName, uid, false, false, /*-1, -1,*/ true);
+            return await GetMessageHelper(mailboxName, uid, false, false, true);
         }
 
         /// <summary>
@@ -1123,11 +1193,9 @@ namespace OpaqueMail
         /// <param name="uid">The UID of the message to load.</param>
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
-/*        /// <param name="seekStart">Index of first character of the message body to return.</param>
-        /// <param name="seekEnd">Number of characters of the message body to return.</param>*/
         public async Task<MailMessage> GetMessageUidAsync(string mailboxName, int uid, bool headersOnly, bool setSeenFlag, int seekStart = -1, int seekEnd = -1)
         {
-            return await GetMessageHelper(mailboxName, uid, headersOnly, setSeenFlag, /*seekStart, seekEnd,*/ true);
+            return await GetMessageHelper(mailboxName, uid, headersOnly, setSeenFlag, true);
         }
 
         /// <summary>
@@ -2197,9 +2265,28 @@ namespace OpaqueMail
         /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
         /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
         /// <param name="isUid">Whether the identifer is an UID.</param>
-/*        /// <param name="seekStart">Index of first character of the message body to return.</param>
-        /// <param name="seekEnd">Number of characters of the message body to return.</param>*/
-        private async Task<MailMessage> GetMessageHelper(string mailboxName, int id, bool headersOnly, bool setSeenFlag, /*int seekStart, int seekEnd,*/ bool isUid)
+        private async Task<MailMessage> GetMessageHelper(string mailboxName, int id, bool headersOnly, bool setSeenFlag, bool isUid)
+        {
+            MessagePartialHelper helper = await GetMessagePartialHelper(mailboxName, id, headersOnly, setSeenFlag, -1, -1, isUid);
+
+            MailMessage message = new MailMessage(helper.MessageString, ProcessingFlags);
+            message.ImapUid = helper.ImapUid;
+            message.Mailbox = helper.Mailbox;
+            message.ParseFlagsString(helper.FlagsString);
+            return message;
+        }
+
+        /// <summary>
+        /// Helper function to load an instance of a message in a specified mailbox based on its index, optionally returning only headers and/or setting the "Seen" flag.
+        /// </summary>
+        /// <param name="mailboxName">The mailbox to load from.</param>
+        /// <param name="id">The identifier of the message to load, either its index or UID.</param>
+        /// <param name="headersOnly">Return only the message's headers when true; otherwise, return the message and body.</param>        
+        /// <param name="setSeenFlag">Whether to touch the message and set its "Seen" flag.</param>
+        /// <param name="isUid">Whether the identifer is an UID.</param>
+        /// <param name="seekStart">Index of first character of the message body to return.</param>
+        /// <param name="seekEnd">Number of characters of the message body to return.</param>
+        private async Task<MessagePartialHelper> GetMessagePartialHelper(string mailboxName, int id, bool headersOnly, bool setSeenFlag, int seekStart, int seekEnd, bool isUid)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -2227,26 +2314,26 @@ namespace OpaqueMail
             {
                 if (setSeenFlag)
                 {
-/*                    if (seekStart > -1)
+                    if (seekStart > -1)
                     {
                         if (seekEnd > -1)
-                            await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[]<" + seekStart + "> UID FLAGS)\r\n");
-                        else
                             await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[]<" + seekStart + "." + seekEnd + "> UID FLAGS)\r\n");
+                        else
+                            await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[]<" + seekStart + "> UID FLAGS)\r\n");
                     }
-                    else*/
+                    else
                         await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY[] UID FLAGS)\r\n");
                 }
                 else
                 {
-                    /*if (seekStart > -1)
+                    if (seekStart > -1)
                     {
                         if (seekEnd > -1)
-                            await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[]<" + seekStart + "> UID FLAGS)\r\n");
-                        else
                             await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[]<" + seekStart + "." + seekEnd + "> UID FLAGS)\r\n");
+                        else
+                            await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[]<" + seekStart + "> UID FLAGS)\r\n");
                     }
-                    else*/
+                    else
                         await SendCommandAsync(commandTag, uidPrefix + "FETCH " + id + " (BODY.PEEK[] UID FLAGS)\r\n");
                 }
             }
@@ -2267,7 +2354,7 @@ namespace OpaqueMail
                 string firstLine = response.Substring(0, lineBreak).ToUpper();
 
                 int bodyLength = -1;
-                int.TryParse(Functions.ReturnBetween(firstLine, "BODY[] {", "}"), out bodyLength);
+                int.TryParse(Functions.ReturnBetween(firstLine, " {", "}"), out bodyLength);
                 if (bodyLength > 0)
                     response = response.Substring(lineBreak + 2, bodyLength);
                 else
@@ -2276,15 +2363,16 @@ namespace OpaqueMail
                     response = response.Substring(0, response.Length - 2);
                 }
 
+                MessagePartialHelper helper = new MessagePartialHelper();
+
                 // Extract the raw bytes and convert to UTF-8.
                 byte[] rawBytes = Encoding.GetEncoding("iso-8859-1").GetBytes(response);
-                response = Encoding.GetEncoding("UTF-8", new EncoderReplacementFallback(""), new DecoderReplacementFallback("")).GetString(rawBytes);
+                helper.MessageString = Encoding.GetEncoding("UTF-8", new EncoderReplacementFallback(""), new DecoderReplacementFallback("")).GetString(rawBytes);
 
-                MailMessage message = new MailMessage(response, ProcessingFlags);
-                message.ImapUid = uid;
-                message.Mailbox = mailboxName;
-                message.ParseFlagsString(flagsString);
-                return message;
+                helper.ImapUid = uid;
+                helper.Mailbox = mailboxName;
+                helper.FlagsString = flagsString;
+                return helper;
             }
             else
                 return null;
