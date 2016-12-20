@@ -14,12 +14,23 @@
  */
 
 // Depending on environment, the statement below may need to be changed to "using CERTCLIENTLib".
-using CERTCLILib;
-using CERTENROLLLib;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
+using Org.BouncyCastle.Pkcs;
+using Org.BouncyCastle.Asn1.Pkcs;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Asn1;
+using Org.BouncyCastle.Crypto.Prng;
+using Org.BouncyCastle.Crypto.Operators;
+using Org.BouncyCastle.X509;
+using Org.BouncyCastle.Utilities;
+using System.Security.Cryptography;
 
 namespace OpaqueMail
 {
@@ -53,119 +64,10 @@ namespace OpaqueMail
 
         #region Public Methods
         /// <summary>
-        /// Create a certificate signing request.
-        /// </summary>
-        /// <param name="subjectName">The subject name of the certificate.</param>
-        public static CX509CertificateRequestCertificate CreateCertificateSigningRequest(string subjectName)
-        {
-            return CreateCertificateSigningRequest(subjectName, 4096, 1);
-        }
-
-        /// <summary>
-        /// Create a certificate signing request.
-        /// </summary>
-        /// <param name="subjectName">The subject name of the certificate.</param>
-        /// <param name="keyLength">Size of the key in bits.</param>
-        public static CX509CertificateRequestCertificate CreateCertificateSigningRequest(string subjectName, int keyLength)
-        {
-            return CreateCertificateSigningRequest(subjectName, keyLength, 1);
-        }
-
-        /// <summary>
-        /// Create a certificate signing request.
-        /// </summary>
-        /// <param name="subjectName">The subject name of the certificate.</param>
-        /// <param name="keyLength">Size of the key in bits.</param>
-        /// <param name="durationYears">Duration of the certificate, specified in years.</param>
-        public static CX509CertificateRequestCertificate CreateCertificateSigningRequest(string subjectName, int keyLength, int durationYears)
-        {
-            List<string> oids = new List<string>();
-            oids.Add("1.3.6.1.5.5.7.3.4");          // Secure Email.
-            oids.Add("1.3.6.1.4.1.6449.1.3.5.2");   // Email Protection.
-
-            return CreateCertificateSigningRequest(subjectName, keyLength, durationYears, oids);
-        }
-
-        /// <summary>
-        /// Create a certificate signing request.
-        /// </summary>
-        /// <param name="subjectName">The subject name of the certificate.</param>
-        /// <param name="keyLength">Size of the key in bits.</param>
-        /// <param name="durationYears">Duration of the certificate, specified in years.</param>
-        /// <param name="oids">Collection of OIDs identifying certificate usage.</param>
-        public static CX509CertificateRequestCertificate CreateCertificateSigningRequest(string subjectName, int keyLength, int durationYears, List<string> oids)
-        {
-            // Prepend the subject name with CN= if it doesn't begin with CN=, E=, etc..
-            if (subjectName.IndexOf("=") < 0)
-                subjectName = "CN=" + subjectName;
-
-            // Generate a distinguished name.
-            CX500DistinguishedName distinguishedName = new CX500DistinguishedName();
-            distinguishedName.Encode(subjectName, X500NameFlags.XCN_CERT_NAME_STR_NONE);
-
-            // Generate a private key.
-            CX509PrivateKey privateKey = new CX509PrivateKey();
-            privateKey.ExportPolicy = X509PrivateKeyExportFlags.XCN_NCRYPT_ALLOW_PLAINTEXT_EXPORT_FLAG;
-            privateKey.KeySpec = X509KeySpec.XCN_AT_SIGNATURE;
-            privateKey.Length = keyLength;
-            privateKey.MachineContext = true;
-            privateKey.ProviderName = "Microsoft Enhanced Cryptographic Provider v1.0";
-            privateKey.Create();
-
-            // Use the SHA-512 hashing algorithm.
-            CObjectId hashAlgorithm = new CObjectId();
-            hashAlgorithm.InitializeFromAlgorithmName(ObjectIdGroupId.XCN_CRYPT_HASH_ALG_OID_GROUP_ID, ObjectIdPublicKeyFlags.XCN_CRYPT_OID_INFO_PUBKEY_ANY, AlgorithmFlags.AlgorithmFlagsNone, "SHA512");
-
-            // Load the OIDs passed in and specify enhanced key usages.
-            CObjectIds oidCollection = new CObjectIds();
-            foreach (string oidID in oids)
-            {
-                CObjectId oid = new CObjectId();
-                oid.InitializeFromValue(oidID);
-                oidCollection.Add(oid);
-            }
-
-            CX509ExtensionKeyUsage keyUsage = new CX509ExtensionKeyUsage();
-            keyUsage.InitializeEncode(CERTENROLLLib.X509KeyUsageFlags.XCN_CERT_DIGITAL_SIGNATURE_KEY_USAGE | CERTENROLLLib.X509KeyUsageFlags.XCN_CERT_KEY_ENCIPHERMENT_KEY_USAGE);
-
-            CX509ExtensionEnhancedKeyUsage enhancedKeyUsages = new CX509ExtensionEnhancedKeyUsage();
-            enhancedKeyUsages.InitializeEncode(oidCollection);
-
-            string sanSubjectName = subjectName.Substring(subjectName.IndexOf("=") + 1);
-
-            CAlternativeName sanAlternateName = new CAlternativeName();
-            sanAlternateName.InitializeFromString(AlternativeNameType.XCN_CERT_ALT_NAME_RFC822_NAME, sanSubjectName);
-
-            CAlternativeNames sanAlternativeNames = new CAlternativeNames();
-            sanAlternativeNames.Add(sanAlternateName);
-
-            CX509ExtensionAlternativeNames alternativeNamesExtension = new CX509ExtensionAlternativeNames();
-            alternativeNamesExtension.InitializeEncode(sanAlternativeNames);
-
-            CX509ExtensionSmimeCapabilities smimeCapabilities = new CX509ExtensionSmimeCapabilities();
-            smimeCapabilities.SmimeCapabilities.AddAvailableSmimeCapabilities(false);
-
-            // Create the self-signing request.
-            CX509CertificateRequestCertificate cert = new CX509CertificateRequestCertificate();
-            cert.InitializeFromPrivateKey(X509CertificateEnrollmentContext.ContextMachine, privateKey, "");
-            cert.Subject = distinguishedName;
-            cert.Issuer = distinguishedName;
-            cert.NotBefore = DateTime.Now;
-            cert.NotAfter = DateTime.Now.AddYears(1);
-            cert.X509Extensions.Add((CX509Extension)keyUsage);
-            cert.X509Extensions.Add((CX509Extension)enhancedKeyUsages);
-            cert.X509Extensions.Add((CX509Extension)alternativeNamesExtension);
-            cert.X509Extensions.Add((CX509Extension)smimeCapabilities);
-            cert.HashAlgorithm = hashAlgorithm;
-            cert.Encode();
-
-            return cert;
-        }
-
-        /// <summary>
         /// Generate a 4096-bit self-signed certificate and add it to the Windows certificate store.
         /// </summary>
         /// <param name="subjectName">The subject name of the certificate.</param>
+        /// <returns>Self-signed certificate.</returns>
         public static X509Certificate2 CreateSelfSignedCertificate(string subjectName)
         {
             // If the subject name is well-formed, strip CN= and any other arguments.
@@ -185,6 +87,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="subjectName">The subject name of the certificate.</param>
         /// <param name="friendlyName">The friendly name of the certificate.</param>
+        /// <returns>Self-signed certificate.</returns>
         public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName)
         {
             return CreateSelfSignedCertificate(subjectName, friendlyName, StoreLocation.LocalMachine , false, 4096, 1);
@@ -197,6 +100,7 @@ namespace OpaqueMail
         /// <param name="friendlyName">The friendly name of the certificate.</param>
         /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
         /// <param name="addToTrustedRoot">Whether to add the generated certificate as a trusted root.</param>
+        /// <returns>Self-signed certificate.</returns>
         public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addToTrustedRoot)
         {
             return CreateSelfSignedCertificate(subjectName, friendlyName, location, addToTrustedRoot, 4096, 1);
@@ -210,6 +114,7 @@ namespace OpaqueMail
         /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
         /// <param name="addToTrustedRoot">Whether to add the generated certificate as a trusted root.</param>
         /// <param name="keyLength">Size of the key in bits.</param>
+        /// <returns>Self-signed certificate.</returns>
         public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addToTrustedRoot, int keyLength)
         {
             return CreateSelfSignedCertificate(subjectName, friendlyName, location, addToTrustedRoot, keyLength, 1);
@@ -224,11 +129,12 @@ namespace OpaqueMail
         /// <param name="addToTrustedRoot">Whether to add the generated certificate as a trusted root.</param>
         /// <param name="keyLength">Size of the key in bits.</param>
         /// <param name="durationYears">Duration of the certificate, specified in years.</param>
+        /// <returns>Self-signed certificate.</returns>
         public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addToTrustedRoot, int keyLength, int durationYears)
         {
-            List<string> oids = new List<string>();
-            oids.Add("1.3.6.1.5.5.7.3.4");        // Secure Email.
-            oids.Add("1.3.6.1.4.1.6449.1.3.5.2");   // Email Protection.
+            List<DerObjectIdentifier> oids = new List<DerObjectIdentifier>();
+            oids.Add(new DerObjectIdentifier("1.3.6.1.5.5.7.3.4"));        // Secure Email.
+            oids.Add(new DerObjectIdentifier("1.3.6.1.4.1.6449.1.3.5.2"));   // Email Protection.
 
             return CreateSelfSignedCertificate(subjectName, friendlyName, location, addToTrustedRoot, keyLength, durationYears, oids);
         }
@@ -243,36 +149,58 @@ namespace OpaqueMail
         /// <param name="keyLength">Size of the key in bits.</param>
         /// <param name="durationYears">Duration of the certificate, specified in years.</param>
         /// <param name="oids">Collection of OIDs identifying certificate usage.</param>
-        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addAsTrustedRoot, int keyLength, int durationYears, List<string> oids)
+        /// <returns>Self-signed certificate.</returns>
+        public static X509Certificate2 CreateSelfSignedCertificate(string subjectName, string friendlyName, StoreLocation location, bool addAsTrustedRoot, int keyLength, int durationYears, List<DerObjectIdentifier> oids)
         {
-            // Create the self-signing request.
-            CX509CertificateRequestCertificate cert = CreateCertificateSigningRequest(subjectName, keyLength, durationYears, oids);
+            // Prepare random number generation.
+            CryptoApiRandomGenerator randomGenerator = new CryptoApiRandomGenerator();
+            SecureRandom random = new SecureRandom(randomGenerator);
 
-            // Enroll based on the certificate signing request.
-            CX509Enrollment enrollment = new CX509Enrollment();
-            enrollment.InitializeFromRequest(cert);
-            enrollment.CertificateFriendlyName = friendlyName;
-            string csrText = enrollment.CreateRequest(EncodingType.XCN_CRYPT_STRING_BASE64);
+            // Create asymmetric key.
+            AsymmetricCipherKeyPair subjectKeyPair;
+            KeyGenerationParameters keyGenerationParameters = new KeyGenerationParameters(random, keyLength);
+            RsaKeyPairGenerator keyPairGenerator = new RsaKeyPairGenerator();
+            keyPairGenerator.Init(keyGenerationParameters);
+            subjectKeyPair = keyPairGenerator.GenerateKeyPair();
+            X509V3CertificateGenerator certificateGenerator = new X509V3CertificateGenerator();
 
-            // Install the certificate chain.  Note that no password is specified.
-            enrollment.InstallResponse(InstallResponseRestrictionFlags.AllowUntrustedCertificate, csrText, EncodingType.XCN_CRYPT_STRING_BASE64, "");
+            // Generate a serial number.
+            BigInteger serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(Int64.MaxValue), random);
+            certificateGenerator.SetSerialNumber(serialNumber);
 
-            // Base-64 encode the PKCS#12 certificate in order to re-import it.
-            string pfx = enrollment.CreatePFX("", PFXExportOptions.PFXExportChainWithRoot);
+            // Assign the subject name.
+            X509Name subjectDN = new X509Name("CN=" + subjectName);
+            X509Name issuerDN = subjectDN;
+            certificateGenerator.SetIssuerDN(issuerDN);
+            certificateGenerator.SetSubjectDN(subjectDN);
 
-            // Instantiate the PKCS#12 certificate.
-            X509Certificate2 certificate = new X509Certificate2(System.Convert.FromBase64String(pfx), "", X509KeyStorageFlags.Exportable);
+            // Set valid dates.
+            DateTime notBefore = DateTime.UtcNow.Date;
+            DateTime notAfter = notBefore.AddYears(durationYears);
+            certificateGenerator.SetNotBefore(notBefore);
+            certificateGenerator.SetNotAfter(notAfter);
 
-            // If specified, also install the certificate to the trusted root store.
-            if (addAsTrustedRoot)
-            {
-                X509Store rootStore = new X509Store(StoreName.Root, location);
-                rootStore.Open(OpenFlags.ReadWrite);
-                rootStore.Add(certificate);
-                rootStore.Close();
-            }
+            // Set key usage for digital signatures and key encipherment.
+            KeyUsage usage = new KeyUsage(KeyUsage.DigitalSignature | KeyUsage.KeyEncipherment);
+            certificateGenerator.AddExtension(X509Extensions.KeyUsage, true, usage);
 
-            return certificate;
+            // Load the OIDs passed in and specify enhanced key usages.
+            certificateGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(oids));
+
+            // Assign the public key.
+            certificateGenerator.SetPublicKey(subjectKeyPair.Public);
+
+            // Self-sign the certificate using SHA-512.
+            ISignatureFactory signatureFactory = new Asn1SignatureFactory("SHA512WITHRSA", subjectKeyPair.Private, random);
+            Org.BouncyCastle.X509.X509Certificate bouncyCastleCertificate = certificateGenerator.Generate(signatureFactory);
+
+            // Convert from BouncyCastle private key format to System.Security.Cryptography format.
+            AsymmetricAlgorithm privateKey = ToDotNetKey((RsaPrivateCrtKeyParameters)subjectKeyPair.Private);
+            X509Certificate2 x509certificate = new X509Certificate2(DotNetUtilities.ToX509Certificate(bouncyCastleCertificate));
+            x509certificate.PrivateKey = privateKey;
+            x509certificate.FriendlyName = subjectName;
+
+            return x509certificate;
         }
 
         /// <summary>
@@ -332,7 +260,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="cert">The certificate to install.</param>
         /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
-        public static void InstallWindowsCertificate(X509Certificate cert, StoreLocation location)
+        public static void InstallWindowsCertificate(System.Security.Cryptography.X509Certificates.X509Certificate cert, StoreLocation location)
         {
             InstallWindowsCertificate(new X509Certificate2(cert), location);
         }
@@ -362,44 +290,39 @@ namespace OpaqueMail
             store.Add(cert);
             store.Close();
         }
-
-        /// <summary>
-        /// Submit a certificate signing request to a certificate authority, such as a server running Active Directory Certificate Services, and return the certificate or response.
-        /// </summary>
-        /// <param name="csr">Certificate signing request to be submitted.</param>
-        /// <param name="friendlyName">The friendly name of the certificate.</param>
-        /// <param name="caServer">The certificate authority server instance.</param>
-        /// <param name="csrResponse">Response from the certificate signing request, represented as a CsrResponse enum.</param>
-        /// <param name="dispositionMessage">Message returned when a certificate signing fails.</param>
-        public X509Certificate2 SubmitCertificateSigningRequest(CX509CertificateRequestCertificate csr, string friendlyName, string caServer, out CsrResponse csrResponse, out string dispositionMessage)
-        {
-            // Convert the certificate signing request to base-64..
-            CX509Enrollment enrollment = new CX509Enrollment();
-            enrollment.InitializeFromRequest(csr);
-            enrollment.CertificateFriendlyName = friendlyName;
-            string csrText = enrollment.CreateRequest(EncodingType.XCN_CRYPT_STRING_BASE64);
-
-            // Submit the request to the certificate authority.
-            CCertRequest certRequest = new CCertRequest();
-            int csrResponseCode = certRequest.Submit(CR_IN_BASE64 | CR_IN_FORMATANY, csrText, string.Empty, caServer);
-
-            // React to our response response from the certificate authority.
-            switch (csrResponseCode)
-            {
-                case 3:     // Issued.
-                    csrResponse = CsrResponse.CR_DISP_ISSUED;
-                    dispositionMessage = "";
-                    return new X509Certificate2(Encoding.UTF8.GetBytes(certRequest.GetCertificate(CR_OUT_BASE64 | CR_OUT_CHAIN)));
-                case 5:     // Pending.
-                    csrResponse = CsrResponse.CR_DISP_UNDER_SUBMISSION;
-                    dispositionMessage = "";
-                    return null;
-                default:    // Failure.
-                    csrResponse = CsrResponse.CR_DISP_FAILED;
-                    dispositionMessage = certRequest.GetDispositionMessage();
-                    return null;
-            }
-        }
         #endregion Public Methods
+
+        #region Private Methods
+        /// <summary>
+        /// Convert from BouncyCastle private key format to System.Security.Cryptography format.
+        /// </summary>
+        /// <param name="privateKey">BouncyCastle private key.</param>
+        /// <returns>System.Security.Cryptography representation of the key.</returns>
+        private static AsymmetricAlgorithm ToDotNetKey(RsaPrivateCrtKeyParameters privateKey)
+        {
+            CspParameters cspParams = new CspParameters()
+            {
+                KeyContainerName = Guid.NewGuid().ToString(),
+                KeyNumber = (int)KeyNumber.Exchange,
+                Flags = CspProviderFlags.UseMachineKeyStore
+            };
+
+            RSACryptoServiceProvider rsaProvider = new RSACryptoServiceProvider(cspParams);
+            RSAParameters parameters = new RSAParameters()
+            {
+                Modulus = privateKey.Modulus.ToByteArrayUnsigned(),
+                P = privateKey.P.ToByteArrayUnsigned(),
+                Q = privateKey.Q.ToByteArrayUnsigned(),
+                DP = privateKey.DP.ToByteArrayUnsigned(),
+                DQ = privateKey.DQ.ToByteArrayUnsigned(),
+                InverseQ = privateKey.QInv.ToByteArrayUnsigned(),
+                D = privateKey.Exponent.ToByteArrayUnsigned(),
+                Exponent = privateKey.PublicExponent.ToByteArrayUnsigned()
+            };
+
+            rsaProvider.ImportParameters(parameters);
+            return rsaProvider;
+        }
+        #endregion Private Methods
     }
 }

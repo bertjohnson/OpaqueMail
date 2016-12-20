@@ -215,7 +215,7 @@ namespace OpaqueMail.Proxy.Settings
             IntPtr arrayValue = cap.Capabilities;
 
             int structSize = Marshal.SizeOf(typeof(SidAndAttributes));
-            for (var i = 0; i < cap.Count; i++)
+            for (int i = 0; i < cap.Count; i++)
             {
                 SidAndAttributes currentSidAndAttributes = (SidAndAttributes)Marshal.PtrToStructure(arrayValue, typeof(SidAndAttributes));
                 myCapabilities.Add(currentSidAndAttributes);
@@ -240,7 +240,7 @@ namespace OpaqueMail.Proxy.Settings
             uint retVal = NetworkIsolationGetAppContainerConfig(out size, out arrayValue);
 
             int structSize = Marshal.SizeOf(typeof(SidAndAttributes));
-            for (var i = 0; i < size; i++)
+            for (int i = 0; i < size; i++)
             {
                 SidAndAttributes currentSidAndAttributes = (SidAndAttributes)Marshal.PtrToStructure(arrayValue, typeof(SidAndAttributes));
                 myCapabilities.Add(currentSidAndAttributes);
@@ -269,7 +269,7 @@ namespace OpaqueMail.Proxy.Settings
             ACs = arrayValue;
 
             int structSize = Marshal.SizeOf(typeof(InetFirewallAppContainer));
-            for (var i = 0; i < size; i++)
+            for (int i = 0; i < size; i++)
             {
                 InetFirewallAppContainer cur = (InetFirewallAppContainer)Marshal.PtrToStructure(arrayValue, typeof(InetFirewallAppContainer));
                 list.Add(cur);

@@ -22,6 +22,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
@@ -189,9 +190,8 @@ namespace OpaqueMail
         /// <param name="host">Name or IP of the host used for IMAP transactions.</param>
         /// <param name="port">Port to be used by the host.</param>
         /// <param name="userName">The username associated with this connection.</param>
-        /// <param name="password">The password associated with this connection.</param>
         /// <param name="enableSSL">Whether the IMAP connection uses TLS / SSL protection.</param>
-        public ImapClient(string host, int port, string userName, string password, bool enableSSL)
+        private ImapClient(string host, int port, string userName, bool enableSSL)
         {
             Capabilities = new HashSet<string>();
             IdleFrequency = new TimeSpan(0, 1, 0);
@@ -203,8 +203,35 @@ namespace OpaqueMail
 
             Host = host;
             Port = port;
-            Credentials = new NetworkCredential(userName, password);
             EnableSsl = enableSSL;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.ImapClient class by using the specified settings.
+        /// </summary>
+        /// <param name="host">Name or IP of the host used for IMAP transactions.</param>
+        /// <param name="port">Port to be used by the host.</param>
+        /// <param name="userName">The username associated with this connection.</param>
+        /// <param name="password">The password associated with this connection.</param>
+        /// <param name="enableSSL">Whether the IMAP connection uses TLS / SSL protection.</param>
+        public ImapClient(string host, int port, string userName, string password, bool enableSSL)
+            : this(host, port, userName, enableSSL)
+        {
+            Credentials = new NetworkCredential(userName, password);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.ImapClient class by using the specified settings.
+        /// </summary>
+        /// <param name="host">Name or IP of the host used for IMAP transactions.</param>
+        /// <param name="port">Port to be used by the host.</param>
+        /// <param name="userName">The username associated with this connection.</param>
+        /// <param name="password">SecureString representation of the password associated with this connection.</param>
+        /// <param name="enableSSL">Whether the IMAP connection uses TLS / SSL protection.</param>
+        public ImapClient(string host, int port, string userName, SecureString password, bool enableSSL)
+            : this(host, port, userName, enableSSL)
+        {
+            Credentials = new NetworkCredential(userName, password);
         }
 
         /// <summary>
@@ -735,7 +762,12 @@ namespace OpaqueMail
                 // Remember the welcome message.
                 SessionWelcomeMessage = ReadData("*", "", timeout);
                 if (LastCommandResult)
+                {
+                    if (!EnableSsl && ServerSupportsStartTls)
+                        StartTLS();
+
                     return true;
+                }
             }
             catch { }
 

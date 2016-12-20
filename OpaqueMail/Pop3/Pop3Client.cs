@@ -21,6 +21,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
+using System.Security;
 using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
@@ -155,9 +156,8 @@ namespace OpaqueMail
         /// <param name="host">Name or IP of the host used for POP3 transactions.</param>
         /// <param name="port">Port to be used by the host.</param>
         /// <param name="userName">The username associated with this connection.</param>
-        /// <param name="password">The password associated with this connection.</param>
         /// <param name="enableSSL">Whether the POP3 connection uses TLS / SSL protection.</param>
-        public Pop3Client(string host, int port, string userName, string password, bool enableSSL)
+        private Pop3Client(string host, int port, string userName, bool enableSSL)
         {
             APOPSharedSecret = "";
             LastCapabilitiesCheckAuthenticationState = false;
@@ -171,8 +171,35 @@ namespace OpaqueMail
 
             Host = host;
             Port = port;
-            Credentials = new NetworkCredential(userName, password);
             EnableSsl = enableSSL;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.Pop3Client class by using the specified settings.
+        /// </summary>
+        /// <param name="host">Name or IP of the host used for POP3 transactions.</param>
+        /// <param name="port">Port to be used by the host.</param>
+        /// <param name="userName">The username associated with this connection.</param>
+        /// <param name="password">The password associated with this connection.</param>
+        /// <param name="enableSSL">Whether the POP3 connection uses TLS / SSL protection.</param>
+        public Pop3Client(string host, int port, string userName, string password, bool enableSSL)
+            : this(host, port, userName, enableSSL)
+        {
+            Credentials = new NetworkCredential(userName, password);
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the OpaqueMail.Pop3Client class by using the specified settings.
+        /// </summary>
+        /// <param name="host">Name or IP of the host used for POP3 transactions.</param>
+        /// <param name="port">Port to be used by the host.</param>
+        /// <param name="userName">The username associated with this connection.</param>
+        /// <param name="password">SecureString representation of the password associated with this connection.</param>
+        /// <param name="enableSSL">Whether the POP3 connection uses TLS / SSL protection.</param>
+        public Pop3Client(string host, int port, string userName, SecureString password, bool enableSSL)
+                : this(host, port, userName, enableSSL)
+        {
+            Credentials = new NetworkCredential(userName, password);
         }
 
         /// <summary>
@@ -244,6 +271,9 @@ namespace OpaqueMail
                 SessionWelcomeMessage = ReadData(timeout);
                 if (!LastCommandResult)
                     return false;
+
+                if (!EnableSsl && ServerSupportsSTLS)
+                    StartTLS();
 
                 return true;
             }

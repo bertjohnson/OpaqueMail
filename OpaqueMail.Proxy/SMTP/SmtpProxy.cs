@@ -13,6 +13,7 @@
  * 
  */
 
+using Org.BouncyCastle.Asn1;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -200,13 +201,13 @@ namespace OpaqueMail.Proxy
                         {
                             ProxyFunctions.Log(LogWriter, SessionId, "No signing certificate found, so generating new certificate.", Proxy.LogLevel.Warning, LogLevel);
 
-                            List<string> oids = new List<string>();
-                            oids.Add("1.3.6.1.5.5.7.3.1");    // Server Authentication.
+                            List<DerObjectIdentifier> oids = new List<DerObjectIdentifier>();
+                            oids.Add(new DerObjectIdentifier("1.3.6.1.5.5.7.3.1"));    // Server Authentication.
 
                             // Generate the certificate with a duration of 10 years, 4096-bits, and a key usage of server authentication.
                             serverCertificate = CertHelper.CreateSelfSignedCertificate(fqdn, fqdn, StoreLocation.LocalMachine, true, 4096, 10, oids);
 
-                            ProxyFunctions.Log(LogWriter, SessionId, "New certificate generated with Serial Number {" + Encoding.UTF8.GetString(serverCertificate.GetSerialNumber()) + "}.", Proxy.LogLevel.Information, LogLevel);
+                            ProxyFunctions.Log(LogWriter, SessionId, "New certificate generated with Serial Number {" + serverCertificate.GetSerialNumberString() + "}.", Proxy.LogLevel.Information, LogLevel);
                         }
                     }
 
