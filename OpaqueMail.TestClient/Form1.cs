@@ -581,17 +581,20 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             if (SmtpSmimeSign.Checked || SmtpSmimeTripleWrap.Checked)
             {
                 // If S/MIME signing the message, attempt to look up a certificate from the Windows certificate store.
-                if (SmtpSmimeSerialNumber.Text.Length > 0)
+                if (SmtpSmimeThumbprint.Text.Length > 0)
                 {
-
-                    // Try looking the certificate up by its serial number, falling back to finding it by its subject name.
-                    signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.CurrentUser, SmtpSmimeSerialNumber.Text);
+                    // Try looking the certificate up by its serial number, falling back to finding it by its subject name or serial number.
+                    signingCertificate = CertHelper.GetCertificateByThumbprint(StoreLocation.CurrentUser, SmtpSmimeThumbprint.Text);
                     if (signingCertificate == null)
-                        signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.LocalMachine, SmtpSmimeSerialNumber.Text);
+                        signingCertificate = CertHelper.GetCertificateByThumbprint(StoreLocation.LocalMachine, SmtpSmimeThumbprint.Text);
                     if (signingCertificate == null)
-                        signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, SmtpSmimeSerialNumber.Text);
+                        signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.CurrentUser, SmtpSmimeThumbprint.Text);
                     if (signingCertificate == null)
-                        signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, SmtpSmimeSerialNumber.Text);
+                        signingCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, SmtpSmimeThumbprint.Text);
+                    if (signingCertificate == null)
+                        signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.CurrentUser, SmtpSmimeThumbprint.Text);
+                    if (signingCertificate == null)
+                        signingCertificate = CertHelper.GetCertificateBySerialNumber(StoreLocation.LocalMachine, SmtpSmimeThumbprint.Text);
                 }
 
                 if (signingCertificate == null)
@@ -605,7 +608,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 if (signingCertificate == null)
                 {
                     MessageBox.Show("Certificate not found.");
-                    SmtpSmimeSerialNumber.Focus();
+                    SmtpSmimeThumbprint.Focus();
                     return;
                 }
             }
@@ -730,7 +733,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                     SetTextBoxValue(navigator, SmtpSubject, "/Settings/SMTP/Subject");
                     SetTextBoxValue(navigator, SmtpBody, "/Settings/SMTP/Body");
                     SetTextBoxValue(navigator, SmtpAttachments, "/Settings/SMTP/Attachments");
-                    SetTextBoxValue(navigator, SmtpSmimeSerialNumber, "/Settings/SMTP/SMIMESerialNumber");
+                    SetTextBoxValue(navigator, SmtpSmimeThumbprint, "/Settings/SMTP/SMIMESerialNumber");
                     SetCheckBoxValue(navigator, SmtpSmimeSign, "/Settings/SMTP/SMIMESign");
                     SetCheckBoxValue(navigator, SmtpSmimeEncrypt, "/Settings/SMTP/SMIMEEncrypt");
                     SetCheckBoxValue(navigator, SmtpSmimeTripleWrap, "/Settings/SMTP/SMIMETripleWrap");
@@ -1099,8 +1102,8 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
             SmtpAttachments.Top = this.Height - 248;
             SmtpAttachments.Width = this.Width - 129;
             SmtpSmimeLabel.Top = this.Height - 199;
-            SmtpSmimeSerialNumber.Top = this.Height - 199;
-            SmtpSmimeSerialNumber.Width = this.Width - 129;
+            SmtpSmimeThumbprint.Top = this.Height - 199;
+            SmtpSmimeThumbprint.Width = this.Width - 129;
             SmtpSmimeSign.Top = this.Height - 176;
             SmtpSmimeEncrypt.Top = this.Height - 176;
             SmtpSmimeTripleWrap.Top = this.Height - 176;
@@ -1162,7 +1165,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                     streamWriter.WriteElementString("Subject", SmtpSubject.Text.ToString());
                     streamWriter.WriteElementString("Attachments", SmtpAttachments.Text.ToString());
                     streamWriter.WriteElementString("SMIMESign", SmtpSmimeSign.Checked.ToString());
-                    streamWriter.WriteElementString("SMIMESerialNumber", SmtpSmimeSerialNumber.Text.ToString());
+                    streamWriter.WriteElementString("SMIMESerialNumber", SmtpSmimeThumbprint.Text.ToString());
                     streamWriter.WriteElementString("SMIMEEncrypt", SmtpSmimeEncrypt.Checked.ToString());
                     streamWriter.WriteElementString("SMIMETripleWrap", SmtpSmimeTripleWrap.Checked.ToString());
                     streamWriter.WriteElementString("IsHTML", SmtpIsHtml.Checked.ToString());

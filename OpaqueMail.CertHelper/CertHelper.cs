@@ -31,6 +31,7 @@ using Org.BouncyCastle.Crypto.Operators;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Utilities;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 
 namespace OpaqueMail
 {
@@ -212,7 +213,7 @@ namespace OpaqueMail
         {
             X509Store store = new X509Store(location);
             store.Open(OpenFlags.OpenExistingOnly | OpenFlags.ReadOnly);
-            X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindBySerialNumber, serialNumber.Replace(" ", "").ToUpper(), true);
+            X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindBySerialNumber, serialNumber.Replace(" ", "").ToLower(), true);
             store.Close();
 
             // If no certificate is found, return null;
@@ -232,6 +233,28 @@ namespace OpaqueMail
             X509Store store = new X509Store(location);
             store.Open(OpenFlags.OpenExistingOnly | OpenFlags.ReadOnly);
             X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindBySubjectName, subjectName, true);
+            store.Close();
+
+            // If no certificate is found, return null;
+            if (certs.Count < 1)
+                return null;
+            else
+                return certs[0];
+        }
+
+        /// <summary>
+        /// Retrieve a certificate from the Windows certificate store based on its thumbprint.
+        /// </summary>
+        /// <param name="location">Location of the certificate; either the Current User or Local Machine.</param>
+        /// <param name="thumbprint">Thumbprint of the certificate.</param>
+        public static X509Certificate2 GetCertificateByThumbprint(StoreLocation location, string thumbprint)
+        {
+            // Sanitize the input.
+            thumbprint = Regex.Replace(thumbprint, @"[^\da-zA-z]", string.Empty).ToUpper();
+
+            X509Store store = new X509Store(location);
+            store.Open(OpenFlags.OpenExistingOnly | OpenFlags.ReadOnly);
+            X509Certificate2Collection certs = store.Certificates.Find(X509FindType.FindByThumbprint, thumbprint, true);
             store.Close();
 
             // If no certificate is found, return null;

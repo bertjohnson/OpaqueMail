@@ -1,3 +1,5 @@
+### License ###
+
 OpaqueMail (https://opaquemail.org/).
 
 Licensed according to the MIT License (http://mit-license.org/).

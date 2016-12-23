@@ -117,7 +117,7 @@ namespace OpaqueMail.TestClient
             this.SmtpTestGroup = new System.Windows.Forms.GroupBox();
             this.SmtpSendButton = new System.Windows.Forms.Button();
             this.SmtpTestSettingsGroup = new System.Windows.Forms.GroupBox();
-            this.SmtpSmimeSerialNumber = new System.Windows.Forms.TextBox();
+            this.SmtpSmimeThumbprint = new System.Windows.Forms.TextBox();
             this.SmtpIsHtml = new System.Windows.Forms.CheckBox();
             this.SmtpSubjectLabel = new System.Windows.Forms.Label();
             this.SmtpSubject = new System.Windows.Forms.TextBox();
@@ -166,7 +166,7 @@ namespace OpaqueMail.TestClient
             this.TabsControl.Controls.Add(this.Pop3Tab);
             this.TabsControl.Controls.Add(this.SmtpTab);
             this.TabsControl.Location = new System.Drawing.Point(6, 6);
-            this.TabsControl.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.TabsControl.Margin = new System.Windows.Forms.Padding(6);
             this.TabsControl.Name = "TabsControl";
             this.TabsControl.SelectedIndex = 0;
             this.TabsControl.Size = new System.Drawing.Size(1156, 754);
@@ -178,9 +178,9 @@ namespace OpaqueMail.TestClient
             this.SettingsTab.Controls.Add(this.Pop3SettingsGroup);
             this.SettingsTab.Controls.Add(this.ImapSettingsGroup);
             this.SettingsTab.Location = new System.Drawing.Point(8, 39);
-            this.SettingsTab.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SettingsTab.Margin = new System.Windows.Forms.Padding(6);
             this.SettingsTab.Name = "SettingsTab";
-            this.SettingsTab.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SettingsTab.Padding = new System.Windows.Forms.Padding(6);
             this.SettingsTab.Size = new System.Drawing.Size(1140, 707);
             this.SettingsTab.TabIndex = 0;
             this.SettingsTab.Text = "Settings";
@@ -201,9 +201,9 @@ namespace OpaqueMail.TestClient
             this.SmtpSettingsGroup.Controls.Add(this.SmtpHost);
             this.SmtpSettingsGroup.Controls.Add(this.SmtpHostLabel);
             this.SmtpSettingsGroup.Location = new System.Drawing.Point(12, 448);
-            this.SmtpSettingsGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpSettingsGroup.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpSettingsGroup.Name = "SmtpSettingsGroup";
-            this.SmtpSettingsGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpSettingsGroup.Padding = new System.Windows.Forms.Padding(6);
             this.SmtpSettingsGroup.Size = new System.Drawing.Size(1116, 204);
             this.SmtpSettingsGroup.TabIndex = 3;
             this.SmtpSettingsGroup.TabStop = false;
@@ -212,7 +212,7 @@ namespace OpaqueMail.TestClient
             // SmtpCopyImapButton
             // 
             this.SmtpCopyImapButton.Location = new System.Drawing.Point(510, 148);
-            this.SmtpCopyImapButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpCopyImapButton.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpCopyImapButton.Name = "SmtpCopyImapButton";
             this.SmtpCopyImapButton.Size = new System.Drawing.Size(292, 44);
             this.SmtpCopyImapButton.TabIndex = 6;
@@ -223,7 +223,7 @@ namespace OpaqueMail.TestClient
             // SmtpCopyPop3Button
             // 
             this.SmtpCopyPop3Button.Location = new System.Drawing.Point(814, 148);
-            this.SmtpCopyPop3Button.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpCopyPop3Button.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpCopyPop3Button.Name = "SmtpCopyPop3Button";
             this.SmtpCopyPop3Button.Size = new System.Drawing.Size(292, 44);
             this.SmtpCopyPop3Button.TabIndex = 7;
@@ -248,7 +248,7 @@ namespace OpaqueMail.TestClient
             this.SmtpSsl.Checked = true;
             this.SmtpSsl.CheckState = System.Windows.Forms.CheckState.Checked;
             this.SmtpSsl.Location = new System.Drawing.Point(94, 148);
-            this.SmtpSsl.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpSsl.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpSsl.Name = "SmtpSsl";
             this.SmtpSsl.Size = new System.Drawing.Size(28, 27);
             this.SmtpSsl.TabIndex = 5;
@@ -268,7 +268,7 @@ namespace OpaqueMail.TestClient
             // SmtpPort
             // 
             this.SmtpPort.Location = new System.Drawing.Point(94, 96);
-            this.SmtpPort.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpPort.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpPort.Name = "SmtpPort";
             this.SmtpPort.Size = new System.Drawing.Size(166, 31);
             this.SmtpPort.TabIndex = 3;
@@ -288,7 +288,7 @@ namespace OpaqueMail.TestClient
             // SmtpPassword
             // 
             this.SmtpPassword.Location = new System.Drawing.Point(708, 96);
-            this.SmtpPassword.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpPassword.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpPassword.Name = "SmtpPassword";
             this.SmtpPassword.PasswordChar = '*';
             this.SmtpPassword.Size = new System.Drawing.Size(394, 31);
@@ -297,7 +297,7 @@ namespace OpaqueMail.TestClient
             // SmtpUsername
             // 
             this.SmtpUsername.Location = new System.Drawing.Point(708, 46);
-            this.SmtpUsername.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpUsername.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpUsername.Name = "SmtpUsername";
             this.SmtpUsername.Size = new System.Drawing.Size(394, 31);
             this.SmtpUsername.TabIndex = 2;
@@ -316,7 +316,7 @@ namespace OpaqueMail.TestClient
             // SmtpHost
             // 
             this.SmtpHost.Location = new System.Drawing.Point(94, 46);
-            this.SmtpHost.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpHost.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpHost.Name = "SmtpHost";
             this.SmtpHost.Size = new System.Drawing.Size(394, 31);
             this.SmtpHost.TabIndex = 1;
@@ -348,9 +348,9 @@ namespace OpaqueMail.TestClient
             this.Pop3SettingsGroup.Controls.Add(this.Pop3Host);
             this.Pop3SettingsGroup.Controls.Add(this.Pop3HostLabel);
             this.Pop3SettingsGroup.Location = new System.Drawing.Point(12, 227);
-            this.Pop3SettingsGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3SettingsGroup.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3SettingsGroup.Name = "Pop3SettingsGroup";
-            this.Pop3SettingsGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3SettingsGroup.Padding = new System.Windows.Forms.Padding(6);
             this.Pop3SettingsGroup.Size = new System.Drawing.Size(1116, 204);
             this.Pop3SettingsGroup.TabIndex = 2;
             this.Pop3SettingsGroup.TabStop = false;
@@ -359,7 +359,7 @@ namespace OpaqueMail.TestClient
             // Pop3CopyImapButton
             // 
             this.Pop3CopyImapButton.Location = new System.Drawing.Point(510, 148);
-            this.Pop3CopyImapButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3CopyImapButton.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3CopyImapButton.Name = "Pop3CopyImapButton";
             this.Pop3CopyImapButton.Size = new System.Drawing.Size(292, 44);
             this.Pop3CopyImapButton.TabIndex = 6;
@@ -370,7 +370,7 @@ namespace OpaqueMail.TestClient
             // Pop3CopySmtpButton
             // 
             this.Pop3CopySmtpButton.Location = new System.Drawing.Point(814, 148);
-            this.Pop3CopySmtpButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3CopySmtpButton.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3CopySmtpButton.Name = "Pop3CopySmtpButton";
             this.Pop3CopySmtpButton.Size = new System.Drawing.Size(292, 44);
             this.Pop3CopySmtpButton.TabIndex = 7;
@@ -395,7 +395,7 @@ namespace OpaqueMail.TestClient
             this.Pop3Ssl.Checked = true;
             this.Pop3Ssl.CheckState = System.Windows.Forms.CheckState.Checked;
             this.Pop3Ssl.Location = new System.Drawing.Point(94, 148);
-            this.Pop3Ssl.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3Ssl.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3Ssl.Name = "Pop3Ssl";
             this.Pop3Ssl.Size = new System.Drawing.Size(28, 27);
             this.Pop3Ssl.TabIndex = 5;
@@ -415,7 +415,7 @@ namespace OpaqueMail.TestClient
             // Pop3Port
             // 
             this.Pop3Port.Location = new System.Drawing.Point(94, 96);
-            this.Pop3Port.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3Port.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3Port.Name = "Pop3Port";
             this.Pop3Port.Size = new System.Drawing.Size(166, 31);
             this.Pop3Port.TabIndex = 3;
@@ -435,7 +435,7 @@ namespace OpaqueMail.TestClient
             // Pop3Password
             // 
             this.Pop3Password.Location = new System.Drawing.Point(708, 96);
-            this.Pop3Password.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3Password.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3Password.Name = "Pop3Password";
             this.Pop3Password.PasswordChar = '*';
             this.Pop3Password.Size = new System.Drawing.Size(394, 31);
@@ -444,7 +444,7 @@ namespace OpaqueMail.TestClient
             // Pop3Username
             // 
             this.Pop3Username.Location = new System.Drawing.Point(708, 46);
-            this.Pop3Username.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3Username.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3Username.Name = "Pop3Username";
             this.Pop3Username.Size = new System.Drawing.Size(394, 31);
             this.Pop3Username.TabIndex = 2;
@@ -463,7 +463,7 @@ namespace OpaqueMail.TestClient
             // Pop3Host
             // 
             this.Pop3Host.Location = new System.Drawing.Point(94, 46);
-            this.Pop3Host.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3Host.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3Host.Name = "Pop3Host";
             this.Pop3Host.Size = new System.Drawing.Size(394, 31);
             this.Pop3Host.TabIndex = 1;
@@ -495,9 +495,9 @@ namespace OpaqueMail.TestClient
             this.ImapSettingsGroup.Controls.Add(this.ImapHost);
             this.ImapSettingsGroup.Controls.Add(this.ImapHostLabel);
             this.ImapSettingsGroup.Location = new System.Drawing.Point(12, 12);
-            this.ImapSettingsGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapSettingsGroup.Margin = new System.Windows.Forms.Padding(6);
             this.ImapSettingsGroup.Name = "ImapSettingsGroup";
-            this.ImapSettingsGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapSettingsGroup.Padding = new System.Windows.Forms.Padding(6);
             this.ImapSettingsGroup.Size = new System.Drawing.Size(1116, 204);
             this.ImapSettingsGroup.TabIndex = 1;
             this.ImapSettingsGroup.TabStop = false;
@@ -506,7 +506,7 @@ namespace OpaqueMail.TestClient
             // ImapCopyPop3Button
             // 
             this.ImapCopyPop3Button.Location = new System.Drawing.Point(510, 148);
-            this.ImapCopyPop3Button.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapCopyPop3Button.Margin = new System.Windows.Forms.Padding(6);
             this.ImapCopyPop3Button.Name = "ImapCopyPop3Button";
             this.ImapCopyPop3Button.Size = new System.Drawing.Size(292, 44);
             this.ImapCopyPop3Button.TabIndex = 6;
@@ -517,7 +517,7 @@ namespace OpaqueMail.TestClient
             // ImapCopySmtpButton
             // 
             this.ImapCopySmtpButton.Location = new System.Drawing.Point(814, 148);
-            this.ImapCopySmtpButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapCopySmtpButton.Margin = new System.Windows.Forms.Padding(6);
             this.ImapCopySmtpButton.Name = "ImapCopySmtpButton";
             this.ImapCopySmtpButton.Size = new System.Drawing.Size(292, 44);
             this.ImapCopySmtpButton.TabIndex = 7;
@@ -542,7 +542,7 @@ namespace OpaqueMail.TestClient
             this.ImapSsl.Checked = true;
             this.ImapSsl.CheckState = System.Windows.Forms.CheckState.Checked;
             this.ImapSsl.Location = new System.Drawing.Point(94, 148);
-            this.ImapSsl.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapSsl.Margin = new System.Windows.Forms.Padding(6);
             this.ImapSsl.Name = "ImapSsl";
             this.ImapSsl.Size = new System.Drawing.Size(28, 27);
             this.ImapSsl.TabIndex = 5;
@@ -562,7 +562,7 @@ namespace OpaqueMail.TestClient
             // ImapPort
             // 
             this.ImapPort.Location = new System.Drawing.Point(94, 96);
-            this.ImapPort.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapPort.Margin = new System.Windows.Forms.Padding(6);
             this.ImapPort.Name = "ImapPort";
             this.ImapPort.Size = new System.Drawing.Size(166, 31);
             this.ImapPort.TabIndex = 3;
@@ -582,7 +582,7 @@ namespace OpaqueMail.TestClient
             // ImapPassword
             // 
             this.ImapPassword.Location = new System.Drawing.Point(708, 96);
-            this.ImapPassword.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapPassword.Margin = new System.Windows.Forms.Padding(6);
             this.ImapPassword.Name = "ImapPassword";
             this.ImapPassword.PasswordChar = '*';
             this.ImapPassword.Size = new System.Drawing.Size(394, 31);
@@ -591,7 +591,7 @@ namespace OpaqueMail.TestClient
             // ImapUsername
             // 
             this.ImapUsername.Location = new System.Drawing.Point(708, 46);
-            this.ImapUsername.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapUsername.Margin = new System.Windows.Forms.Padding(6);
             this.ImapUsername.Name = "ImapUsername";
             this.ImapUsername.Size = new System.Drawing.Size(394, 31);
             this.ImapUsername.TabIndex = 2;
@@ -610,7 +610,7 @@ namespace OpaqueMail.TestClient
             // ImapHost
             // 
             this.ImapHost.Location = new System.Drawing.Point(94, 46);
-            this.ImapHost.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapHost.Margin = new System.Windows.Forms.Padding(6);
             this.ImapHost.Name = "ImapHost";
             this.ImapHost.Size = new System.Drawing.Size(394, 31);
             this.ImapHost.TabIndex = 1;
@@ -633,9 +633,9 @@ namespace OpaqueMail.TestClient
             this.ImapTab.Controls.Add(this.ImapTestGroup);
             this.ImapTab.Controls.Add(this.ImapMessageGroup);
             this.ImapTab.Location = new System.Drawing.Point(8, 39);
-            this.ImapTab.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapTab.Margin = new System.Windows.Forms.Padding(6);
             this.ImapTab.Name = "ImapTab";
-            this.ImapTab.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapTab.Padding = new System.Windows.Forms.Padding(6);
             this.ImapTab.Size = new System.Drawing.Size(1140, 707);
             this.ImapTab.TabIndex = 1;
             this.ImapTab.Text = "IMAP";
@@ -646,9 +646,9 @@ namespace OpaqueMail.TestClient
             this.ImapPreviewGroup.Controls.Add(this.ImapHeaders);
             this.ImapPreviewGroup.Controls.Add(this.ImapWebPreviewPanel);
             this.ImapPreviewGroup.Location = new System.Drawing.Point(392, 108);
-            this.ImapPreviewGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapPreviewGroup.Margin = new System.Windows.Forms.Padding(6);
             this.ImapPreviewGroup.Name = "ImapPreviewGroup";
-            this.ImapPreviewGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapPreviewGroup.Padding = new System.Windows.Forms.Padding(6);
             this.ImapPreviewGroup.Size = new System.Drawing.Size(726, 585);
             this.ImapPreviewGroup.TabIndex = 4;
             this.ImapPreviewGroup.TabStop = false;
@@ -657,7 +657,7 @@ namespace OpaqueMail.TestClient
             // ImapHeaders
             // 
             this.ImapHeaders.Location = new System.Drawing.Point(12, 37);
-            this.ImapHeaders.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapHeaders.Margin = new System.Windows.Forms.Padding(6);
             this.ImapHeaders.Multiline = true;
             this.ImapHeaders.Name = "ImapHeaders";
             this.ImapHeaders.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
@@ -669,7 +669,7 @@ namespace OpaqueMail.TestClient
             this.ImapWebPreviewPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.ImapWebPreviewPanel.Controls.Add(this.ImapWebPreview);
             this.ImapWebPreviewPanel.Location = new System.Drawing.Point(12, 317);
-            this.ImapWebPreviewPanel.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapWebPreviewPanel.Margin = new System.Windows.Forms.Padding(6);
             this.ImapWebPreviewPanel.Name = "ImapWebPreviewPanel";
             this.ImapWebPreviewPanel.Size = new System.Drawing.Size(696, 250);
             this.ImapWebPreviewPanel.TabIndex = 0;
@@ -678,7 +678,7 @@ namespace OpaqueMail.TestClient
             // 
             this.ImapWebPreview.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ImapWebPreview.Location = new System.Drawing.Point(0, 0);
-            this.ImapWebPreview.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapWebPreview.Margin = new System.Windows.Forms.Padding(6);
             this.ImapWebPreview.MinimumSize = new System.Drawing.Size(40, 38);
             this.ImapWebPreview.Name = "ImapWebPreview";
             this.ImapWebPreview.Size = new System.Drawing.Size(694, 248);
@@ -692,9 +692,9 @@ namespace OpaqueMail.TestClient
             this.ImapTestGroup.Controls.Add(this.ImapLoadFileButton);
             this.ImapTestGroup.Controls.Add(this.ImapRetrieveMessagesButton);
             this.ImapTestGroup.Location = new System.Drawing.Point(12, 12);
-            this.ImapTestGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapTestGroup.Margin = new System.Windows.Forms.Padding(6);
             this.ImapTestGroup.Name = "ImapTestGroup";
-            this.ImapTestGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapTestGroup.Padding = new System.Windows.Forms.Padding(6);
             this.ImapTestGroup.Size = new System.Drawing.Size(1106, 85);
             this.ImapTestGroup.TabIndex = 3;
             this.ImapTestGroup.TabStop = false;
@@ -703,7 +703,7 @@ namespace OpaqueMail.TestClient
             // ImapSearchText
             // 
             this.ImapSearchText.Location = new System.Drawing.Point(866, 35);
-            this.ImapSearchText.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapSearchText.Margin = new System.Windows.Forms.Padding(6);
             this.ImapSearchText.Name = "ImapSearchText";
             this.ImapSearchText.Size = new System.Drawing.Size(218, 31);
             this.ImapSearchText.TabIndex = 5;
@@ -712,7 +712,7 @@ namespace OpaqueMail.TestClient
             // ImapGetQuotaButton
             // 
             this.ImapGetQuotaButton.Location = new System.Drawing.Point(654, 33);
-            this.ImapGetQuotaButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapGetQuotaButton.Margin = new System.Windows.Forms.Padding(6);
             this.ImapGetQuotaButton.Name = "ImapGetQuotaButton";
             this.ImapGetQuotaButton.Size = new System.Drawing.Size(200, 44);
             this.ImapGetQuotaButton.TabIndex = 4;
@@ -723,7 +723,7 @@ namespace OpaqueMail.TestClient
             // ImapAppendMessageButton
             // 
             this.ImapAppendMessageButton.Location = new System.Drawing.Point(442, 33);
-            this.ImapAppendMessageButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapAppendMessageButton.Margin = new System.Windows.Forms.Padding(6);
             this.ImapAppendMessageButton.Name = "ImapAppendMessageButton";
             this.ImapAppendMessageButton.Size = new System.Drawing.Size(200, 44);
             this.ImapAppendMessageButton.TabIndex = 3;
@@ -734,7 +734,7 @@ namespace OpaqueMail.TestClient
             // ImapLoadFileButton
             // 
             this.ImapLoadFileButton.Location = new System.Drawing.Point(230, 33);
-            this.ImapLoadFileButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapLoadFileButton.Margin = new System.Windows.Forms.Padding(6);
             this.ImapLoadFileButton.Name = "ImapLoadFileButton";
             this.ImapLoadFileButton.Size = new System.Drawing.Size(200, 44);
             this.ImapLoadFileButton.TabIndex = 2;
@@ -745,7 +745,7 @@ namespace OpaqueMail.TestClient
             // ImapRetrieveMessagesButton
             // 
             this.ImapRetrieveMessagesButton.Location = new System.Drawing.Point(18, 33);
-            this.ImapRetrieveMessagesButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapRetrieveMessagesButton.Margin = new System.Windows.Forms.Padding(6);
             this.ImapRetrieveMessagesButton.Name = "ImapRetrieveMessagesButton";
             this.ImapRetrieveMessagesButton.Size = new System.Drawing.Size(200, 44);
             this.ImapRetrieveMessagesButton.TabIndex = 1;
@@ -762,9 +762,9 @@ namespace OpaqueMail.TestClient
             this.ImapMessageGroup.Controls.Add(this.ImapDeleteMessageButton);
             this.ImapMessageGroup.Controls.Add(this.ImapMessageList);
             this.ImapMessageGroup.Location = new System.Drawing.Point(12, 108);
-            this.ImapMessageGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapMessageGroup.Margin = new System.Windows.Forms.Padding(6);
             this.ImapMessageGroup.Name = "ImapMessageGroup";
-            this.ImapMessageGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapMessageGroup.Padding = new System.Windows.Forms.Padding(6);
             this.ImapMessageGroup.Size = new System.Drawing.Size(368, 585);
             this.ImapMessageGroup.TabIndex = 0;
             this.ImapMessageGroup.TabStop = false;
@@ -774,7 +774,7 @@ namespace OpaqueMail.TestClient
             // 
             this.ImapFirst1k.AutoSize = true;
             this.ImapFirst1k.Location = new System.Drawing.Point(16, 546);
-            this.ImapFirst1k.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapFirst1k.Margin = new System.Windows.Forms.Padding(6);
             this.ImapFirst1k.Name = "ImapFirst1k";
             this.ImapFirst1k.Size = new System.Drawing.Size(250, 29);
             this.ImapFirst1k.TabIndex = 6;
@@ -787,7 +787,7 @@ namespace OpaqueMail.TestClient
             this.ImapIncludeBody.Checked = true;
             this.ImapIncludeBody.CheckState = System.Windows.Forms.CheckState.Checked;
             this.ImapIncludeBody.Location = new System.Drawing.Point(16, 502);
-            this.ImapIncludeBody.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapIncludeBody.Margin = new System.Windows.Forms.Padding(6);
             this.ImapIncludeBody.Name = "ImapIncludeBody";
             this.ImapIncludeBody.Size = new System.Drawing.Size(168, 29);
             this.ImapIncludeBody.TabIndex = 5;
@@ -800,7 +800,7 @@ namespace OpaqueMail.TestClient
             this.ImapIncludeHeaders.Checked = true;
             this.ImapIncludeHeaders.CheckState = System.Windows.Forms.CheckState.Checked;
             this.ImapIncludeHeaders.Location = new System.Drawing.Point(16, 458);
-            this.ImapIncludeHeaders.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapIncludeHeaders.Margin = new System.Windows.Forms.Padding(6);
             this.ImapIncludeHeaders.Name = "ImapIncludeHeaders";
             this.ImapIncludeHeaders.Size = new System.Drawing.Size(200, 29);
             this.ImapIncludeHeaders.TabIndex = 4;
@@ -812,7 +812,7 @@ namespace OpaqueMail.TestClient
             this.ImapMailboxList.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.ImapMailboxList.FormattingEnabled = true;
             this.ImapMailboxList.Location = new System.Drawing.Point(12, 37);
-            this.ImapMailboxList.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapMailboxList.Margin = new System.Windows.Forms.Padding(6);
             this.ImapMailboxList.Name = "ImapMailboxList";
             this.ImapMailboxList.Size = new System.Drawing.Size(340, 33);
             this.ImapMailboxList.TabIndex = 1;
@@ -822,7 +822,7 @@ namespace OpaqueMail.TestClient
             // 
             this.ImapDeleteMessageButton.Enabled = false;
             this.ImapDeleteMessageButton.Location = new System.Drawing.Point(12, 406);
-            this.ImapDeleteMessageButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapDeleteMessageButton.Margin = new System.Windows.Forms.Padding(6);
             this.ImapDeleteMessageButton.Name = "ImapDeleteMessageButton";
             this.ImapDeleteMessageButton.Size = new System.Drawing.Size(344, 44);
             this.ImapDeleteMessageButton.TabIndex = 3;
@@ -835,7 +835,7 @@ namespace OpaqueMail.TestClient
             this.ImapMessageList.FormattingEnabled = true;
             this.ImapMessageList.ItemHeight = 25;
             this.ImapMessageList.Location = new System.Drawing.Point(12, 87);
-            this.ImapMessageList.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.ImapMessageList.Margin = new System.Windows.Forms.Padding(6);
             this.ImapMessageList.Name = "ImapMessageList";
             this.ImapMessageList.Size = new System.Drawing.Size(340, 304);
             this.ImapMessageList.TabIndex = 2;
@@ -847,7 +847,7 @@ namespace OpaqueMail.TestClient
             this.Pop3Tab.Controls.Add(this.Pop3TestGroup);
             this.Pop3Tab.Controls.Add(this.Pop3MessageGroup);
             this.Pop3Tab.Location = new System.Drawing.Point(8, 39);
-            this.Pop3Tab.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3Tab.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3Tab.Name = "Pop3Tab";
             this.Pop3Tab.Size = new System.Drawing.Size(1140, 707);
             this.Pop3Tab.TabIndex = 2;
@@ -859,9 +859,9 @@ namespace OpaqueMail.TestClient
             this.Pop3PreviewGroup.Controls.Add(this.Pop3Headers);
             this.Pop3PreviewGroup.Controls.Add(this.Pop3WebPreviewPanel);
             this.Pop3PreviewGroup.Location = new System.Drawing.Point(392, 108);
-            this.Pop3PreviewGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3PreviewGroup.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3PreviewGroup.Name = "Pop3PreviewGroup";
-            this.Pop3PreviewGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3PreviewGroup.Padding = new System.Windows.Forms.Padding(6);
             this.Pop3PreviewGroup.Size = new System.Drawing.Size(726, 585);
             this.Pop3PreviewGroup.TabIndex = 7;
             this.Pop3PreviewGroup.TabStop = false;
@@ -870,7 +870,7 @@ namespace OpaqueMail.TestClient
             // Pop3Headers
             // 
             this.Pop3Headers.Location = new System.Drawing.Point(12, 37);
-            this.Pop3Headers.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3Headers.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3Headers.Multiline = true;
             this.Pop3Headers.Name = "Pop3Headers";
             this.Pop3Headers.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
@@ -882,7 +882,7 @@ namespace OpaqueMail.TestClient
             this.Pop3WebPreviewPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.Pop3WebPreviewPanel.Controls.Add(this.Pop3WebPreview);
             this.Pop3WebPreviewPanel.Location = new System.Drawing.Point(12, 317);
-            this.Pop3WebPreviewPanel.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3WebPreviewPanel.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3WebPreviewPanel.Name = "Pop3WebPreviewPanel";
             this.Pop3WebPreviewPanel.Size = new System.Drawing.Size(696, 250);
             this.Pop3WebPreviewPanel.TabIndex = 0;
@@ -891,7 +891,7 @@ namespace OpaqueMail.TestClient
             // 
             this.Pop3WebPreview.Dock = System.Windows.Forms.DockStyle.Fill;
             this.Pop3WebPreview.Location = new System.Drawing.Point(0, 0);
-            this.Pop3WebPreview.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3WebPreview.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3WebPreview.MinimumSize = new System.Drawing.Size(40, 38);
             this.Pop3WebPreview.Name = "Pop3WebPreview";
             this.Pop3WebPreview.Size = new System.Drawing.Size(694, 248);
@@ -901,9 +901,9 @@ namespace OpaqueMail.TestClient
             // 
             this.Pop3TestGroup.Controls.Add(this.Pop3RetrieveMessageButton);
             this.Pop3TestGroup.Location = new System.Drawing.Point(12, 12);
-            this.Pop3TestGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3TestGroup.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3TestGroup.Name = "Pop3TestGroup";
-            this.Pop3TestGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3TestGroup.Padding = new System.Windows.Forms.Padding(6);
             this.Pop3TestGroup.Size = new System.Drawing.Size(1106, 85);
             this.Pop3TestGroup.TabIndex = 6;
             this.Pop3TestGroup.TabStop = false;
@@ -912,7 +912,7 @@ namespace OpaqueMail.TestClient
             // Pop3RetrieveMessageButton
             // 
             this.Pop3RetrieveMessageButton.Location = new System.Drawing.Point(18, 33);
-            this.Pop3RetrieveMessageButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3RetrieveMessageButton.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3RetrieveMessageButton.Name = "Pop3RetrieveMessageButton";
             this.Pop3RetrieveMessageButton.Size = new System.Drawing.Size(276, 44);
             this.Pop3RetrieveMessageButton.TabIndex = 1;
@@ -925,9 +925,9 @@ namespace OpaqueMail.TestClient
             this.Pop3MessageGroup.Controls.Add(this.Pop3DeleteMessageButton);
             this.Pop3MessageGroup.Controls.Add(this.Pop3MessageList);
             this.Pop3MessageGroup.Location = new System.Drawing.Point(12, 108);
-            this.Pop3MessageGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3MessageGroup.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3MessageGroup.Name = "Pop3MessageGroup";
-            this.Pop3MessageGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3MessageGroup.Padding = new System.Windows.Forms.Padding(6);
             this.Pop3MessageGroup.Size = new System.Drawing.Size(368, 585);
             this.Pop3MessageGroup.TabIndex = 5;
             this.Pop3MessageGroup.TabStop = false;
@@ -937,7 +937,7 @@ namespace OpaqueMail.TestClient
             // 
             this.Pop3DeleteMessageButton.Enabled = false;
             this.Pop3DeleteMessageButton.Location = new System.Drawing.Point(12, 523);
-            this.Pop3DeleteMessageButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3DeleteMessageButton.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3DeleteMessageButton.Name = "Pop3DeleteMessageButton";
             this.Pop3DeleteMessageButton.Size = new System.Drawing.Size(344, 44);
             this.Pop3DeleteMessageButton.TabIndex = 4;
@@ -950,7 +950,7 @@ namespace OpaqueMail.TestClient
             this.Pop3MessageList.FormattingEnabled = true;
             this.Pop3MessageList.ItemHeight = 25;
             this.Pop3MessageList.Location = new System.Drawing.Point(12, 37);
-            this.Pop3MessageList.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Pop3MessageList.Margin = new System.Windows.Forms.Padding(6);
             this.Pop3MessageList.Name = "Pop3MessageList";
             this.Pop3MessageList.Size = new System.Drawing.Size(340, 479);
             this.Pop3MessageList.TabIndex = 1;
@@ -961,7 +961,7 @@ namespace OpaqueMail.TestClient
             this.SmtpTab.Controls.Add(this.SmtpTestGroup);
             this.SmtpTab.Controls.Add(this.SmtpTestSettingsGroup);
             this.SmtpTab.Location = new System.Drawing.Point(8, 39);
-            this.SmtpTab.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpTab.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpTab.Name = "SmtpTab";
             this.SmtpTab.Size = new System.Drawing.Size(1140, 707);
             this.SmtpTab.TabIndex = 3;
@@ -972,9 +972,9 @@ namespace OpaqueMail.TestClient
             // 
             this.SmtpTestGroup.Controls.Add(this.SmtpSendButton);
             this.SmtpTestGroup.Location = new System.Drawing.Point(12, 12);
-            this.SmtpTestGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpTestGroup.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpTestGroup.Name = "SmtpTestGroup";
-            this.SmtpTestGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpTestGroup.Padding = new System.Windows.Forms.Padding(6);
             this.SmtpTestGroup.Size = new System.Drawing.Size(1118, 85);
             this.SmtpTestGroup.TabIndex = 2;
             this.SmtpTestGroup.TabStop = false;
@@ -983,7 +983,7 @@ namespace OpaqueMail.TestClient
             // SmtpSendButton
             // 
             this.SmtpSendButton.Location = new System.Drawing.Point(18, 33);
-            this.SmtpSendButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpSendButton.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpSendButton.Name = "SmtpSendButton";
             this.SmtpSendButton.Size = new System.Drawing.Size(276, 44);
             this.SmtpSendButton.TabIndex = 2;
@@ -993,7 +993,7 @@ namespace OpaqueMail.TestClient
             // 
             // SmtpTestSettingsGroup
             // 
-            this.SmtpTestSettingsGroup.Controls.Add(this.SmtpSmimeSerialNumber);
+            this.SmtpTestSettingsGroup.Controls.Add(this.SmtpSmimeThumbprint);
             this.SmtpTestSettingsGroup.Controls.Add(this.SmtpIsHtml);
             this.SmtpTestSettingsGroup.Controls.Add(this.SmtpSubjectLabel);
             this.SmtpTestSettingsGroup.Controls.Add(this.SmtpSubject);
@@ -1014,21 +1014,21 @@ namespace OpaqueMail.TestClient
             this.SmtpTestSettingsGroup.Controls.Add(this.SmtpFrom);
             this.SmtpTestSettingsGroup.Controls.Add(this.SmtpFromLabel);
             this.SmtpTestSettingsGroup.Location = new System.Drawing.Point(12, 108);
-            this.SmtpTestSettingsGroup.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpTestSettingsGroup.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpTestSettingsGroup.Name = "SmtpTestSettingsGroup";
-            this.SmtpTestSettingsGroup.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpTestSettingsGroup.Padding = new System.Windows.Forms.Padding(6);
             this.SmtpTestSettingsGroup.Size = new System.Drawing.Size(1118, 590);
             this.SmtpTestSettingsGroup.TabIndex = 1;
             this.SmtpTestSettingsGroup.TabStop = false;
             this.SmtpTestSettingsGroup.Text = "SMTP Test Message";
             // 
-            // SmtpSmimeSerialNumber
+            // SmtpSmimeThumbprint
             // 
-            this.SmtpSmimeSerialNumber.Location = new System.Drawing.Point(164, 496);
-            this.SmtpSmimeSerialNumber.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
-            this.SmtpSmimeSerialNumber.Name = "SmtpSmimeSerialNumber";
-            this.SmtpSmimeSerialNumber.Size = new System.Drawing.Size(938, 31);
-            this.SmtpSmimeSerialNumber.TabIndex = 8;
+            this.SmtpSmimeThumbprint.Location = new System.Drawing.Point(164, 496);
+            this.SmtpSmimeThumbprint.Margin = new System.Windows.Forms.Padding(6);
+            this.SmtpSmimeThumbprint.Name = "SmtpSmimeThumbprint";
+            this.SmtpSmimeThumbprint.Size = new System.Drawing.Size(938, 31);
+            this.SmtpSmimeThumbprint.TabIndex = 8;
             // 
             // SmtpIsHtml
             // 
@@ -1036,7 +1036,7 @@ namespace OpaqueMail.TestClient
             this.SmtpIsHtml.Checked = true;
             this.SmtpIsHtml.CheckState = System.Windows.Forms.CheckState.Checked;
             this.SmtpIsHtml.Location = new System.Drawing.Point(878, 546);
-            this.SmtpIsHtml.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpIsHtml.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpIsHtml.Name = "SmtpIsHtml";
             this.SmtpIsHtml.Size = new System.Drawing.Size(219, 29);
             this.SmtpIsHtml.TabIndex = 12;
@@ -1057,7 +1057,7 @@ namespace OpaqueMail.TestClient
             // SmtpSubject
             // 
             this.SmtpSubject.Location = new System.Drawing.Point(94, 246);
-            this.SmtpSubject.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpSubject.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpSubject.Name = "SmtpSubject";
             this.SmtpSubject.Size = new System.Drawing.Size(1008, 31);
             this.SmtpSubject.TabIndex = 5;
@@ -1067,7 +1067,7 @@ namespace OpaqueMail.TestClient
             // 
             this.SmtpSmimeTripleWrap.AutoSize = true;
             this.SmtpSmimeTripleWrap.Location = new System.Drawing.Point(618, 546);
-            this.SmtpSmimeTripleWrap.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpSmimeTripleWrap.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpSmimeTripleWrap.Name = "SmtpSmimeTripleWrap";
             this.SmtpSmimeTripleWrap.Size = new System.Drawing.Size(167, 29);
             this.SmtpSmimeTripleWrap.TabIndex = 11;
@@ -1078,7 +1078,7 @@ namespace OpaqueMail.TestClient
             // 
             this.SmtpSmimeEncrypt.AutoSize = true;
             this.SmtpSmimeEncrypt.Location = new System.Drawing.Point(374, 546);
-            this.SmtpSmimeEncrypt.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpSmimeEncrypt.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpSmimeEncrypt.Name = "SmtpSmimeEncrypt";
             this.SmtpSmimeEncrypt.Size = new System.Drawing.Size(225, 29);
             this.SmtpSmimeEncrypt.TabIndex = 10;
@@ -1091,7 +1091,7 @@ namespace OpaqueMail.TestClient
             this.SmtpSmimeSign.Checked = true;
             this.SmtpSmimeSign.CheckState = System.Windows.Forms.CheckState.Checked;
             this.SmtpSmimeSign.Location = new System.Drawing.Point(164, 546);
-            this.SmtpSmimeSign.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpSmimeSign.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpSmimeSign.Name = "SmtpSmimeSign";
             this.SmtpSmimeSign.Size = new System.Drawing.Size(193, 29);
             this.SmtpSmimeSign.TabIndex = 9;
@@ -1104,9 +1104,9 @@ namespace OpaqueMail.TestClient
             this.SmtpSmimeLabel.Location = new System.Drawing.Point(12, 502);
             this.SmtpSmimeLabel.Margin = new System.Windows.Forms.Padding(6, 0, 6, 0);
             this.SmtpSmimeLabel.Name = "SmtpSmimeLabel";
-            this.SmtpSmimeLabel.Size = new System.Drawing.Size(109, 75);
+            this.SmtpSmimeLabel.Size = new System.Drawing.Size(126, 75);
             this.SmtpSmimeLabel.TabIndex = 17;
-            this.SmtpSmimeLabel.Text = "S/MIME\r\nCertificate\r\nSerial #:";
+            this.SmtpSmimeLabel.Text = "S/MIME\r\nCertificate\r\nThumbprint:";
             // 
             // SmtpAttachmentsLabel
             // 
@@ -1121,7 +1121,7 @@ namespace OpaqueMail.TestClient
             // SmtpAttachments
             // 
             this.SmtpAttachments.Location = new System.Drawing.Point(164, 408);
-            this.SmtpAttachments.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpAttachments.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpAttachments.Multiline = true;
             this.SmtpAttachments.Name = "SmtpAttachments";
             this.SmtpAttachments.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
@@ -1142,7 +1142,7 @@ namespace OpaqueMail.TestClient
             // SmtpBody
             // 
             this.SmtpBody.Location = new System.Drawing.Point(94, 296);
-            this.SmtpBody.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpBody.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpBody.Multiline = true;
             this.SmtpBody.Name = "SmtpBody";
             this.SmtpBody.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
@@ -1163,7 +1163,7 @@ namespace OpaqueMail.TestClient
             // SmtpBcc
             // 
             this.SmtpBcc.Location = new System.Drawing.Point(94, 196);
-            this.SmtpBcc.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpBcc.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpBcc.Name = "SmtpBcc";
             this.SmtpBcc.Size = new System.Drawing.Size(1008, 31);
             this.SmtpBcc.TabIndex = 4;
@@ -1182,7 +1182,7 @@ namespace OpaqueMail.TestClient
             // SmtpCC
             // 
             this.SmtpCC.Location = new System.Drawing.Point(94, 146);
-            this.SmtpCC.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpCC.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpCC.Name = "SmtpCC";
             this.SmtpCC.Size = new System.Drawing.Size(1008, 31);
             this.SmtpCC.TabIndex = 3;
@@ -1201,7 +1201,7 @@ namespace OpaqueMail.TestClient
             // SmtpTo
             // 
             this.SmtpTo.Location = new System.Drawing.Point(94, 96);
-            this.SmtpTo.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpTo.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpTo.Name = "SmtpTo";
             this.SmtpTo.Size = new System.Drawing.Size(1008, 31);
             this.SmtpTo.TabIndex = 2;
@@ -1210,7 +1210,7 @@ namespace OpaqueMail.TestClient
             // SmtpFrom
             // 
             this.SmtpFrom.Location = new System.Drawing.Point(94, 46);
-            this.SmtpFrom.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SmtpFrom.Margin = new System.Windows.Forms.Padding(6);
             this.SmtpFrom.Name = "SmtpFrom";
             this.SmtpFrom.Size = new System.Drawing.Size(1008, 31);
             this.SmtpFrom.TabIndex = 1;
@@ -1230,7 +1230,7 @@ namespace OpaqueMail.TestClient
             // LoadSettingsButton
             // 
             this.LoadSettingsButton.Location = new System.Drawing.Point(14, 763);
-            this.LoadSettingsButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.LoadSettingsButton.Margin = new System.Windows.Forms.Padding(6);
             this.LoadSettingsButton.Name = "LoadSettingsButton";
             this.LoadSettingsButton.Size = new System.Drawing.Size(276, 44);
             this.LoadSettingsButton.TabIndex = 1;
@@ -1241,7 +1241,7 @@ namespace OpaqueMail.TestClient
             // SaveSettingsButton
             // 
             this.SaveSettingsButton.Location = new System.Drawing.Point(880, 763);
-            this.SaveSettingsButton.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.SaveSettingsButton.Margin = new System.Windows.Forms.Padding(6);
             this.SaveSettingsButton.Name = "SaveSettingsButton";
             this.SaveSettingsButton.Size = new System.Drawing.Size(276, 44);
             this.SaveSettingsButton.TabIndex = 2;
@@ -1258,7 +1258,7 @@ namespace OpaqueMail.TestClient
             this.Controls.Add(this.LoadSettingsButton);
             this.Controls.Add(this.TabsControl);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.Margin = new System.Windows.Forms.Padding(6);
             this.MinimumSize = new System.Drawing.Size(1174, 819);
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
@@ -1363,7 +1363,7 @@ namespace OpaqueMail.TestClient
         private System.Windows.Forms.CheckBox SmtpIsHtml;
         private System.Windows.Forms.Label SmtpSubjectLabel;
         private System.Windows.Forms.TextBox SmtpSubject;
-        private System.Windows.Forms.TextBox SmtpSmimeSerialNumber;
+        private System.Windows.Forms.TextBox SmtpSmimeThumbprint;
         private System.Windows.Forms.GroupBox ImapPreviewGroup;
         private System.Windows.Forms.Panel ImapWebPreviewPanel;
         private System.Windows.Forms.WebBrowser ImapWebPreview;
