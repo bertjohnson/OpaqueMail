@@ -338,7 +338,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         }
 
         /// <summary>
-        /// Attempt to retrieve up to 25 IMAP messages and populate the list of messages.
+        /// Attempt to retrieve up to 100 IMAP messages and populate the list of messages.
         /// </summary>
         private async void ImapRetrieveMessagesButton_Click(object sender, EventArgs e)
         {
@@ -479,7 +479,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         }
 
         /// <summary>
-        /// Attempt to retrieve up to 25 POP3 messages and populate the list of messages.
+        /// Attempt to retrieve up to 100 POP3 messages and populate the list of messages.
         /// </summary>
         private async void Pop3RetrieveMessageButton_Click(object sender, EventArgs e)
         {
@@ -776,7 +776,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         }
 
         /// <summary>
-        /// Attempt to retrieve up to 25 IMAP messages and populate the list of messages.
+        /// Attempt to retrieve up to 100 IMAP messages and populate the list of messages.
         /// </summary>
         /// <param name="repopulateMailboxes">Whether to refresh the list of mailboxes.</param>
         private async Task RefreshImapMessages(bool repopulateMailboxes)
@@ -842,17 +842,20 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 }
             }
 
-            // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
+            // Retrieve the headers of up to 100 messages and remember their mailbox/UID pairs for later opening.
             ImapMessageList.Items.Clear();
             ImapMessageList.Enabled = false;
             await myImapClient.SelectMailboxAsync(mailbox);
-            List<MailMessage> messages = await myImapClient.GetMessagesAsync(mailbox, 25, 1, true, true, false);
+            List<MailMessage> messages = await myImapClient.GetMessagesAsync(mailbox, 100, 1, true, true, false);
             imapMessageIDs = new Tuple<string, int>[messages.Count];
 
             // Repopulate the message list with the subjects of messages retrieved.
             for (int i = 0; i < messages.Count; i++)
             {
-                ImapMessageList.Items.Add(messages[i].Subject);
+                if (string.IsNullOrEmpty(messages[i].Subject))
+                    ImapMessageList.Items.Add("[Empty]");
+                else
+                    ImapMessageList.Items.Add(messages[i].Subject);
                 imapMessageIDs[i] = new Tuple<string, int>(messages[i].Mailbox, messages[i].ImapUid);
             }
             ImapMessageList.Enabled = true;
@@ -888,7 +891,7 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         }
 
         /// <summary>
-        /// Attempt to retrieve up to 25 POP3 messages and populate the list of messages.
+        /// Attempt to retrieve up to 100 POP3 messages and populate the list of messages.
         /// </summary>
         private async Task RefreshPop3Messages()
         {
@@ -922,8 +925,8 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 }
             }
 
-            // Retrieve the headers of up to 25 messages and remember their mailbox/UID pairs for later opening.
-            List<MailMessage> messages = await myPop3Client.GetMessagesAsync(25, 1, false, true);
+            // Retrieve the headers of up to 100 messages and remember their mailbox/UID pairs for later opening.
+            List<MailMessage> messages = await myPop3Client.GetMessagesAsync(100, 1, false, true);
             pop3MessageIDs = new List<int>();
 
             // Repopulate the message list with the subjects of messages retrieved.

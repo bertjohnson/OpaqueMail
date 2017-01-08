@@ -2388,13 +2388,21 @@ namespace OpaqueMail
                 int bodyLength = -1;
                 int.TryParse(Functions.ReturnBetween(firstLine, " {", "}"), out bodyLength);
                 if (bodyLength > 0)
-                    response = response.Substring(lineBreak + 2, bodyLength);
+                {
+                    if (response.Length < (bodyLength + lineBreak + 2))
+                    {
+                        response = response.Substring(lineBreak + 2);
+                    }
+                    else
+                    {
+                        response = response.Substring(lineBreak + 2, bodyLength);
+                    }
+                }
                 else
                 {
                     response = response.Substring(response.IndexOf("\r\n") + 2);
                     response = response.Substring(0, response.Length - 2);
                 }
-
                 MessagePartialHelper helper = new MessagePartialHelper();
 
                 // Extract the raw bytes and convert to UTF-8.

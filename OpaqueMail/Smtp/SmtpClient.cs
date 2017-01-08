@@ -53,6 +53,8 @@ namespace OpaqueMail
             SmimeValidCertificates = null;
             
             RandomizeBoundaryNames();
+
+            EnableSsl = true;
         }
         /// <summary>
         /// Initializes a new instance of the OpaqueMail.SmtpClient class that sends email by using the specified SMTP server.
