@@ -244,7 +244,7 @@ namespace OpaqueMail
             if (!response.StartsWith("3"))
                 throw new SmtpException("Exception communicating with server '" + Host + "'.  Sent 'DATA' and received '" + response + "'.");
 
-            rawHeaders.Append(Functions.SpanHeaderLines("Subject: " + Functions.EncodeMailHeader(message.Subject)) + "\r\n");
+            rawHeaders.Append(Functions.SpanHeaderLines("Subject: " + Functions.EncodeMailHeader(message.Subject, 32)) + "\r\n");
             foreach (string rawHeader in message.Headers)
             {
                 switch (rawHeader.ToUpper())

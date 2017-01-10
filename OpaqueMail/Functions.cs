@@ -480,23 +480,72 @@ namespace OpaqueMail
         /// <returns>Base-64 encoded version of the email header.</returns>
         public static string EncodeMailHeader(string header)
         {
+            return EncodeMailHeader(header, -1);
+        }
+
+        /// <summary>
+        /// Encodes email headers to escape extended characters.
+        /// </summary>
+        /// <param name="header">Email header to be encoded.</param>
+        /// <param name="maxChunkSize">Maximum number of bytes in each encoded chunk.</param>
+        /// <returns>Base-64 encoded version of the email header.</returns>
+        public static string EncodeMailHeader(string header, int maxChunkSize)
+        {
             if (string.IsNullOrEmpty(header))
                 return "";
 
-            bool extendedCharacterFound = false;
-            foreach (char headerCharacter in header.ToCharArray())
+            // If passed value is already folded, unfold it prior to encoding.
+            header = header.Replace("\r\n ", " ").Replace("\r\n\t", " ");
+
+            int lastCharacterExtendedStart = -1;
+            StringBuilder headerBuilder = new StringBuilder();
+            char[] headerCharacters = header.ToCharArray();
+            int max = headerCharacters.Length;
+            for (int i = 0; i < max; i++)
             {
+                char headerCharacter = headerCharacters[i];
                 if (headerCharacter > 127)
                 {
-                    extendedCharacterFound = true;
-                    break;
+                    if (lastCharacterExtendedStart < 0)
+                        lastCharacterExtendedStart = i;
+                }
+                else
+                {
+                    if (lastCharacterExtendedStart > -1)
+                    {
+                        int chunkSize = i - lastCharacterExtendedStart;
+                        if (chunkSize > maxChunkSize)
+                            chunkSize = maxChunkSize;
+
+                        for (int j = lastCharacterExtendedStart; j < i; j += maxChunkSize)
+                        {
+                            if (j + chunkSize <= i)
+                                headerBuilder.Append("=?UTF-8?B?" + ToBase64String(header.Substring(j, chunkSize)) + "?=");
+                            else
+                                headerBuilder.Append("=?UTF-8?B?" + ToBase64String(header.Substring(j)) + "?=");
+                        }
+
+                        lastCharacterExtendedStart = -1;
+                    }
+
+                    headerBuilder.Append(headerCharacter);
                 }
             }
 
-            if (extendedCharacterFound)
-                return "=?UTF-8?B?" + ToBase64String(header) + "?=";
-            else
-                return header;
+            if (lastCharacterExtendedStart > -1)
+            {
+                for (int j = lastCharacterExtendedStart; j < max; j += maxChunkSize)
+                {
+                    if (j + maxChunkSize <= max)
+                        headerBuilder.Append("=?UTF-8?B?" + ToBase64String(header.Substring(j, maxChunkSize)) + "?=");
+                    else
+                        headerBuilder.Append("=?UTF-8?B?" + ToBase64String(header.Substring(j)) + "?=");
+                }
+
+                lastCharacterExtendedStart = 0;
+            }
+
+            return headerBuilder.ToString();
         }
 
         /// <summary>
@@ -1299,28 +1348,70 @@ namespace OpaqueMail
         /// <returns>The original email header spread over lines no longer than 78 characters each.</returns>
         public static string SpanHeaderLines(string header)
         {
-            if (header.Length > 78)
+            return SpanHeaderLines(header, 78);
+        }
+
+        /// <summary>
+        /// Attempt to keep the number of characters per subject line to a certain number of characters.
+        /// </summary>
+        /// <param name="header">Email header to be spanned.</param>
+        /// <param name="maxLineLength">Maximum length for a line.</param>
+        /// <returns>The original email header spread over lines no longer than the number of characters specified.</returns>
+        public static string SpanHeaderLines(string header, int maxLineLength)
+        {
+            if (header.Length > maxLineLength)
             {
                 StringBuilder headerBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
-                int pos = 0, lastPos = 0;
-                while (pos > -1 && pos < header.Length - 78)
+                int pos = 0, spacePos = 0, endEncodingPos = 0, lastPos = 0;
+                while (pos > -1 && pos < header.Length - maxLineLength)
                 {
-                    if (lastPos + 78 >= header.Length)
-                        pos = header.LastIndexOf(" ");
+                    if (lastPos + maxLineLength >= header.Length)
+                    {
+                        spacePos = header.LastIndexOf(" ");
+                        endEncodingPos = header.LastIndexOf("?=");
+                    }
                     else
-                        pos = header.LastIndexOf(" ", lastPos + 78);
+                    {
+                        spacePos = header.LastIndexOf(" ", lastPos + maxLineLength);
+                        endEncodingPos = header.LastIndexOf("?=", lastPos + maxLineLength);
+                    }
+                    if (endEncodingPos == -1 || spacePos > endEncodingPos)
+                        pos = spacePos;
+                    else
+                        pos = endEncodingPos;
 
                     if (pos < 0 || pos == (lastPos - 1))
-                        pos = header.IndexOf(" ", lastPos + 78);
+                        pos = header.IndexOf(" ", lastPos + maxLineLength);
 
                     if (pos > -1)
                     {
-                        headerBuilder.Append(header.Substring(lastPos, pos - lastPos) + "\r\n\t");
-                        pos++;
+                        while (pos - lastPos > maxLineLength)
+                        {
+                            headerBuilder.Append(header.Substring(lastPos, maxLineLength) + "\r\n ");
+
+                            lastPos += maxLineLength;
+                        }
+
+                        headerBuilder.Append(header.Substring(lastPos, pos - lastPos) + "\r\n ");
+
+                        if (pos == endEncodingPos)
+                            lastPos += maxLineLength;
+                        else
+                            lastPos++;
                     }
-                    lastPos = pos;
+
+                    if (pos > -1)
+                        lastPos = pos;
                 }
+
+                pos = header.Length - 1;
+                while (pos - lastPos > maxLineLength)
+                {
+                    headerBuilder.Append(header.Substring(lastPos, maxLineLength) + "\r\n ");
+                    lastPos += maxLineLength;
+                }
+
                 headerBuilder.Append(header.Substring(lastPos));
 
                 return headerBuilder.ToString();
