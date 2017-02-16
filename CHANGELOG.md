@@ -1,5 +1,8 @@
 ### Changelog ###
 
+2.4.4 - 2017-02-16
+ * Removed UID variants of `Pop3Client.DeleteMessage`, as deletion only works based on index.
+
 2.4.3 - 2017-01-09
  * Fixed bug when headers contained high-byte characters after the 78th index.
 

@@ -300,15 +300,6 @@ namespace OpaqueMail
         /// <summary>
         /// Delete a message from the server based on its index.
         /// </summary>
-        /// <param name="uid">UID of the message to delete.</param>
-        public bool DeleteMessageUid(string uid)
-        {
-            return Task.Run(() => DeleteMessageAsync(uid)).Result;
-        }
-
-        /// <summary>
-        /// Delete a message from the server based on its index.
-        /// </summary>
         /// <param name="index">Index of the message to delete.</param>
         public async Task<bool> DeleteMessageAsync(int index)
         {
@@ -317,21 +308,6 @@ namespace OpaqueMail
                 throw new Pop3Exception("Must be connected to the server and authenticated prior to calling the DELE command.");
 
             await SendCommandAsync("DELE " + index.ToString() + "\r\n");
-            await ReadDataAsync();
-            return LastCommandResult;
-        }
-
-        /// <summary>
-        /// Delete a message from the server based on its UID.
-        /// </summary>
-        /// <param name="uid">UID of the message to delete.</param>
-        public async Task<bool> DeleteMessageAsync(string uid)
-        {
-            // Protect against commands being called out of order.
-            if (!IsAuthenticated)
-                throw new Pop3Exception("Must be connected to the server and authenticated prior to calling the DELE command.");
-
-            await SendCommandAsync("DELE " + uid + "\r\n");
             await ReadDataAsync();
             return LastCommandResult;
         }
@@ -359,36 +335,6 @@ namespace OpaqueMail
             foreach (int index in indices)
             {
                 await SendCommandAsync("DELE " + index.ToString() + "\r\n");
-                await ReadDataAsync();
-                returnValue &= LastCommandResult;
-            }
-
-            return returnValue;
-        }
-
-        /// <summary>
-        /// Delete a series of messages from the server based on their UIDs.
-        /// </summary>
-        /// <param name="uids">Array of message UIDs to delete.</param>
-        public bool DeleteMessages(string[] uids)
-        {
-            return Task.Run(() => DeleteMessagesAsync(uids)).Result;
-        }
-
-        /// <summary>
-        /// Delete a series of messages from the server based on their UIDs.
-        /// </summary>
-        /// <param name="uids">Array of message UIDs to delete.</param>
-        public async Task<bool> DeleteMessagesAsync(string[] uids)
-        {
-            // Protect against commands being called out of order.
-            if (!IsAuthenticated)
-                throw new Pop3Exception("Must be connected to the server and authenticated prior to calling the DELE command.");
-
-            bool returnValue = true;
-            foreach (string uid in uids)
-            {
-                await SendCommandAsync("DELE " + uid + "\r\n");
                 await ReadDataAsync();
                 returnValue &= LastCommandResult;
             }
