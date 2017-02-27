@@ -155,9 +155,8 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="host">Name or IP of the host used for POP3 transactions.</param>
         /// <param name="port">Port to be used by the host.</param>
-        /// <param name="userName">The username associated with this connection.</param>
         /// <param name="enableSSL">Whether the POP3 connection uses TLS / SSL protection.</param>
-        private Pop3Client(string host, int port, string userName, bool enableSSL)
+        private Pop3Client(string host, int port, bool enableSSL)
         {
             APOPSharedSecret = "";
             LastCapabilitiesCheckAuthenticationState = false;
@@ -183,7 +182,7 @@ namespace OpaqueMail
         /// <param name="password">The password associated with this connection.</param>
         /// <param name="enableSSL">Whether the POP3 connection uses TLS / SSL protection.</param>
         public Pop3Client(string host, int port, string userName, string password, bool enableSSL)
-            : this(host, port, userName, enableSSL)
+            : this(host, port, enableSSL)
         {
             Credentials = new NetworkCredential(userName, password);
         }
@@ -197,7 +196,7 @@ namespace OpaqueMail
         /// <param name="password">SecureString representation of the password associated with this connection.</param>
         /// <param name="enableSSL">Whether the POP3 connection uses TLS / SSL protection.</param>
         public Pop3Client(string host, int port, string userName, SecureString password, bool enableSSL)
-                : this(host, port, userName, enableSSL)
+                : this(host, port, enableSSL)
         {
             Credentials = new NetworkCredential(userName, password);
         }
@@ -403,8 +402,6 @@ namespace OpaqueMail
                         ServerExpirationPolicy = capabilitiesLines[i].Substring(7);
                     else if (capabilitiesLines[i].StartsWith("IMPLEMENTATION "))
                         ServerImplementation = capabilitiesLines[i].Substring(15);
-                    else if (capabilitiesLines[i].StartsWith("LOGIN-DELAY "))
-                        int.TryParse(capabilitiesLines[i].Substring(12), out ServerLoginDelay);
                     else if (capabilitiesLines[i].StartsWith("LOGIN-DELAY "))
                         int.TryParse(capabilitiesLines[i].Substring(12), out ServerLoginDelay);
                     else
@@ -893,8 +890,8 @@ namespace OpaqueMail
             StringBuilder responseBuilder = new StringBuilder();
 
             LastCommandResult = false;
-            bool receivingMessage = true, firstResponse = true;
-            while (receivingMessage)
+            bool firstResponse = true;
+            while (true)
             {
                 int bytesRead = await Pop3Stream.ReadAsync(InternalBuffer, 0, Constants.LARGEBUFFERSIZE);
 
@@ -930,8 +927,6 @@ namespace OpaqueMail
                             ended = responseBuilder.ToString().EndsWith(endMarker);
                         if (ended)
                         {
-                            receivingMessage = false;
-
                             // Strip start +OK message.
                             string response = responseBuilder.ToString();
                             if (response.StartsWith("+OK\r\n"))
@@ -953,13 +948,11 @@ namespace OpaqueMail
                         string response = responseBuilder.ToString();
                         if (response.StartsWith("+OK\r\n"))
                         {
-                            receivingMessage = false;
                             LastCommandResult = true;
                             return response.Substring(5);
                         }
                         else if (response.StartsWith("+OK"))
                         {
-                            receivingMessage = false;
                             LastCommandResult = true;
                             return response.Substring(4, response.Length - 6);
                         }
@@ -968,9 +961,6 @@ namespace OpaqueMail
 
                 firstResponse = false;
             }
-
-            LastCommandResult = false;
-            return "";
         }
 
         /// <summary>

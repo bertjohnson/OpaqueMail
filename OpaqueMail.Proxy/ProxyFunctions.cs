@@ -153,8 +153,7 @@ namespace OpaqueMail.Proxy
                 }
             }
 
-            if (lastPos > -1)
-                logFileNameBuilder.Append(fileName.Substring(lastPos));
+            logFileNameBuilder.Append(fileName.Substring(lastPos));
 
             return logFileNameBuilder.ToString();
         }

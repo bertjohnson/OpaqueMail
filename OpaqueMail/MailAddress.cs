@@ -337,8 +337,6 @@ namespace OpaqueMail
                                 if (addresses[endParenthesisCursor - 1] != '\\')
                                     break;
                             }
-                            else
-                                break;
                         }
 
                         string address = addresses.Substring(lastCursor, parenthesisCursor - lastCursor).Trim();
@@ -411,7 +409,7 @@ namespace OpaqueMail
                 else
                     addressString.Append(address.Address + ", ");
             }
-            if (addressString.Length > 0)
+            if (addressString.Length > 1)
                 addressString.Remove(addressString.Length - 2, 2);
 
             return addressString.ToString();

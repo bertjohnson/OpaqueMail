@@ -1395,14 +1395,8 @@ namespace OpaqueMail
 
                         headerBuilder.Append(header.Substring(lastPos, pos - lastPos) + "\r\n ");
 
-                        if (pos == endEncodingPos)
-                            lastPos += maxLineLength;
-                        else
-                            lastPos++;
-                    }
-
-                    if (pos > -1)
                         lastPos = pos;
+                    }
                 }
 
                 pos = header.Length - 1;
@@ -1686,7 +1680,7 @@ namespace OpaqueMail
                 switch (counter)
                 {
                     case 0:
-                        if (0 <= value && value <= 0x7F)                            // 0xxxxxxx
+                        if (value <= 0x7F)                            // 0xxxxxxx
                             outputString += Utf8toUnicodeNumberToString(value);
                         else if (0xC0 <= value && value <= 0xDF)                    // 110xxxxx
                         {

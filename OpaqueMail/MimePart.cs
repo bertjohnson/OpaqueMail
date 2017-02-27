@@ -289,7 +289,7 @@ namespace OpaqueMail
                                     TnefEncoding tnef = new TnefEncoding(Convert.FromBase64String(mimeBody));
 
                                     // If we were unable to extract content from this MIME, include it as an attachment.
-                                    if ((tnef.Body.Length < 1 && tnef.MimeAttachments.Count < 1) || (processingFlags & MailMessageProcessingFlags.IncludeWinMailData) > 0)
+                                    if ((string.IsNullOrEmpty(tnef.Body) && tnef.MimeAttachments.Count < 1) || (processingFlags & MailMessageProcessingFlags.IncludeWinMailData) > 0)
                                         processed = false;
                                     else
                                     {

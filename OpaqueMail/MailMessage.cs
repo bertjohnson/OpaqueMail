@@ -339,7 +339,6 @@ namespace OpaqueMail
             string fromText = "";
             string toText = "";
             string ccText = "";
-            string bccText = "";
             string replyToText = "";
 
             // Temporary header variables to be processed later.
@@ -359,346 +358,343 @@ namespace OpaqueMail
                     string headerValue = headerParts[1];
 
                     // Set header variables for common headers.
-                    if (!string.IsNullOrEmpty(headerType) && !string.IsNullOrEmpty(headerValue))
-                        Headers[headerType] = headerValue;
-
-                    switch (headerType)
+                    if (!string.IsNullOrEmpty(headerValue))
                     {
-                        case "cc":
-                            if (ccText.Length > 0)
-                                ccText += ", ";
-                            ccText += headerValue;
-                            break;
-                        case "content-transfer-encoding":
-                            ContentTransferEncoding = headerValue;
-                            switch (headerValue.ToLower())
-                            {
-                                case "base64":
-                                    BodyTransferEncoding = TransferEncoding.Base64;
-                                    break;
-                                case "quoted-printable":
-                                    BodyTransferEncoding = TransferEncoding.QuotedPrintable;
-                                    break;
-                                case "7bit":
-                                    BodyTransferEncoding = TransferEncoding.SevenBit;
-                                    break;
-                                case "8bit":
-                                    BodyTransferEncoding = TransferEncoding.EightBit;
-                                    break;
-                                default:
-                                    BodyTransferEncoding = TransferEncoding.Unknown;
-                                    break;
-                            }
-                            break;
-                        case "content-language":
-                            ContentLanguage = headerValue;
-                            break;
-                        case "content-type":
-                            // If multiple content-types are passed, only process the first.
-                            if (string.IsNullOrEmpty(ContentType))
-                            {
-                                ContentType = headerValue.Trim();
-                                CharSet = Functions.ExtractMimeParameter(ContentType, "charset");
-                                MimeBoundaryName = Functions.ExtractMimeParameter(ContentType, "boundary");
+                        if (!string.IsNullOrEmpty(headerType))
+                            Headers[headerType] = headerValue;
 
-                                BodyContentType = ContentType.ToLower();
-                                if (BodyContentType.IndexOf(";") > -1)
-                                    BodyContentType = BodyContentType.Substring(0, BodyContentType.IndexOf(";"));
-
-                                IsBodyHtml = BodyContentType.StartsWith("text/html");
-                            }
-                            break;
-                        case "date":
-                            string dateString = headerValue;
-
-                            // Ignore extraneous datetime information.
-                            int dateStringParenthesis = dateString.IndexOf("(");
-                            if (dateStringParenthesis > -1)
-                                dateString = dateString.Substring(0, dateStringParenthesis - 1);
-
-                            // Remove timezone suffix.
-                            if (dateString.Substring(dateString.Length - 4, 1) == " ")
-                                dateString = dateString.Substring(0, dateString.Length - 4);
-
-                            DateTime date;
-                            DateTime.TryParse(dateString, out date);
-                            Date = date;
-                            break;
-                        case "delivered-to":
-                            DeliveredTo = headerValue;
-                            break;
-                        case "from":
-                            fromText = headerValue;
-                            break;
-                        case "importance":
-                            Importance = headerValue;
-                            break;
-                        case "in-reply-to":
-                            InReplyTo = headerValue;
-
-                            // Loop through references.
-                            List<string> inReplyTo = new List<string>();
-                            int inReplyToPos = 0;
-                            while (inReplyToPos > -1)
-                            {
-                                inReplyToPos = headerValue.IndexOf("<", inReplyToPos);
-                                if (inReplyToPos > -1)
-                                {
-                                    int referencesPos2 = headerValue.IndexOf(">", inReplyToPos);
-                                    if (referencesPos2 > -1)
-                                    {
-                                        inReplyTo.Add(headerValue.Substring(inReplyToPos + 1, referencesPos2 - inReplyToPos - 1));
-                                        inReplyToPos = referencesPos2 + 1;
-                                    }
-                                    else
-                                        inReplyToPos = -1;
-                                }
-                            }
-                            // If any references were found, apply to the message's array.
-                            if (inReplyTo.Count > 0)
-                                InReplyToMessageIDs = inReplyTo.ToArray();
-                            else
-                            {
-                                if (!string.IsNullOrEmpty(headerValue))
-                                    InReplyToMessageIDs = new string[] {headerValue};
-                            }
-
-                            break;
-                        case "message-id":
-                            // Ignore opening and closing <> characters.
-                            MessageId = headerValue;
-                            if (MessageId.StartsWith("<"))
-                                MessageId = MessageId.Substring(1);
-                            if (MessageId.EndsWith(">"))
-                                MessageId = MessageId.Substring(0, MessageId.Length - 1);
-                            break;
-                        case "received":
-                        case "x-received":
-                            if (!string.IsNullOrEmpty(receivedText))
-                                receivedChain.Add(receivedText);
-
-                            receivedText = headerValue;
-                            break;
-                        case "references":
-                            // Loop through references.
-                            List<string> references = new List<string>();
-                            int referencesPos = 0;
-                            while (referencesPos > -1)
-                            {
-                                referencesPos = headerValue.IndexOf("<", referencesPos);
-                                if (referencesPos > -1)
-                                {
-                                    int referencesPos2 = headerValue.IndexOf(">", referencesPos);
-                                    if (referencesPos2 > -1)
-                                    {
-                                        references.Add(headerValue.Substring(referencesPos + 1, referencesPos2 - referencesPos - 1));
-                                        referencesPos = referencesPos2 + 1;
-                                    }
-                                    else
-                                        referencesPos = -1;
-                                }
-                            }
-                            // If any references were found, apply to the message's array.
-                            if (references.Count > 0)
-                                References = references.ToArray();
-
-                            break;
-                        case "replyto":
-                        case "reply-to":
-                            replyToText = headerValue;
-                            break;
-                        case "return-path":
-                            // Ignore opening and closing <> characters.
-                            ReturnPath = headerValue;
-                            if (ReturnPath.StartsWith("<"))
-                                ReturnPath = ReturnPath.Substring(1);
-                            if (ReturnPath.EndsWith(">"))
-                                ReturnPath = ReturnPath.Substring(0, ReturnPath.Length - 1);
-                            break;
-                        case "sender":
-                        case "x-sender":
-                            if (headerValue.Length > 0)
-                            {
-                                MailAddressCollection senderCollection = MailAddressCollection.Parse(headerValue);
-                                if (senderCollection.Count > 0)
-                                    this.Sender = senderCollection[0];
-                            }
-                            break;
-                        case "subject":
-                            // Decode international strings and remove escaped linebreaks.
-                            Subject = Functions.DecodeMailHeader(headerValue).Replace("\r", "").Replace("\n", "");
-                            break;
-                        case "to":
-                            if (toText.Length > 0)
-                                toText += ", ";
-                            toText += headerValue;
-                            break;
-                        case "x-priority":
-                            switch (headerValue.ToUpper())
-                            {
-                                case "LOW":
-                                    Priority = MailPriority.Low;
-                                    break;
-                                case "NORMAL":
-                                    Priority = MailPriority.Normal;
-                                    break;
-                                case "HIGH":
-                                    Priority = MailPriority.High;
-                                    break;
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-
-                    // Set header variables for advanced headers.
-                    if (parseExtendedHeaders)
-                    {
                         switch (headerType)
                         {
-                            case "acceptlanguage":
-                            case "accept-language":
-                                ExtendedProperties.AcceptLanguage = headerValue;
+                            case "cc":
+                                if (ccText.Length > 0)
+                                    ccText += ", ";
+                                ccText += headerValue;
                                 break;
-                            case "authentication-results":
-                                ExtendedProperties.AuthenticationResults = headerValue;
+                            case "content-transfer-encoding":
+                                ContentTransferEncoding = headerValue;
+                                switch (headerValue.ToLower())
+                                {
+                                    case "base64":
+                                        BodyTransferEncoding = TransferEncoding.Base64;
+                                        break;
+                                    case "quoted-printable":
+                                        BodyTransferEncoding = TransferEncoding.QuotedPrintable;
+                                        break;
+                                    case "7bit":
+                                        BodyTransferEncoding = TransferEncoding.SevenBit;
+                                        break;
+                                    case "8bit":
+                                        BodyTransferEncoding = TransferEncoding.EightBit;
+                                        break;
+                                    default:
+                                        BodyTransferEncoding = TransferEncoding.Unknown;
+                                        break;
+                                }
                                 break;
-                            case "bounces-to":
-                            case "bounces_to":
-                                ExtendedProperties.BouncesTo = headerValue;
+                            case "content-language":
+                                ContentLanguage = headerValue;
                                 break;
-                            case "content-description":
-                                ExtendedProperties.ContentDescription = headerValue;
+                            case "content-type":
+                                // If multiple content-types are passed, only process the first.
+                                if (string.IsNullOrEmpty(ContentType))
+                                {
+                                    ContentType = headerValue.Trim();
+                                    CharSet = Functions.ExtractMimeParameter(ContentType, "charset");
+                                    MimeBoundaryName = Functions.ExtractMimeParameter(ContentType, "boundary");
+
+                                    BodyContentType = ContentType.ToLower();
+                                    if (BodyContentType.IndexOf(";") > -1)
+                                        BodyContentType = BodyContentType.Substring(0, BodyContentType.IndexOf(";"));
+
+                                    IsBodyHtml = BodyContentType.StartsWith("text/html");
+                                }
                                 break;
-                            case "dispositionnotificationto":
-                            case "disposition-notification-to":
-                                ExtendedProperties.DispositionNotificationTo = headerValue;
-                                break;
-                            case "dkim-signature":
-                            case "domainkey-signature":
-                            case "x-google-dkim-signature":
-                                ExtendedProperties.DomainKeySignature = headerValue;
-                                break;
-                            case "domainkey-status":
-                                ExtendedProperties.DomainKeyStatus = headerValue;
-                                break;
-                            case "errors-to":
-                                ExtendedProperties.ErrorsTo = headerValue;
-                                break;
-                            case "list-unsubscribe":
-                            case "x-list-unsubscribe":
-                                ExtendedProperties.ListUnsubscribe = headerValue;
-                                break;
-                            case "mailer":
-                            case "x-mailer":
-                                ExtendedProperties.Mailer = headerValue;
-                                break;
-                            case "organization":
-                            case "x-originator-org":
-                            case "x-originatororg":
-                            case "x-organization":
-                                ExtendedProperties.OriginatorOrg = headerValue;
-                                break;
-                            case "original-messageid":
-                            case "x-original-messageid":
-                                ExtendedProperties.OriginalMessageId = headerValue;
-                                break;
-                            case "originating-email":
-                            case "x-originating-email":
-                                ExtendedProperties.OriginatingEmail = headerValue;
-                                break;
-                            case "precedence":
-                                ExtendedProperties.Precedence = headerValue;
-                                break;
-                            case "received-spf":
-                                ExtendedProperties.ReceivedSPF = headerValue;
-                                break;
-                            case "references":
-                                ExtendedProperties.References = headerValue;
-                                break;
-                            case "resent-date":
+                            case "date":
                                 string dateString = headerValue;
 
                                 // Ignore extraneous datetime information.
                                 int dateStringParenthesis = dateString.IndexOf("(");
                                 if (dateStringParenthesis > -1)
-                                    dateString = dateString.Substring(0, dateStringParenthesis - 1);
+                                    dateString = dateString.Substring(0, dateStringParenthesis).Trim();
 
                                 // Remove timezone suffix.
-                                if (dateString.Substring(dateString.Length - 4) == " ")
+                                if (dateString.Substring(dateString.Length - 4, 1) == " ")
                                     dateString = dateString.Substring(0, dateString.Length - 4);
 
-                                DateTime.TryParse(dateString, out ExtendedProperties.ResentDate);
+                                DateTime date;
+                                DateTime.TryParse(dateString, out date);
+                                Date = date;
                                 break;
-                            case "resent-from":
-                                ExtendedProperties.ResentFrom = headerValue;
+                            case "delivered-to":
+                                DeliveredTo = headerValue;
                                 break;
-                            case "resent-message-id":
-                                ExtendedProperties.ResentMessageID = headerValue;
+                            case "from":
+                                fromText = headerValue;
                                 break;
-                            case "thread-index":
-                                ExtendedProperties.ThreadIndex = headerValue;
+                            case "importance":
+                                Importance = headerValue;
                                 break;
-                            case "thread-topic":
-                                ExtendedProperties.ThreadTopic = headerValue;
-                                break;
-                            case "user-agent":
-                            case "useragent":
-                                ExtendedProperties.UserAgent = headerValue;
-                                break;
-                            case "x-auto-response-suppress":
-                                ExtendedProperties.AutoResponseSuppress = headerValue;
-                                break;
-                            case "x-campaign":
-                            case "x-campaign-id":
-                            case "x-campaignid":
-                            case "x-mllistcampaign":
-                            case "x-rpcampaign":
-                                ExtendedProperties.CampaignID = headerValue;
-                                break;
-                            case "x-delivery-context":
-                                ExtendedProperties.DeliveryContext = headerValue;
-                                break;
-                            case "x-maillist-id":
-                                ExtendedProperties.MailListId = headerValue;
-                                break;
-                            case "x-msmail-priority":
-                                ExtendedProperties.MSMailPriority = headerValue;
-                                break;
-                            case "x-originalarrivaltime":
-                            case "x-original-arrival-time":
-                                dateString = headerValue;
+                            case "in-reply-to":
+                                InReplyTo = headerValue;
 
-                                // Ignore extraneous datetime information.
-                                dateStringParenthesis = dateString.IndexOf("(");
-                                if (dateStringParenthesis > -1)
-                                    dateString = dateString.Substring(0, dateStringParenthesis - 1);
+                                // Loop through references.
+                                List<string> inReplyTo = new List<string>();
+                                int inReplyToPos = 0;
+                                while (inReplyToPos > -1)
+                                {
+                                    inReplyToPos = headerValue.IndexOf("<", inReplyToPos);
+                                    if (inReplyToPos > -1)
+                                    {
+                                        int referencesPos2 = headerValue.IndexOf(">", inReplyToPos);
+                                        if (referencesPos2 > -1)
+                                        {
+                                            inReplyTo.Add(headerValue.Substring(inReplyToPos + 1, referencesPos2 - inReplyToPos - 1));
+                                            inReplyToPos = referencesPos2 + 1;
+                                        }
+                                        else
+                                            inReplyToPos = -1;
+                                    }
+                                }
+                                // If any references were found, apply to the message's array.
+                                if (inReplyTo.Count > 0)
+                                    InReplyToMessageIDs = inReplyTo.ToArray();
+                                else
+                                    InReplyToMessageIDs = new string[] { headerValue };
 
-                                // Remove timezone suffix.
-                                if (dateString.Substring(dateString.Length - 4) == " ")
-                                    dateString = dateString.Substring(0, dateString.Length - 4);
+                                break;
+                            case "message-id":
+                                // Ignore opening and closing <> characters.
+                                MessageId = headerValue;
+                                if (MessageId.StartsWith("<"))
+                                    MessageId = MessageId.Substring(1);
+                                if (MessageId.EndsWith(">"))
+                                    MessageId = MessageId.Substring(0, MessageId.Length - 1);
+                                break;
+                            case "received":
+                            case "x-received":
+                                if (!string.IsNullOrEmpty(receivedText))
+                                    receivedChain.Add(receivedText);
 
-                                DateTime.TryParse(dateString, out ExtendedProperties.OriginalArrivalTime);
+                                receivedText = headerValue;
                                 break;
-                            case "x-originating-ip":
-                                ExtendedProperties.OriginatingIP = headerValue;
+                            case "references":
+                                // Loop through references.
+                                List<string> references = new List<string>();
+                                int referencesPos = 0;
+                                while (referencesPos > -1)
+                                {
+                                    referencesPos = headerValue.IndexOf("<", referencesPos);
+                                    if (referencesPos > -1)
+                                    {
+                                        int referencesPos2 = headerValue.IndexOf(">", referencesPos);
+                                        if (referencesPos2 > -1)
+                                        {
+                                            references.Add(headerValue.Substring(referencesPos + 1, referencesPos2 - referencesPos - 1));
+                                            referencesPos = referencesPos2 + 1;
+                                        }
+                                        else
+                                            referencesPos = -1;
+                                    }
+                                }
+                                // If any references were found, apply to the message's array.
+                                if (references.Count > 0)
+                                    References = references.ToArray();
+
                                 break;
-                            case "x-rcpt-to":
-                                if (headerValue.Length > 1)
-                                    ExtendedProperties.RcptTo = headerValue.Substring(1, headerValue.Length - 2);
+                            case "replyto":
+                            case "reply-to":
+                                replyToText = headerValue;
                                 break;
-                            case "x-csa-complaints":
-                            case "x-complaints-to":
-                            case "x-reportabuse":
-                            case "x-report-abuse":
-                            case "x-mail_abuse_inquiries":
-                                ExtendedProperties.ReportAbuse = headerValue;
+                            case "return-path":
+                                // Ignore opening and closing <> characters.
+                                ReturnPath = headerValue;
+                                if (ReturnPath.StartsWith("<"))
+                                    ReturnPath = ReturnPath.Substring(1);
+                                if (ReturnPath.EndsWith(">"))
+                                    ReturnPath = ReturnPath.Substring(0, ReturnPath.Length - 1);
                                 break;
-                            case "x-spam-score":
-                                ExtendedProperties.SpamScore = headerValue;
+                            case "sender":
+                            case "x-sender":
+                                MailAddressCollection senderCollection = MailAddressCollection.Parse(headerValue);
+                                if (senderCollection.Count > 0)
+                                    this.Sender = senderCollection[0];
+                                break;
+                            case "subject":
+                                // Decode international strings and remove escaped linebreaks.
+                                Subject = Functions.DecodeMailHeader(headerValue).Replace("\r", "").Replace("\n", "");
+                                break;
+                            case "to":
+                                if (toText.Length > 0)
+                                    toText += ", ";
+                                toText += headerValue;
+                                break;
+                            case "x-priority":
+                                switch (headerValue.ToUpper())
+                                {
+                                    case "LOW":
+                                        Priority = MailPriority.Low;
+                                        break;
+                                    case "NORMAL":
+                                        Priority = MailPriority.Normal;
+                                        break;
+                                    case "HIGH":
+                                        Priority = MailPriority.High;
+                                        break;
+                                }
                                 break;
                             default:
                                 break;
+                        }
+
+                        // Set header variables for advanced headers.
+                        if (parseExtendedHeaders)
+                        {
+                            switch (headerType)
+                            {
+                                case "acceptlanguage":
+                                case "accept-language":
+                                    ExtendedProperties.AcceptLanguage = headerValue;
+                                    break;
+                                case "authentication-results":
+                                    ExtendedProperties.AuthenticationResults = headerValue;
+                                    break;
+                                case "bounces-to":
+                                case "bounces_to":
+                                    ExtendedProperties.BouncesTo = headerValue;
+                                    break;
+                                case "content-description":
+                                    ExtendedProperties.ContentDescription = headerValue;
+                                    break;
+                                case "dispositionnotificationto":
+                                case "disposition-notification-to":
+                                    ExtendedProperties.DispositionNotificationTo = headerValue;
+                                    break;
+                                case "dkim-signature":
+                                case "domainkey-signature":
+                                case "x-google-dkim-signature":
+                                    ExtendedProperties.DomainKeySignature = headerValue;
+                                    break;
+                                case "domainkey-status":
+                                    ExtendedProperties.DomainKeyStatus = headerValue;
+                                    break;
+                                case "errors-to":
+                                    ExtendedProperties.ErrorsTo = headerValue;
+                                    break;
+                                case "list-unsubscribe":
+                                case "x-list-unsubscribe":
+                                    ExtendedProperties.ListUnsubscribe = headerValue;
+                                    break;
+                                case "mailer":
+                                case "x-mailer":
+                                    ExtendedProperties.Mailer = headerValue;
+                                    break;
+                                case "organization":
+                                case "x-originator-org":
+                                case "x-originatororg":
+                                case "x-organization":
+                                    ExtendedProperties.OriginatorOrg = headerValue;
+                                    break;
+                                case "original-messageid":
+                                case "x-original-messageid":
+                                    ExtendedProperties.OriginalMessageId = headerValue;
+                                    break;
+                                case "originating-email":
+                                case "x-originating-email":
+                                    ExtendedProperties.OriginatingEmail = headerValue;
+                                    break;
+                                case "precedence":
+                                    ExtendedProperties.Precedence = headerValue;
+                                    break;
+                                case "received-spf":
+                                    ExtendedProperties.ReceivedSPF = headerValue;
+                                    break;
+                                case "references":
+                                    ExtendedProperties.References = headerValue;
+                                    break;
+                                case "resent-date":
+                                    string dateString = headerValue;
+
+                                    // Ignore extraneous datetime information.
+                                    int dateStringParenthesis = dateString.IndexOf("(");
+                                    if (dateStringParenthesis > -1)
+                                        dateString = dateString.Substring(0, dateStringParenthesis).Trim();
+
+                                    // Remove timezone suffix.
+                                    if (dateString.Substring(dateString.Length - 4) == " ")
+                                        dateString = dateString.Substring(0, dateString.Length - 4);
+
+                                    DateTime.TryParse(dateString, out ExtendedProperties.ResentDate);
+                                    break;
+                                case "resent-from":
+                                    ExtendedProperties.ResentFrom = headerValue;
+                                    break;
+                                case "resent-message-id":
+                                    ExtendedProperties.ResentMessageID = headerValue;
+                                    break;
+                                case "thread-index":
+                                    ExtendedProperties.ThreadIndex = headerValue;
+                                    break;
+                                case "thread-topic":
+                                    ExtendedProperties.ThreadTopic = headerValue;
+                                    break;
+                                case "user-agent":
+                                case "useragent":
+                                    ExtendedProperties.UserAgent = headerValue;
+                                    break;
+                                case "x-auto-response-suppress":
+                                    ExtendedProperties.AutoResponseSuppress = headerValue;
+                                    break;
+                                case "x-campaign":
+                                case "x-campaign-id":
+                                case "x-campaignid":
+                                case "x-mllistcampaign":
+                                case "x-rpcampaign":
+                                    ExtendedProperties.CampaignID = headerValue;
+                                    break;
+                                case "x-delivery-context":
+                                    ExtendedProperties.DeliveryContext = headerValue;
+                                    break;
+                                case "x-maillist-id":
+                                    ExtendedProperties.MailListId = headerValue;
+                                    break;
+                                case "x-msmail-priority":
+                                    ExtendedProperties.MSMailPriority = headerValue;
+                                    break;
+                                case "x-originalarrivaltime":
+                                case "x-original-arrival-time":
+                                    dateString = headerValue;
+
+                                    // Ignore extraneous datetime information.
+                                    dateStringParenthesis = dateString.IndexOf("(");
+                                    if (dateStringParenthesis > -1)
+                                        dateString = dateString.Substring(0, dateStringParenthesis).Trim();
+
+                                    // Remove timezone suffix.
+                                    if (dateString.Substring(dateString.Length - 4) == " ")
+                                        dateString = dateString.Substring(0, dateString.Length - 4);
+
+                                    DateTime.TryParse(dateString, out ExtendedProperties.OriginalArrivalTime);
+                                    break;
+                                case "x-originating-ip":
+                                    ExtendedProperties.OriginatingIP = headerValue;
+                                    break;
+                                case "x-rcpt-to":
+                                    if (headerValue.Length > 1)
+                                        ExtendedProperties.RcptTo = headerValue.Substring(1, headerValue.Length - 2);
+                                    break;
+                                case "x-csa-complaints":
+                                case "x-complaints-to":
+                                case "x-reportabuse":
+                                case "x-report-abuse":
+                                case "x-mail_abuse_inquiries":
+                                    ExtendedProperties.ReportAbuse = headerValue;
+                                    break;
+                                case "x-spam-score":
+                                    ExtendedProperties.SpamScore = headerValue;
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                     }
                 }
@@ -849,18 +845,6 @@ namespace OpaqueMail
                 {
                     if (!AllRecipients.Contains(ccAddress.Address))
                         AllRecipients.Add(ccAddress.Address);
-                }
-            }
-
-            if (bccText.Length > 0)
-            {
-                Bcc = MailAddressCollection.Parse(bccText);
-
-                // Add the address to the AllRecipients collection.
-                foreach (MailAddress bccAddress in Bcc)
-                {
-                    if (!AllRecipients.Contains(bccAddress.Address))
-                        AllRecipients.Add(bccAddress.Address);
                 }
             }
 
@@ -1248,11 +1232,13 @@ namespace OpaqueMail
                 }
 
                 // Set the default primary body, defaulting to text/html and falling back to any text/*.
-                string contentTypeToUpper = mimePart.ContentType.ToUpper();
+                string contentTypeToUpper = "";
+                if (!string.IsNullOrEmpty(mimePart.ContentType))
+                    contentTypeToUpper = mimePart.ContentType.ToUpper();
                 if (Body.Length < 1)
                 {
                     // If the MIME part is of type text/*, set it as the intial message body.
-                    if (string.IsNullOrEmpty(mimePart.ContentType) || contentTypeToUpper.StartsWith("TEXT/"))
+                    if (string.IsNullOrEmpty(contentTypeToUpper) || contentTypeToUpper.StartsWith("TEXT/"))
                     {
                         IsBodyHtml = contentTypeToUpper.StartsWith("TEXT/HTML");
                         Body = mimePart.Body;

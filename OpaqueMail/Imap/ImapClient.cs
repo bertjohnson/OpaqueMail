@@ -189,9 +189,8 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="host">Name or IP of the host used for IMAP transactions.</param>
         /// <param name="port">Port to be used by the host.</param>
-        /// <param name="userName">The username associated with this connection.</param>
         /// <param name="enableSSL">Whether the IMAP connection uses TLS / SSL protection.</param>
-        private ImapClient(string host, int port, string userName, bool enableSSL)
+        private ImapClient(string host, int port, bool enableSSL)
         {
             Capabilities = new HashSet<string>();
             IdleFrequency = new TimeSpan(0, 1, 0);
@@ -215,7 +214,7 @@ namespace OpaqueMail
         /// <param name="password">The password associated with this connection.</param>
         /// <param name="enableSSL">Whether the IMAP connection uses TLS / SSL protection.</param>
         public ImapClient(string host, int port, string userName, string password, bool enableSSL)
-            : this(host, port, userName, enableSSL)
+            : this(host, port, enableSSL)
         {
             Credentials = new NetworkCredential(userName, password);
         }
@@ -229,7 +228,7 @@ namespace OpaqueMail
         /// <param name="password">SecureString representation of the password associated with this connection.</param>
         /// <param name="enableSSL">Whether the IMAP connection uses TLS / SSL protection.</param>
         public ImapClient(string host, int port, string userName, SecureString password, bool enableSSL)
-            : this(host, port, userName, enableSSL)
+            : this(host, port, enableSSL)
         {
             Credentials = new NetworkCredential(userName, password);
         }

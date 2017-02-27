@@ -789,7 +789,11 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
             if (string.IsNullOrEmpty(ImapHost.Text) || string.IsNullOrEmpty(ImapPort.Text) || string.IsNullOrEmpty(ImapUsername.Text) || string.IsNullOrEmpty(ImapPassword.Text))
             {
-                MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\n" + myImapClient.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (myImapClient != null)
+                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\n" + myImapClient.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                else
+                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\nIMAP client is null.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
                 return;
             }
 
@@ -897,7 +901,10 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
         {
             if (string.IsNullOrEmpty(Pop3Host.Text) || string.IsNullOrEmpty(Pop3Port.Text) || string.IsNullOrEmpty(Pop3Username.Text) || string.IsNullOrEmpty(Pop3Password.Text))
             {
-                MessageBox.Show("Unable to connect to the POP3 server. Please double-check your settings.\r\n\r\n" + myPop3Client.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if (myPop3Client != null)
+                    MessageBox.Show("Unable to connect to the POP3 server. Please double-check your settings.\r\n\r\n" + myPop3Client.LastErrorMessage, "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                else
+                    MessageBox.Show("Unable to connect to the IMAP server. Please double-check your settings.\r\n\r\nPOP3 client is null.", "Unable to connect.", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             

@@ -99,6 +99,8 @@ namespace OpaqueMail
         /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources. </param>
         protected void Dispose(bool disposing)
         {
+            if (ContentStream != null)
+                ContentStream.Dispose();
         }
     }
 

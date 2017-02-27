@@ -157,7 +157,7 @@ namespace OpaqueMail
                 if (!response.StartsWith("3"))
                     throw new SmtpException("Unable to authenticate with server '" + Host + "'.  Received '" + response + "'.");
                 await writer.WriteLineAsync(Functions.ToBase64String(cred.UserName));
-                response = await reader.ReadLineAsync();
+                string tempResponse = await reader.ReadLineAsync();
                 await writer.WriteLineAsync(Functions.ToBase64String(cred.Password));
                 response = await reader.ReadLineAsync();
                 if (!response.StartsWith("2"))

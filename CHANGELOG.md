@@ -1,5 +1,8 @@
 ### Changelog ###
 
+2.5.0 - 2017-02-27
+ * Cleaned up a few edge cases based on static code analysis.
+
 2.4.4 - 2017-02-16
  * Removed UID variants of `Pop3Client.DeleteMessage`, as deletion only works based on index.
 
