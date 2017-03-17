@@ -1,5 +1,9 @@
 ### Changelog ###
 
+2.5.1 - 2017-03-16
+ * Fixed alternate view MIME wrapping.
+ * In SmtpProxy, eliminated unneeded certificate generation when messages aren't signed.
+
 2.5.0 - 2017-02-27
  * Cleaned up a few edge cases based on static code analysis.
 

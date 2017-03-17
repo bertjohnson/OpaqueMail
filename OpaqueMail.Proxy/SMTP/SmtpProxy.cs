@@ -737,9 +737,12 @@ namespace OpaqueMail.Proxy
                                                 message.SmimeTripleWrapped = arguments.SmimeTripleWrapped;
 
                                                 // Look up the S/MIME signing certificate for the current sender.  If it doesn't exist, create one.
-                                                message.SmimeSigningCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, message.From.Address);
-                                                if (message.SmimeSigningCertificate == null)
-                                                    message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate("E=" + message.From.Address, message.From.Address, StoreLocation.LocalMachine, true, 4096, 10);
+                                                if (message.SmimeSigned || message.SmimeTripleWrapped)
+                                                {
+                                                    message.SmimeSigningCertificate = CertHelper.GetCertificateBySubjectName(StoreLocation.LocalMachine, message.From.Address);
+                                                    if (message.SmimeSigningCertificate == null)
+                                                        message.SmimeSigningCertificate = CertHelper.CreateSelfSignedCertificate("E=" + message.From.Address, message.From.Address, StoreLocation.LocalMachine, true, 4096, 10);
+                                                }
 
                                                 ProxyFunctions.Log(LogWriter, SessionId, arguments.ConnectionId, "C: " + message.RawHeaders + "\r\n\r\n" + message.RawBody, Proxy.LogLevel.Raw, LogLevel);
 

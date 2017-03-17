@@ -899,7 +899,7 @@ namespace OpaqueMail
                 ContentTransferEncoding = "quoted-printable";
 
             // Write out body of the message.
-            StringBuilder MIMEBuilder = new StringBuilder(Constants.SMALLSBSIZE);
+            StringBuilder MIMEBuilder = new StringBuilder(Constants.MEDIUMSBSIZE);
 
             MIMEBuilder.Append("This is a multi-part message in MIME format.\r\n\r\n");
 
@@ -908,13 +908,18 @@ namespace OpaqueMail
                 // Handle alternative views by encapsulating them in a multipart/alternative content type.
                 if (AlternateViews.Count > 0)
                 {
+                    MIMEBuilder.Append("--" + MimeBoundaryName + "\r\n");
+                    MIMEBuilder.Append("Content-Type: multipart/alternative; boundary=\"" + MimeBoundaryName + "-alternative\"\r\n");
+                    MIMEBuilder.Append("Content-Transfer-Encoding: 7bit\r\n\r\n");
+                    MIMEBuilder.Append("This is a multi-part message in MIME format.\r\n\r\n");
+
                     foreach (AlternateView alternateView in AlternateViews)
                     {
                         string mimePartContentTransferEncoding = "quoted-printable";
                         if (alternateView.TransferEncoding == TransferEncoding.Base64)
                             mimePartContentTransferEncoding = "base64";
 
-                        MIMEBuilder.Append("--" + MimeBoundaryName + "\r\n");
+                        MIMEBuilder.Append("--" + MimeBoundaryName + "-alternative\r\n");
                         MIMEBuilder.Append("Content-Type: " + alternateView.MediaType + "\r\n");
                         MIMEBuilder.Append("Content-Transfer-Encoding: " + mimePartContentTransferEncoding + "\r\n\r\n");
 
@@ -924,18 +929,31 @@ namespace OpaqueMail
                         MIMEBuilder.Append(Functions.Encode(binaryData, mimePartContentTransferEncoding));
                         MIMEBuilder.Append("\r\n");
                     }
+
+                    MIMEBuilder.Append("--" + MimeBoundaryName + "-alternative\r\n");
+
+                    if (this.IsBodyHtml)
+                        MIMEBuilder.Append("Content-Type: text/html\r\n");
+                    else
+                        MIMEBuilder.Append("Content-Type: text/plain\r\n");
+                    MIMEBuilder.Append("Content-Transfer-Encoding: " + ContentTransferEncoding + "\r\n\r\n");
+
+                    MIMEBuilder.Append(Functions.Encode(Body, ContentTransferEncoding));
+                    MIMEBuilder.Append("\r\n--" + MimeBoundaryName + "-alternative--\r\n");
                 }
-
-                MIMEBuilder.Append("--" + MimeBoundaryName + "\r\n");
-
-                if (this.IsBodyHtml)
-                    MIMEBuilder.Append("Content-Type: text/html\r\n");
                 else
-                    MIMEBuilder.Append("Content-Type: text/plain\r\n");
-                MIMEBuilder.Append("Content-Transfer-Encoding: " + ContentTransferEncoding + "\r\n\r\n");
+                {
+                    MIMEBuilder.Append("--" + MimeBoundaryName + "\r\n");
 
-                MIMEBuilder.Append(Functions.Encode(Body, ContentTransferEncoding));
-                MIMEBuilder.Append("\r\n");
+                    if (this.IsBodyHtml)
+                        MIMEBuilder.Append("Content-Type: text/html\r\n");
+                    else
+                        MIMEBuilder.Append("Content-Type: text/plain\r\n");
+                    MIMEBuilder.Append("Content-Transfer-Encoding: " + ContentTransferEncoding + "\r\n\r\n");
+
+                    MIMEBuilder.Append(Functions.Encode(Body, ContentTransferEncoding));
+                    MIMEBuilder.Append("\r\n");
+                }
             }
             // Since we've processed the alternate views, they shouldn't be rendered again.
             this.AlternateViews.Clear();
@@ -1031,7 +1049,9 @@ namespace OpaqueMail
             {
                 MimeEncode("7bit", MimeBoundaryName).Wait();
 
-                ContentType = "multipart/mixed; boundary=\"" + MimeBoundaryName + "\"";
+                if (!ContentType.StartsWith("multipart/alternative"))
+                    ContentType = "multipart/mixed; boundary=\"" + MimeBoundaryName + "\"";
+
                 ContentTransferEncoding = "7bit";
             }
             else
