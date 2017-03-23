@@ -1,5 +1,8 @@
 ### Changelog ###
 
+2.5.2 - 2017-03-22
+* Added fix in POP3 `GetMessagesAsync()` method for servers that return blank lines for UIDL command.
+
 2.5.1 - 2017-03-16
  * Fixed alternate view MIME wrapping.
  * In SmtpProxy, eliminated unneeded certificate generation when messages aren't signed.

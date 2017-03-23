@@ -655,9 +655,12 @@ namespace OpaqueMail
                 {
                     foreach (string responseLine in responseLines)
                     {
-                        string[] responseParts = responseLine.Split(new char[] { ' ' }, 2);
-                        if (!uidls.ContainsKey(int.Parse(responseParts[0])))
-                            uidls.Add(int.Parse(responseParts[0]), responseParts[1]);
+                        if (!string.IsNullOrEmpty(responseLine) && responseLine.IndexOf(' ') > -1)
+                        {
+                            string[] responseParts = responseLine.Split(new char[] { ' ' }, 2);
+                            if (!uidls.ContainsKey(int.Parse(responseParts[0])))
+                                uidls.Add(int.Parse(responseParts[0]), responseParts[1]);
+                        }
                     }
                 }
                 else
