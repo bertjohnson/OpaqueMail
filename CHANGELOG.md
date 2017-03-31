@@ -1,5 +1,8 @@
 ### Changelog ###
 
+2.5.3 - 2017-03-30
+* Ensured that the last text/html MIME part is considered the body (in the case of multiple text/html MIME parts).
+
 2.5.2 - 2017-03-22
 * Added fix in POP3 `GetMessagesAsync()` method for servers that return blank lines for UIDL command.
 

@@ -1281,7 +1281,7 @@ namespace OpaqueMail
                 }
                 else
                 {
-                    // If the current body isn't text/html and this is, replace the default body with the current MIME part.
+                    // If and this MIME part is text/html, replace the default body with the current MIME part.
                     if (!ContentType.ToUpper().StartsWith("TEXT/HTML") && contentTypeToUpper.StartsWith("TEXT/HTML"))
                     {
                         // Add the previous default body as an alternate view.
