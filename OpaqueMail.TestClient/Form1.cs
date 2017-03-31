@@ -619,8 +619,9 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
                 int.TryParse(SmtpPort.Text, out smtpPort);
 
                 SmtpClient smtpClient = new SmtpClient(SmtpHost.Text, smtpPort);
-                smtpClient.Credentials = new NetworkCredential(SmtpUsername.Text, SmtpPassword.Text);
-                smtpClient.EnableSsl = true;
+                if (!string.IsNullOrEmpty(SmtpUsername.Text))
+                    smtpClient.Credentials = new NetworkCredential(SmtpUsername.Text, SmtpPassword.Text);
+                smtpClient.EnableSsl = SmtpSsl.Checked;
 
                 MailMessage message = new MailMessage();
                 message.From = new MailAddress(SmtpFrom.Text);
