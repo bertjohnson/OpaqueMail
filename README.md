@@ -1,3 +1,6 @@
+## Important
+**As of May 2017, this project is not actively maintained. A great alternative is [MailKit by jstedfast](https://github.com/jstedfast/MailKit).**
+
 OpaqueMail .NET Email Library
 ==============================
 
