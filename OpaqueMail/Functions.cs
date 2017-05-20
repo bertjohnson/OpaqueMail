@@ -231,6 +231,7 @@ namespace OpaqueMail
                     StringBuilder headerBuilder = new StringBuilder(Constants.TINYSBSIZE);
 
                     int cursor = 0, lastCursor = 0;
+                    int headerLength = header.Length;
                     while (cursor > -1)
                     {
                         lastCursor = cursor;
@@ -241,7 +242,7 @@ namespace OpaqueMail
 
                             int middleCursor = header.IndexOf("?", cursor + 2, StringComparison.Ordinal);
 
-                            if (middleCursor > -1 && middleCursor < header.Length - 2)
+                            if (middleCursor > -1 && middleCursor < headerLength - 2)
                             {
                                 int endCursor = header.IndexOf("?=", middleCursor + 3, StringComparison.Ordinal);
                                 if (endCursor > -1 && endCursor > middleCursor + 1)
@@ -571,7 +572,7 @@ namespace OpaqueMail
         /// <returns>Extracted MIME parameter, properly formatted.</returns>
         public static string ExtractMimeParameter(string mimeHeader, string mimeParameter)
         {
-            int parameterPos = mimeHeader.IndexOf(mimeParameter);
+            int parameterPos = mimeHeader.IndexOf(mimeParameter, StringComparison.OrdinalIgnoreCase);
             if (parameterPos > -1)
             {
                 int asteriskPos = mimeHeader.IndexOf("*", parameterPos + mimeParameter.Length);

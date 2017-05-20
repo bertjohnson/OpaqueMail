@@ -49,10 +49,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IMAP\ImapProxy.cs" />
+    <Compile Include="Imap\ImapProxy.cs" />
     <Compile Include="ProxyBase.cs" />
-    <Compile Include="POP3\Pop3Proxy.cs" />
-    <Compile Include="SMTP\SmtpProxy.cs" />
+    <Compile Include="Pop3\Pop3Proxy.cs" />
+    <Compile Include="Smtp\SmtpProxy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ProxyFunctions.cs" />
     <Compile Include="EnumsAndStructs.cs" />

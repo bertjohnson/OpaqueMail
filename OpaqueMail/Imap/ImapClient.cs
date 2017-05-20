@@ -2376,8 +2376,14 @@ namespace OpaqueMail
             {
                 // Read the message's UID and flags.
                 int uid = 0;
-                if (!int.TryParse(Functions.ReturnBetween(response, "UID ", " "), out uid))
-                    int.TryParse(Functions.ReturnBetween(response, "UID ", ")"), out uid);
+                if (!int.TryParse(Functions.ReturnBetween(response, "\r\n UID ", " "), out uid))
+                {
+                    int.TryParse(Functions.ReturnBetween(response, "\r\n UID ", ")"), out uid);
+                }
+                else if (!int.TryParse(Functions.ReturnBetween(response, "\r\nUID ", " "), out uid))
+                {
+                    int.TryParse(Functions.ReturnBetween(response, "\r\nUID ", ")"), out uid);
+                }
                 string flagsString = Functions.ReturnBetween(response, "FLAGS (", ")");
 
                 // Strip IMAP response padding.

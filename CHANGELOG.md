@@ -1,5 +1,9 @@
 ### Changelog ###
 
+2.5.4 - 2017-05-19
+* Fixed processing of messages with the string "UID" in their subjects.
+* Fixed handling of case-sensitive boundary names.
+
 2.5.3 - 2017-03-30
 * Ensured that the last text/html MIME part is considered the body (in the case of multiple text/html MIME parts).
 
