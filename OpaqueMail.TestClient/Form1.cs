@@ -650,6 +650,8 @@ This is a test of the APPEND command.", new string[] { @"\Seen" }, DateTime.Now)
 
                 message.Subject = SmtpSubject.Text;
 
+                message.Body = SmtpBody.Text;
+
                 // Process attachments.
                 string[] attachmentLines = SmtpAttachments.Text.Replace("\r", "").Split('\n');
                 foreach (string attachmentLine in attachmentLines)
