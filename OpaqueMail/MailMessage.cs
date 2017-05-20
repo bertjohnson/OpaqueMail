@@ -1090,7 +1090,7 @@ namespace OpaqueMail
             Encoder bodyEncoder = bodyEncoding.GetEncoder();
 
             // Encode and return the raw bytes.
-            char[] chars = (rawBody).ToCharArray();
+            char[] chars = rawBody.ToCharArray();
             byte[] MIMEBodyBytes = new byte[bodyEncoder.GetByteCount(chars, 0, chars.Length, false)];
             bodyEncoder.GetBytes(chars, 0, chars.Length, MIMEBodyBytes, 0, true);
 
@@ -1281,7 +1281,7 @@ namespace OpaqueMail
                 }
                 else
                 {
-                    // If and this MIME part is text/html, replace the default body with the current MIME part.
+                    // If this MIME part is text/html, replace the default body with the current MIME part.
                     if (!ContentType.ToUpper().StartsWith("TEXT/HTML") && contentTypeToUpper.StartsWith("TEXT/HTML"))
                     {
                         // Add the previous default body as an alternate view.
