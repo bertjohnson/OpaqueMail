@@ -2299,6 +2299,8 @@ namespace OpaqueMail
         private async Task<MailMessage> GetMessageHelper(string mailboxName, int id, bool headersOnly, bool setSeenFlag, bool isUid)
         {
             MessagePartialHelper helper = await GetMessagePartialHelper(mailboxName, id, headersOnly, setSeenFlag, -1, -1, isUid);
+            if (helper == null)
+                return null;
 
             MailMessage message = new MailMessage(helper.MessageString, ProcessingFlags);
             message.ImapUid = helper.ImapUid;
