@@ -1979,7 +1979,7 @@ namespace OpaqueMail
         /// Perform a search in the current mailbox and return all matching messages.
         /// </summary>
         /// <param name="searchQuery">Well-formatted IMAP search criteria.</param>
-        public async Task<List<MailMessage>> SearchAsync(string searchQuery)
+        public async Task<List<MailMessage>> SearchAsync(string searchQuery, bool headersOnly = false, bool setSeenFlag = false)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -2009,7 +2009,7 @@ namespace OpaqueMail
                         int numericMessageID = -1;
                         if (int.TryParse(messageID, out numericMessageID))
                         {
-                            MailMessage message = await GetMessageAsync(int.Parse(messageID));
+                            MailMessage message = await GetMessageAsync(CurrentMailboxName, int.Parse(messageID), headersOnly, setSeenFlag);
                             if (message != null)
                                 messages.Add(message);
                         }
