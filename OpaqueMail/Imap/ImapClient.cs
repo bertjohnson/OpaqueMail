@@ -1979,7 +1979,7 @@ namespace OpaqueMail
         /// Perform a search in the current mailbox and return all matching messages.
         /// </summary>
         /// <param name="searchQuery">Well-formatted IMAP search criteria.</param>
-        public async Task<List<MailMessage>> SearchAsync(string searchQuery)
+        public async Task<List<MailMessage>> SearchAsync(string searchQuery, bool headersOnly = false, bool setSeenFlag = false)
         {
             // Protect against commands being called out of order.
             if (!IsAuthenticated)
@@ -2009,7 +2009,7 @@ namespace OpaqueMail
                         int numericMessageID = -1;
                         if (int.TryParse(messageID, out numericMessageID))
                         {
-                            MailMessage message = await GetMessageAsync(int.Parse(messageID));
+                            MailMessage message = await GetMessageAsync(CurrentMailboxName, int.Parse(messageID), headersOnly, setSeenFlag);
                             if (message != null)
                                 messages.Add(message);
                         }
@@ -2299,6 +2299,8 @@ namespace OpaqueMail
         private async Task<MailMessage> GetMessageHelper(string mailboxName, int id, bool headersOnly, bool setSeenFlag, bool isUid)
         {
             MessagePartialHelper helper = await GetMessagePartialHelper(mailboxName, id, headersOnly, setSeenFlag, -1, -1, isUid);
+            if (helper == null)
+                return null;
 
             MailMessage message = new MailMessage(helper.MessageString, ProcessingFlags);
             message.ImapUid = helper.ImapUid;
@@ -2376,14 +2378,17 @@ namespace OpaqueMail
             {
                 // Read the message's UID and flags.
                 int uid = 0;
-                if (!int.TryParse(Functions.ReturnBetween(response, "\r\n UID ", " "), out uid))
-                {
+                int.TryParse(Functions.ReturnBetween(response, "\r\n UID ", " "), out uid);
+                if (uid == 0)
                     int.TryParse(Functions.ReturnBetween(response, "\r\n UID ", ")"), out uid);
-                }
-                else if (!int.TryParse(Functions.ReturnBetween(response, "\r\nUID ", " "), out uid))
-                {
+                if (uid == 0)
+                    int.TryParse(Functions.ReturnBetween(response, "\r\nUID ", " "), out uid);
+                if (uid == 0)
                     int.TryParse(Functions.ReturnBetween(response, "\r\nUID ", ")"), out uid);
-                }
+                if (uid == 0)
+                    int.TryParse(Functions.ReturnBetween(response, "UID ", " "), out uid);
+                if (uid == 0)
+                    int.TryParse(Functions.ReturnBetween(response, "UID ", ")"), out uid);
                 string flagsString = Functions.ReturnBetween(response, "FLAGS (", ")");
 
                 // Strip IMAP response padding.

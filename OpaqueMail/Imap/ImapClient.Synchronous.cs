@@ -697,9 +697,9 @@ namespace OpaqueMail
         /// Perform a search in the current mailbox and return all matching messages.
         /// </summary>
         /// <param name="searchQuery">Well-formatted IMAP search criteria.</param>
-        public List<MailMessage> Search(string searchQuery)
+        public List<MailMessage> Search(string searchQuery, bool headersOnly = false, bool setSeenFlag = false)
         {
-            return Task.Run(() => SearchAsync(searchQuery)).Result;
+            return Task.Run(() => SearchAsync(searchQuery, headersOnly, setSeenFlag)).Result;
         }
 
         /// <summary>
