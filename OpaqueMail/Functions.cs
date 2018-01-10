@@ -20,6 +20,7 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace OpaqueMail
@@ -221,7 +222,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="header">Email header to be decoded.</param>
         /// <returns>The decoded email header.</returns>
-        public static string DecodeMailHeader(string header)
+        public static string DecodeMailHeader(string header, bool wrapInQuotes=false)
         {
             if (!string.IsNullOrEmpty(header))
             {
@@ -267,7 +268,10 @@ namespace OpaqueMail
                                     }
 
                                     // Append the decoded string.
-                                    headerBuilder.Append(Encoding.UTF8.GetString(Encoding.Convert(encoding, Encoding.UTF8, encodedBytes)));
+                                    string decodedAddress = Encoding.UTF8.GetString(Encoding.Convert(encoding, Encoding.UTF8, encodedBytes));
+                                    if (wrapInQuotes)
+                                        decodedAddress = NormalizeQuotes(decodedAddress);
+                                    headerBuilder.Append(decodedAddress);
 
                                     cursor = endCursor + 2;
                                 }
@@ -943,6 +947,16 @@ namespace OpaqueMail
                     return "windows-1252";
             }
             return charSet;
+        }
+
+        /// <summary>
+        /// Ensures that the given address is between quotes
+        /// </summary>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        public static string NormalizeQuotes(string address)
+        {
+            return '"' + Regex.Replace(address, @"('|"")", "") + '"';
         }
 
         /// <summary>
