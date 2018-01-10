@@ -222,7 +222,7 @@ namespace OpaqueMail
         /// </summary>
         /// <param name="header">Email header to be decoded.</param>
         /// <returns>The decoded email header.</returns>
-        public static string DecodeMailHeader(string header)
+        public static string DecodeMailHeader(string header, bool wrapInQuotes=false)
         {
             if (!string.IsNullOrEmpty(header))
             {
@@ -269,7 +269,8 @@ namespace OpaqueMail
 
                                     // Append the decoded string.
                                     string decodedAddress = Encoding.UTF8.GetString(Encoding.Convert(encoding, Encoding.UTF8, encodedBytes));
-                                    decodedAddress = NormalizeQuotes(decodedAddress);
+                                    if (wrapInQuotes)
+                                        decodedAddress = NormalizeQuotes(decodedAddress);
                                     headerBuilder.Append(decodedAddress);
 
                                     cursor = endCursor + 2;

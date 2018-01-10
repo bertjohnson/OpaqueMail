@@ -197,7 +197,7 @@ namespace OpaqueMail
         public static MailAddressCollection Parse(string addresses)
         {
             // Escape embedded encoding.
-            addresses = Functions.DecodeMailHeader(addresses);
+            addresses = Functions.DecodeMailHeader(addresses, wrapInQuotes: true);
 
             // Create a new collection of MailAddresses to be returned.
             MailAddressCollection addressCollection = new MailAddressCollection();
